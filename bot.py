@@ -19,9 +19,16 @@ import threading
 import time
 from pathlib import Path
 from typing import Dict, List, Optional
+import urllib.parse
 import requests
 
 from agent import AgentEngine
+from bridge import (
+    get_pending_task,
+    is_laptop_online,
+    record_heartbeat,
+    store_task_result,
+)
 from config import (
     BASE_DIR,
     TELEGRAM_BOT_TOKEN,
@@ -226,10 +233,12 @@ def get_status_text() -> str:
     sys_stat = system_status()
     cfg = get_runtime_config()
     facts = get_all_facts()
+    laptop_status = "ONLINE 🟢 (Ready for local tasks)" if is_laptop_online() else "OFFLINE 🔴 (Laptop band hai)"
     return (
         "📊 *Hermes System Status:*\n\n"
         f"```\n{sys_stat}\n```\n"
         f"• **Owner:** @{cfg.get('owner_username', 'kissbilla2')} (`{cfg.get('owner_user_id')}`)\n"
+        f"• **💻 Laptop Node:** {laptop_status}\n"
         f"• **AI Model:** Google Gemini (`gemini-flash-lite-latest`)\n"
         f"• **Multimodal:** Vision / Screenshots & Document processing enabled\n"
         f"• **Saved Memory Facts:** {len(facts)}"
@@ -249,36 +258,73 @@ def get_quick_test_text() -> str:
 def get_vps_guide_text() -> str:
     return (
         "🌐 *24/7 Free Hosting Guide (Laptop band hone par bhi bot chalega):*\n\n"
-        "1. **Koyeb (Recommended):**\n"
-        "   - GitHub repo connect karo -> Free tier me background worker deploy karo.\n"
-        "   - 24/7 chalta hai bina laptop chalu rakhe.\n\n"
-        "2. **Hugging Face Spaces:**\n"
-        "   - Free Docker Space banao aur code push kar do.\n\n"
-        "3. **Oracle Cloud Free Tier:**\n"
-        "   - Lifetime Free 4 Core, 24GB RAM Linux VPS milta hai."
+        "1. **Render (Active & Live):**\n"
+        "   - Bot 24/7 Render cloud par live hai.\n"
+        "2. **Laptop Bridge:**\n"
+        "   - Laptop par `./start_laptop_node.sh` chalu rakhein to Telegram se direct laptop bhi control hoga."
     )
 
 
 def get_help_text() -> str:
     return (
         "🛠️ *Hermes AI Assistant Guide:*\n\n"
+        "• **Laptop Control:** `laptop: run ls` ya `laptop par python script chalao`.\n"
         "• **Buttons:** Niche diye buttons se quick status, files, test chalaein.\n"
         "• **Photos/Screenshots:** Koi bhi photo ya error screenshot bhejein, AI analyze karega.\n"
         "• **Files/Docs:** Koi bhi Python script ya file bhejein, AI check ya run karega.\n"
-        "• **Reminders:** `/remind 10m check server`\n"
-        "• **Terminal:** `check cpu and ram` ya `run python test.py`\n\n"
+        "• **Reminders:** `/remind 10m check server`\n\n"
         "Strictly locked to @kissbilla2."
     )
 
 
 def start_health_server(port: int = 7860) -> None:
-    """Run lightweight HTTP health-check server for Koyeb, Hugging Face Spaces, and Render."""
+    """Run lightweight HTTP health-check and Laptop Bridge server."""
     class HealthHandler(http.server.SimpleHTTPRequestHandler):
         def do_GET(self):
+            parsed = urllib.parse.urlparse(self.path)
+            if parsed.path == "/api/laptop/poll":
+                record_heartbeat()
+                task = get_pending_task()
+                self.send_response(200)
+                self.send_header("Content-type", "application/json")
+                self.end_headers()
+                self.wfile.write(json.dumps({"ok": True, "task": task}).encode("utf-8"))
+                return
+            elif parsed.path == "/api/laptop/status":
+                self.send_response(200)
+                self.send_header("Content-type", "application/json")
+                self.end_headers()
+                self.wfile.write(json.dumps({"online": is_laptop_online()}).encode("utf-8"))
+                return
+
             self.send_response(200)
             self.send_header("Content-type", "text/plain")
             self.end_headers()
             self.wfile.write(b"OK - Hermes Telegram Bot is running 24/7.")
+
+        def do_POST(self):
+            parsed = urllib.parse.urlparse(self.path)
+            if parsed.path == "/api/laptop/result":
+                content_len = int(self.headers.get("Content-Length", 0))
+                body = self.rfile.read(content_len)
+                try:
+                    data = json.loads(body.decode("utf-8"))
+                    task_id = data.get("task_id")
+                    output = data.get("output", "")
+                    if task_id:
+                        store_task_result(task_id, output)
+                    self.send_response(200)
+                    self.send_header("Content-type", "application/json")
+                    self.end_headers()
+                    self.wfile.write(b'{"ok": true}')
+                    return
+                except Exception:
+                    self.send_response(400)
+                    self.end_headers()
+                    return
+
+            self.send_response(404)
+            self.end_headers()
 
         def log_message(self, format, *args):
             return  # Suppress logging spam
@@ -288,9 +334,9 @@ def start_health_server(port: int = 7860) -> None:
         server = socketserver.TCPServer(("0.0.0.0", port), HealthHandler)
         thread = threading.Thread(target=server.serve_forever, daemon=True)
         thread.start()
-        logger.info(f"Health-check HTTP server online on port {port}")
+        logger.info(f"Health-check & Laptop Bridge HTTP server online on port {port}")
     except Exception as e:
-        logger.warning(f"Could not bind health-check server on port {port}: {e}")
+        logger.warning(f"Could not bind server on port {port}: {e}")
 
 
 class TelegramBotRunner:

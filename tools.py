@@ -157,9 +157,20 @@ def fetch_url(url: str, timeout: int = 15) -> str:
         return f"Error fetching URL: {str(e)}"
 
 
+from bridge import dispatch_to_laptop, is_laptop_online
+
+
+def execute_on_laptop(command: str) -> str:
+    """Execute a bash command directly on user's physical laptop if connected."""
+    if not is_laptop_online():
+        return "⚠️ Laptop is currently OFFLINE (laptop band hai ya laptop_node disconnect hai)."
+    return dispatch_to_laptop(command)
+
+
 # Tool Registry & Schemas
 TOOLS_MAP: Dict[str, Callable] = {
     "execute_bash": execute_bash,
+    "execute_on_laptop": execute_on_laptop,
     "read_file": read_file,
     "write_file": write_file,
     "list_directory": list_directory,
@@ -177,6 +188,20 @@ GEMINI_FUNCTION_DECLARATIONS = [
                 "command": {
                     "type": "string",
                     "description": "The exact shell command line string to run.",
+                }
+            },
+            "required": ["command"],
+        },
+    },
+    {
+        "name": "execute_on_laptop",
+        "description": "Execute a bash shell command directly on the user's physical laptop (when user asks to run on laptop, or when local laptop files/diagnostics are needed).",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "command": {
+                    "type": "string",
+                    "description": "The shell command line to run on user's physical laptop.",
                 }
             },
             "required": ["command"],
