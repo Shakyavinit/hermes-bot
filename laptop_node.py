@@ -410,6 +410,24 @@ def execute_action(cmd: str) -> str:
         except Exception as e:
             return f"📍 Location lookup error: {e}"
 
+    # 23. Ghost Mode (Stealth Screen Off)
+    if clean == "__ACTION_GHOST_MODE__":
+        os.system("DISPLAY=:0 xset dpms force off 2>/dev/null")
+        return (
+            "🕶️ *Ghost Mode Activated!*\n"
+            "Laptop display blank/off ho gaya hai.\n"
+            "Sabhi background tasks, downloads aur Antigravity active hain!\n"
+            "_(Screen wapas on karne ke liye koi bhi key dabayein ya mouse move karein)_"
+        )
+
+    # 24. Remote URL Launcher
+    if clean.startswith("__ACTION_OPEN_URL__"):
+        url = clean[len("__ACTION_OPEN_URL__"):].strip()
+        if not url.startswith("http://") and not url.startswith("https://"):
+            url = f"https://{url}"
+        os.system(f'DISPLAY=:0 xdg-open "{url}" >/dev/null 2>&1 &')
+        return f"🌐 *Opened in Laptop Browser:*\n`{url}`"
+
     # General Shell Command
     try:
         proc = subprocess.run(

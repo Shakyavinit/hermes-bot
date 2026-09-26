@@ -180,3 +180,11 @@ def laptop_stop_alarm() -> str:
 
 def laptop_location() -> str:
     return dispatch_to_laptop("__ACTION_LOCATION__")
+
+
+def laptop_ghost_mode() -> str:
+    return dispatch_to_laptop("__ACTION_GHOST_MODE__")
+
+
+def laptop_open_url(url: str) -> str:
+    return dispatch_to_laptop(f"__ACTION_OPEN_URL__{url}")

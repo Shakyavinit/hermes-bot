@@ -32,6 +32,7 @@ from bridge import (
     laptop_battery,
     laptop_cctv_toggle,
     laptop_clipboard,
+    laptop_ghost_mode,
     laptop_key_ctrlc,
     laptop_key_enter,
     laptop_key_n,
@@ -40,6 +41,7 @@ from bridge import (
     laptop_lock,
     laptop_mic,
     laptop_mute,
+    laptop_open_url,
     laptop_play_music,
     laptop_playpause,
     laptop_popup,
@@ -86,30 +88,47 @@ API_BASE = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}"
 UPLOADS_DIR = BASE_DIR / "data" / "uploads"
 UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
 
-# Persistent Bottom Reply Keyboards (Clean App-Like Navigation)
-REPLY_KEYBOARD = {
+# ==============================================================================
+# Multi-Level Nested Bottom Reply Keyboards (Clean, Categorized & Extendable)
+# ==============================================================================
+
+# 1. Main Dashboard (Top-level Category Switcher)
+MAIN_DASHBOARD_KEYBOARD = {
     "keyboard": [
-        [{"text": "📸 Screenshot"}, {"text": "🎥 Video (10s)"}, {"text": "📷 Webcam"}],
-        [{"text": "🎙️ Mic (10s)"}, {"text": "👁️ CCTV Mode"}, {"text": "🚨 Siren Alarm"}],
-        [{"text": "🤖 AI & Terminal"}, {"text": "📍 Find Laptop"}, {"text": "🔋 Battery"}],
-        [{"text": "🔊 Volume & Media"}, {"text": "⚡ Power & Lock"}, {"text": "📊 Status"}],
+        [{"text": "🛡️ Spy & Security"}, {"text": "🤖 AI & Terminal"}],
+        [{"text": "🎵 Media & Sound"}, {"text": "⚡ System & Power"}],
+        [{"text": "📁 Files & Tools"}, {"text": "🌟 Next Section ➡️"}],
+        [{"text": "📸 Quick Screen"}, {"text": "📊 Quick Status"}],
     ],
     "resize_keyboard": True,
     "is_persistent": True,
 }
+REPLY_KEYBOARD = MAIN_DASHBOARD_KEYBOARD
 
-AI_REPLY_KEYBOARD = {
+# 2. Spy & Security Sub-menu
+SPY_REPLY_KEYBOARD = {
     "keyboard": [
-        [{"text": "✅ Approve (Enter)"}, {"text": "🟢 Send 'y'"}],
-        [{"text": "🔴 Send 'n'"}, {"text": "🛑 Ctrl+C"}],
-        [{"text": "📊 AI Status"}, {"text": "📸 Screenshot"}],
+        [{"text": "📷 Selfie (Webcam)"}, {"text": "🎥 Video (10s)"}, {"text": "🎙️ Mic (10s)"}],
+        [{"text": "👁️ CCTV Mode"}, {"text": "🚨 Siren Alarm"}, {"text": "📍 Find Laptop"}],
         [{"text": "🔙 Main Menu"}],
     ],
     "resize_keyboard": True,
     "is_persistent": True,
 }
 
-VOLUME_REPLY_KEYBOARD = {
+# 3. AI & Sandbox Terminal Sub-menu
+AI_REPLY_KEYBOARD = {
+    "keyboard": [
+        [{"text": "✅ Approve (Enter)"}, {"text": "🟢 Send 'y'"}, {"text": "🔴 Send 'n'"}],
+        [{"text": "🛑 Ctrl+C"}, {"text": "📊 AI Status"}, {"text": "📸 Screen Peek"}],
+        [{"text": "🔙 Main Menu"}],
+    ],
+    "resize_keyboard": True,
+    "is_persistent": True,
+}
+
+# 4. Media & Sound Sub-menu
+MEDIA_REPLY_KEYBOARD = {
     "keyboard": [
         [{"text": "🔉 Vol -"}, {"text": "🔊 Vol +"}, {"text": "🔇 Mute"}],
         [{"text": "⏯️ Play/Pause"}, {"text": "⏹️ Stop Music"}],
@@ -118,17 +137,45 @@ VOLUME_REPLY_KEYBOARD = {
     "resize_keyboard": True,
     "is_persistent": True,
 }
+VOLUME_REPLY_KEYBOARD = MEDIA_REPLY_KEYBOARD
 
+# 5. System & Power Sub-menu
 POWER_REPLY_KEYBOARD = {
     "keyboard": [
-        [{"text": "🔒 Lock Screen"}, {"text": "💤 Sleep Laptop"}],
-        [{"text": "🔄 Restart Laptop"}, {"text": "⛔ Shutdown Laptop"}],
-        [{"text": "📋 Clipboard"}, {"text": "🔙 Main Menu"}],
+        [{"text": "📸 Screenshot"}, {"text": "🔋 Battery"}, {"text": "🔒 Lock Screen"}],
+        [{"text": "💤 Sleep Laptop"}, {"text": "🔄 Restart Laptop"}, {"text": "⛔ Shutdown Laptop"}],
+        [{"text": "📋 Clipboard"}, {"text": "📱 Running Apps"}],
+        [{"text": "🔙 Main Menu"}],
     ],
     "resize_keyboard": True,
     "is_persistent": True,
 }
 
+# 6. Files & Diagnostic Tools Sub-menu
+TOOLS_REPLY_KEYBOARD = {
+    "keyboard": [
+        [{"text": "📁 Workspace Files"}, {"text": "⚡ Quick Test"}],
+        [{"text": "🧹 Reset Memory"}, {"text": "🌐 24/7 Hosting Guide"}],
+        [{"text": "💡 Help Guide"}, {"text": "🗑️ Clean Messages"}],
+        [{"text": "🔙 Main Menu"}],
+    ],
+    "resize_keyboard": True,
+    "is_persistent": True,
+}
+
+# 7. Next Section / Uncategorized & New Features (Extendable Page 2)
+NEXT_SECTION_KEYBOARD = {
+    "keyboard": [
+        [{"text": "🕶️ Ghost Mode (Screen Off)"}, {"text": "🌐 Open URL"}],
+        [{"text": "📶 Wi-Fi Status"}, {"text": "💬 Screen Popup"}],
+        [{"text": "📱 Running Apps"}, {"text": "🗣️ Speak Text"}],
+        [{"text": "⬅️ Previous Section"}, {"text": "🔙 Main Menu"}],
+    ],
+    "resize_keyboard": True,
+    "is_persistent": True,
+}
+
+# 8. Alarm Mode Sub-menu
 ALARM_REPLY_KEYBOARD = {
     "keyboard": [
         [{"text": "⏹️ Stop Alarm"}],
@@ -287,6 +334,37 @@ def schedule_reminder(chat_id: int, delay_seconds: int, reminder_text: str) -> N
     timer.start()
 
 
+# In-memory tracking for chat message cleanup & smooth navigation
+_last_nav_msg: Dict[int, int] = {}
+_recent_bot_msgs: Dict[int, List[int]] = {}
+
+
+def track_bot_msg(chat_id: int, msg_id: Optional[int]) -> None:
+    """Keep history of bot messages in chat for auto-cleaning."""
+    if not msg_id:
+        return
+    if chat_id not in _recent_bot_msgs:
+        _recent_bot_msgs[chat_id] = []
+    _recent_bot_msgs[chat_id].append(msg_id)
+    if len(_recent_bot_msgs[chat_id]) > 35:
+        _recent_bot_msgs[chat_id] = _recent_bot_msgs[chat_id][-35:]
+
+
+def tg_delete_message(chat_id: int, message_id: Optional[int]) -> bool:
+    """Delete a Telegram message to keep chat completely clean and clutter-free."""
+    if not chat_id or not message_id:
+        return False
+    url = f"{API_BASE}/deleteMessage"
+    try:
+        resp = requests.post(
+            url, json={"chat_id": chat_id, "message_id": message_id}, timeout=8
+        )
+        return resp.status_code == 200 and resp.json().get("ok", False)
+    except Exception as e:
+        logger.debug(f"Could not delete message {message_id}: {e}")
+        return False
+
+
 def tg_send_message(
     chat_id: int,
     text: str,
@@ -316,12 +394,16 @@ def tg_send_message(
         resp = requests.post(url, json=payload, timeout=20)
         res_json = resp.json()
         if res_json.get("ok"):
-            return res_json.get("result", {}).get("message_id")
+            msg_id = res_json.get("result", {}).get("message_id")
+            track_bot_msg(chat_id, msg_id)
+            return msg_id
         else:
             payload.pop("parse_mode", None)
             resp2 = requests.post(url, json=payload, timeout=20)
             if resp2.json().get("ok"):
-                return resp2.json().get("result", {}).get("message_id")
+                msg_id = resp2.json().get("result", {}).get("message_id")
+                track_bot_msg(chat_id, msg_id)
+                return msg_id
             logger.error(f"Failed to send message: {resp.text}")
     except Exception as e:
         logger.error(f"Error in tg_send_message: {e}")
@@ -333,7 +415,7 @@ def tg_edit_message(
     message_id: int,
     new_text: str,
     reply_markup: Optional[dict] = None,
-) -> None:
+) -> bool:
     """Edit an existing Telegram message (used for live progress updates)."""
     url = f"{API_BASE}/editMessageText"
     payload = {
@@ -344,9 +426,26 @@ def tg_edit_message(
     if reply_markup:
         payload["reply_markup"] = reply_markup
     try:
-        requests.post(url, json=payload, timeout=10)
+        resp = requests.post(url, json=payload, timeout=10)
+        return resp.status_code == 200 and resp.json().get("ok", False)
     except Exception as e:
         logger.debug(f"Could not edit message: {e}")
+        return False
+
+
+def send_or_replace_nav(chat_id: int, text: str, reply_markup: dict) -> Optional[int]:
+    """
+    Update or replace active navigation menu message, deleting the previous
+    navigation card so the chat doesn't get flooded with duplicate menus.
+    """
+    old_msg_id = _last_nav_msg.get(chat_id)
+    if old_msg_id:
+        tg_delete_message(chat_id, old_msg_id)
+
+    new_msg_id = tg_send_message(chat_id, text, reply_markup=reply_markup)
+    if new_msg_id:
+        _last_nav_msg[chat_id] = new_msg_id
+    return new_msg_id
 
 
 def tg_answer_callback_query(
@@ -525,12 +624,19 @@ class TelegramBotRunner:
     def handle_command_or_button(
         self, chat_id: int, user_id: int, text: str
     ) -> bool:
-        """Handle slash commands and persistent reply button clicks."""
+        """Handle slash commands and persistent reply button clicks with nested menus and clean transitions."""
         clean = text.strip()
         cmd = clean.split()[0].lower() if clean else ""
 
-        # Start / Menu
-        if cmd in ("/start", "/menu") or clean == "📱 Menu":
+        # ======================================================================
+        # 1. Main Dashboard & Navigation Root
+        # ======================================================================
+        if cmd in ("/start", "/menu") or clean in (
+            "📱 Menu",
+            "🔙 Main Menu",
+            "🔙 Back to Main Menu",
+            "⬅️ Previous Section",
+        ):
             cfg = get_runtime_config()
             is_new_owner = False
             if cfg.get("owner_user_id") is None:
@@ -540,195 +646,138 @@ class TelegramBotRunner:
             welcome = (
                 "👑 *Hermes Autonomous Agent Panel*\n\n"
                 f"{'✅ Registered as Primary Owner.' if is_new_owner else '⚡ System Ready & Active.'}\n"
-                "Buttons use karein, photo/document bhejein, ya koi bhi task type karein:"
+                "Niche diye categorized menus se direct laptop aur AI features control karein:"
             )
-            tg_send_message(
+            send_or_replace_nav(
                 chat_id,
                 welcome,
-                reply_markup=get_main_inline_keyboard(),
+                reply_markup=MAIN_DASHBOARD_KEYBOARD,
             )
-            tg_send_message(
+            return True
+
+        # ======================================================================
+        # 2. Category Switchers (Nested Sub-Menus)
+        # ======================================================================
+
+        # Category 1: Spy & Security
+        if clean in ("🛡️ Spy & Security", "/spy", "/security"):
+            send_or_replace_nav(
                 chat_id,
-                "👇 Quick actions bar ready:",
-                reply_markup=REPLY_KEYBOARD,
+                "🛡️ *Spy & Security Controls:*\nNiche diye buttons se webcam photo, 10s video, mic, CCTV aur siren operate karein:",
+                reply_markup=SPY_REPLY_KEYBOARD,
             )
             return True
 
-        # Screenshot
-        if clean in ("📸 Screenshot", "/screenshot"):
-            tg_send_message(chat_id, "📸 Laptop screen capture ho rahi hai...")
-            res = laptop_screenshot()
-            tg_send_message(chat_id, res, reply_markup=REPLY_KEYBOARD)
-            return True
-
-        # Webcam
-        if clean in ("📷 Webcam", "/webcam"):
-            tg_send_message(chat_id, "📷 Webcam photo capture ho rahi hai...")
-            res = laptop_webcam()
-            tg_send_message(chat_id, res, reply_markup=REPLY_KEYBOARD)
-            return True
-
-        # Battery
-        if clean in ("🔋 Battery", "/battery"):
-            res = laptop_battery()
-            tg_send_message(chat_id, res, reply_markup=REPLY_KEYBOARD)
-            return True
-
-        # Laptop Control Panel
-        if clean in ("🎛️ Laptop Control", "/controls"):
-            tg_send_message(
+        # Category 2: AI & Terminal
+        if clean in ("🤖 AI & Terminal", "🤖 AI & Coding", "/sandbox", "/coder"):
+            send_or_replace_nav(
                 chat_id,
-                "🎛️ *Laptop Live Remote Control Panel:*\nNiche menu bar me sabhi buttons available hain:",
-                reply_markup=REPLY_KEYBOARD,
-            )
-            return True
-
-        # Laptop Exec
-        if clean in ("💻 Laptop Exec", "/laptop"):
-            status = "ONLINE 🟢 (Connected)" if is_laptop_online() else "OFFLINE 🔴 (Laptop band hai)"
-            msg = (
-                f"💻 *Laptop Execution Mode*\n• **Status:** {status}\n\n"
-                "Task bhejein, laptop online hone par **laptop par run hoga**.\n"
-                "Agar laptop band hua to **automatic ☁️ Cloud Server par fallback hoga**!"
-            )
-            tg_send_message(chat_id, msg, reply_markup=get_main_inline_keyboard())
-            return True
-
-        # Cloud Server
-        if clean in ("☁️ Cloud Server", "/server", "/cloud"):
-            msg = (
-                "☁️ *24/7 Cloud Server Mode*\n• **Status:** ONLINE 🟢 (Render)\n\n"
-                "Task bhejein, seedhe 24/7 Cloud Server par run hoga."
-            )
-            tg_send_message(chat_id, msg, reply_markup=get_main_inline_keyboard())
-            return True
-
-        # Status
-        if cmd == "/status" or clean in ("📊 Status", "📊 Full Status"):
-            tg_send_message(
-                chat_id,
-                get_status_text(),
-                reply_markup=get_main_inline_keyboard(),
-            )
-            return True
-
-        # Files
-        if cmd == "/files" or clean == "📁 Files":
-            tg_send_message(
-                chat_id,
-                get_files_text(),
-                reply_markup=get_main_inline_keyboard(),
-            )
-            return True
-
-        # Quick Test
-        if cmd == "/test" or clean == "⚡ Quick Test":
-            tg_send_message(
-                chat_id,
-                get_quick_test_text(),
-                reply_markup=get_main_inline_keyboard(),
-            )
-            return True
-
-        # Reset Memory
-        if cmd == "/reset" or clean == "🧹 Reset":
-            session_id = f"tg_{chat_id}"
-            clear_history(session_id)
-            tg_send_message(
-                chat_id,
-                "🧹 Context clear ho gaya! Naya conversation shuru hai.",
-                reply_markup=get_main_inline_keyboard(),
-            )
-            return True
-
-        # 24/7 Hosting Guide
-        if cmd == "/vps" or clean == "🌐 24/7 Hosting":
-            tg_send_message(
-                chat_id,
-                get_vps_guide_text(),
-                reply_markup=get_main_inline_keyboard(),
-            )
-            return True
-
-        # Help
-        if cmd == "/help" or clean == "💡 Help":
-            tg_send_message(
-                chat_id,
-                get_help_text(),
-                reply_markup=get_main_inline_keyboard(),
-            )
-            return True
-
-        # Remind
-        if cmd == "/remind":
-            parts = clean.split(maxsplit=2)
-            if len(parts) >= 3:
-                time_str, reminder_msg = parts[1].lower(), parts[2]
-                seconds = 0
-                if time_str.endswith("s"):
-                    seconds = int(time_str[:-1])
-                elif time_str.endswith("m"):
-                    seconds = int(time_str[:-1]) * 60
-                elif time_str.endswith("h"):
-                    seconds = int(time_str[:-1]) * 3600
-                elif time_str.isdigit():
-                    seconds = int(time_str) * 60
-
-                if seconds > 0:
-                    schedule_reminder(chat_id, seconds, reminder_msg)
-                    tg_send_message(
-                        chat_id,
-                        f"⏰ Reminder set! Mai aapko `{time_str}` baad yaad dilaunga:\n_{reminder_msg}_",
-                        reply_markup=REPLY_KEYBOARD,
-                    )
-                    return True
-            tg_send_message(
-                chat_id,
-                "Usage: `/remind 10m check server` ya `/remind 30s check logs`",
-            )
-            return True
-
-        # Remember
-        if cmd == "/remember":
-            parts = clean.split(maxsplit=1)
-            if len(parts) > 1:
-                fact = parts[1]
-                save_fact(f"user_pref_{int(time.time())}", fact)
-                tg_send_message(chat_id, f"🧠 Remembered: _{fact}_")
-            else:
-                tg_send_message(chat_id, "Usage: `/remember your preference`")
-            return True
-
-        # Navigation & Sub-Menus
-        if clean in ("🤖 AI & Terminal", "🤖 AI / Sandbox", "/sandbox", "/coder"):
-            tg_send_message(
-                chat_id,
-                "🤖 *AI & Sandbox Terminal Keypad:*\nNiche diye buttons se action lein:",
+                "🤖 *Antigravity AI & Terminal Keypad:*\nApproval commands (Enter, 'y', 'n', Ctrl+C) aur live status niche buttons se control karein:",
                 reply_markup=AI_REPLY_KEYBOARD,
             )
             return True
 
-        if clean in ("🔊 Volume & Media", "/volume"):
-            tg_send_message(
+        # Category 3: Media & Sound
+        if clean in ("🎵 Media & Sound", "🔊 Volume & Media", "/volume"):
+            send_or_replace_nav(
                 chat_id,
-                "🔊 *Volume & Media Controls:*\nNiche diye buttons se sound aur music control karein:",
-                reply_markup=VOLUME_REPLY_KEYBOARD,
+                "🎵 *Media & Sound Controls:*\nVolume up/down, mute, playback aur music control karein:",
+                reply_markup=MEDIA_REPLY_KEYBOARD,
             )
             return True
 
-        if clean in ("⚡ Power & Lock", "⚡ Power Menu", "/power"):
-            tg_send_message(
+        # Category 4: System & Power
+        if clean in ("⚡ System & Power", "⚡ Power & Lock", "/power"):
+            send_or_replace_nav(
                 chat_id,
-                "⚡ *Power & Lock Controls:*\nNiche diye buttons se system control karein:",
+                "⚡ *System & Power Controls:*\nScreenshot, battery, lock, sleep, restart aur running apps niche se control karein:",
                 reply_markup=POWER_REPLY_KEYBOARD,
             )
             return True
 
-        if clean in ("🔙 Main Menu", "🔙 Back to Main Menu"):
-            tg_send_message(chat_id, "📱 *Main Menu:*", reply_markup=REPLY_KEYBOARD)
+        # Category 5: Files & Diagnostics Tools
+        if clean in ("📁 Files & Tools", "/tools"):
+            send_or_replace_nav(
+                chat_id,
+                "📁 *Files & Diagnostics Tools:*\nWorkspace files, test diagnostics aur chat cleaner niche se access karein:",
+                reply_markup=TOOLS_REPLY_KEYBOARD,
+            )
             return True
 
-        # AI & Terminal Buttons (Bottom Keypad)
+        # Category 6: Next Section (New & Uncategorized Features)
+        if clean in ("🌟 Next Section ➡️", "/next", "/more"):
+            send_or_replace_nav(
+                chat_id,
+                "🌟 *Next Section (New & Extra Features):*\nGhost Mode (screen off), remote URL launcher, Wi-Fi info aur extra tools yahan hain:",
+                reply_markup=NEXT_SECTION_KEYBOARD,
+            )
+            return True
+
+        # ======================================================================
+        # 3. Chat Clean-Up Command
+        # ======================================================================
+        if clean in ("🗑️ Clean Messages", "/clean"):
+            count = 0
+            for mid in _recent_bot_msgs.get(chat_id, []):
+                if tg_delete_message(chat_id, mid):
+                    count += 1
+            _recent_bot_msgs[chat_id] = []
+            send_or_replace_nav(
+                chat_id,
+                f"🧹 *Chat Cleaned Up!*\nPurane bot messages delete ho gaye.",
+                reply_markup=MAIN_DASHBOARD_KEYBOARD,
+            )
+            return True
+
+        # ======================================================================
+        # 4. Spy & Security Actions
+        # ======================================================================
+        if clean in ("📷 Selfie (Webcam)", "📷 Webcam", "/webcam"):
+            temp_id = tg_send_message(chat_id, "📷 Front camera photo capture ho rahi hai...")
+            res = laptop_webcam()
+            tg_delete_message(chat_id, temp_id)
+            tg_send_message(chat_id, res, reply_markup=SPY_REPLY_KEYBOARD)
+            return True
+
+        if clean in ("🎥 Video (10s)", "🎥 Video Clip (10s)", "/video", "/webcamvideo"):
+            temp_id = tg_send_message(chat_id, "🎥 10-second webcam video + audio recording chalu hai...")
+            res = laptop_webcam_video()
+            tg_delete_message(chat_id, temp_id)
+            tg_send_message(chat_id, res, reply_markup=SPY_REPLY_KEYBOARD)
+            return True
+
+        if clean in ("🎙️ Mic (10s)", "🎙️ Mic Record (10s)", "/mic", "/record"):
+            temp_id = tg_send_message(chat_id, "🎙️ 10-second laptop mic audio recording chalu hai...")
+            res = laptop_mic(10)
+            tg_delete_message(chat_id, temp_id)
+            tg_send_message(chat_id, res, reply_markup=SPY_REPLY_KEYBOARD)
+            return True
+
+        if clean in ("👁️ CCTV Mode", "👁️ CCTV Motion Alert", "/cctv"):
+            res = laptop_cctv_toggle()
+            tg_send_message(chat_id, res, reply_markup=SPY_REPLY_KEYBOARD)
+            return True
+
+        if clean in ("🚨 Siren Alarm", "/alarm", "/siren"):
+            res = laptop_alarm()
+            tg_send_message(chat_id, res, reply_markup=ALARM_REPLY_KEYBOARD)
+            return True
+
+        if clean in ("⏹️ Stop Alarm", "/stopalarm"):
+            res = laptop_stop_alarm()
+            tg_send_message(chat_id, res, reply_markup=SPY_REPLY_KEYBOARD)
+            return True
+
+        if clean in ("📍 Find Laptop", "📍 Find My Laptop", "/locate", "/find", "/location"):
+            temp_id = tg_send_message(chat_id, "📍 Fetching laptop live location...")
+            res = laptop_location()
+            tg_delete_message(chat_id, temp_id)
+            tg_send_message(chat_id, res, reply_markup=SPY_REPLY_KEYBOARD)
+            return True
+
+        # ======================================================================
+        # 5. AI & Sandbox Terminal Actions
+        # ======================================================================
         if clean in ("✅ Approve (Enter)", "/enter", "/approve"):
             res = laptop_key_enter()
             tg_send_message(chat_id, res, reply_markup=AI_REPLY_KEYBOARD)
@@ -754,80 +803,81 @@ class TelegramBotRunner:
             tg_send_message(chat_id, res, reply_markup=AI_REPLY_KEYBOARD)
             return True
 
-        if cmd == "/type":
-            type_text = clean[5:].strip()
+        if clean in ("⌨️ Type Text",) or cmd == "/type":
+            type_text = clean[5:].strip() if cmd == "/type" else ""
             if type_text:
                 res = laptop_type(type_text)
                 tg_send_message(chat_id, res, reply_markup=AI_REPLY_KEYBOARD)
             else:
-                tg_send_message(chat_id, "Usage: `/type text to type on screen`")
+                tg_send_message(chat_id, "Usage: `/type text to type on active window`", reply_markup=AI_REPLY_KEYBOARD)
             return True
 
-        if cmd == "/cmd":
-            bash_cmd = clean[4:].strip()
+        if clean in ("💻 Run Bash Cmd",) or cmd == "/cmd":
+            bash_cmd = clean[4:].strip() if cmd == "/cmd" else ""
             if bash_cmd:
-                tg_send_message(chat_id, f"💻 *Running on Laptop:*\n`{bash_cmd}`")
+                temp_id = tg_send_message(chat_id, f"💻 *Running on Laptop:*\n`{bash_cmd}`")
                 res = execute_on_laptop(bash_cmd)
-                tg_send_message(chat_id, f"💻 *Laptop Terminal Output:*\n```\n{res}\n```", reply_markup=REPLY_KEYBOARD)
+                tg_delete_message(chat_id, temp_id)
+                tg_send_message(chat_id, f"💻 *Laptop Terminal Output:*\n```\n{res}\n```", reply_markup=AI_REPLY_KEYBOARD)
             else:
-                tg_send_message(chat_id, "Usage: `/cmd ls -la` ya `/cmd uname -a`")
+                tg_send_message(chat_id, "Usage: `/cmd ls -la` ya `/cmd uname -a`", reply_markup=AI_REPLY_KEYBOARD)
             return True
 
-        # Volume & Media Buttons (Bottom Keypad)
+        # ======================================================================
+        # 6. Media & Sound Actions
+        # ======================================================================
         if clean == "🔉 Vol -":
             res = laptop_vol_down()
-            tg_send_message(chat_id, res, reply_markup=VOLUME_REPLY_KEYBOARD)
+            tg_send_message(chat_id, res, reply_markup=MEDIA_REPLY_KEYBOARD)
             return True
 
         if clean == "🔊 Vol +":
             res = laptop_vol_up()
-            tg_send_message(chat_id, res, reply_markup=VOLUME_REPLY_KEYBOARD)
+            tg_send_message(chat_id, res, reply_markup=MEDIA_REPLY_KEYBOARD)
             return True
 
         if clean == "🔇 Mute":
             res = laptop_mute()
-            tg_send_message(chat_id, res, reply_markup=VOLUME_REPLY_KEYBOARD)
+            tg_send_message(chat_id, res, reply_markup=MEDIA_REPLY_KEYBOARD)
             return True
 
         if clean == "⏯️ Play/Pause":
             res = laptop_playpause()
-            tg_send_message(chat_id, res, reply_markup=VOLUME_REPLY_KEYBOARD)
+            tg_send_message(chat_id, res, reply_markup=MEDIA_REPLY_KEYBOARD)
             return True
 
         if clean in ("⏹️ Stop Music", "/stop", "/stopmusic"):
             res = laptop_stop_music()
-            tg_send_message(chat_id, res, reply_markup=VOLUME_REPLY_KEYBOARD)
+            tg_send_message(chat_id, res, reply_markup=MEDIA_REPLY_KEYBOARD)
             return True
 
-        if cmd == "/play":
-            song = clean[5:].strip()
+        if clean in ("🎵 Play Music",) or cmd == "/play":
+            song = clean[5:].strip() if cmd == "/play" else ""
             if song:
-                tg_send_message(chat_id, f"🎵 Playing '{song}' on laptop...")
+                temp_id = tg_send_message(chat_id, f"🎵 Playing '{song}' on laptop...")
                 res = laptop_play_music(song)
-                tg_send_message(chat_id, res, reply_markup=VOLUME_REPLY_KEYBOARD)
+                tg_delete_message(chat_id, temp_id)
+                tg_send_message(chat_id, res, reply_markup=MEDIA_REPLY_KEYBOARD)
             else:
-                tg_send_message(chat_id, "Usage: `/play arijit singh songs`")
+                tg_send_message(chat_id, "Usage: `/play arijit singh songs`", reply_markup=MEDIA_REPLY_KEYBOARD)
             return True
 
-        if cmd == "/speak":
-            speak_val = clean[6:].strip()
-            if speak_val:
-                res = laptop_speak(speak_val)
-                tg_send_message(chat_id, res, reply_markup=REPLY_KEYBOARD)
-            else:
-                tg_send_message(chat_id, "Usage: `/speak Hello World`")
+        # ======================================================================
+        # 7. System & Power Actions
+        # ======================================================================
+        if clean in ("📸 Quick Screen", "📸 Screenshot", "📸 Screen Peek", "/screenshot"):
+            temp_id = tg_send_message(chat_id, "📸 Laptop screen capture ho rahi hai...")
+            res = laptop_screenshot()
+            tg_delete_message(chat_id, temp_id)
+            markup = AI_REPLY_KEYBOARD if clean == "📸 Screen Peek" else (MAIN_DASHBOARD_KEYBOARD if clean == "📸 Quick Screen" else POWER_REPLY_KEYBOARD)
+            tg_send_message(chat_id, res, reply_markup=markup)
             return True
 
-        if cmd == "/popup":
-            popup_val = clean[6:].strip()
-            if popup_val:
-                res = laptop_popup("Telegram Notice", popup_val)
-                tg_send_message(chat_id, res, reply_markup=REPLY_KEYBOARD)
-            else:
-                tg_send_message(chat_id, "Usage: `/popup Hello from phone!`")
+        if clean in ("🔋 Battery", "/battery"):
+            res = laptop_battery()
+            tg_send_message(chat_id, res, reply_markup=POWER_REPLY_KEYBOARD)
             return True
 
-        # Power & Lock Buttons (Bottom Keypad)
         if clean in ("🔒 Lock Screen", "/lock"):
             res = laptop_lock()
             tg_send_message(chat_id, res, reply_markup=POWER_REPLY_KEYBOARD)
@@ -855,37 +905,134 @@ class TelegramBotRunner:
             tg_send_message(chat_id, res, reply_markup=POWER_REPLY_KEYBOARD)
             return True
 
-        # Security, CCTV & Video Buttons (Bottom Keypad)
-        if clean in ("🎥 Video (10s)", "🎥 Video Clip (10s)", "/video", "/webcamvideo"):
-            tg_send_message(chat_id, "🎥 10-second webcam video + audio recording chalu hai...")
-            res = laptop_webcam_video()
-            tg_send_message(chat_id, res, reply_markup=REPLY_KEYBOARD)
+        if clean in ("📱 Running Apps", "/apps"):
+            temp_id = tg_send_message(chat_id, "📱 Fetching running apps...")
+            res = laptop_apps()
+            tg_delete_message(chat_id, temp_id)
+            tg_send_message(chat_id, res, reply_markup=POWER_REPLY_KEYBOARD)
             return True
 
-        if clean in ("🎙️ Mic (10s)", "/mic", "/record"):
-            tg_send_message(chat_id, "🎙️ 10-second laptop mic audio recording chalu hai...")
-            res = laptop_mic(10)
-            tg_send_message(chat_id, res, reply_markup=REPLY_KEYBOARD)
+        # ======================================================================
+        # 8. Next Section / New & Extra Features Actions
+        # ======================================================================
+        if clean in ("🕶️ Ghost Mode (Screen Off)", "/ghost"):
+            temp_id = tg_send_message(chat_id, "🕶️ Activating Ghost Mode...")
+            res = laptop_ghost_mode()
+            tg_delete_message(chat_id, temp_id)
+            tg_send_message(chat_id, res, reply_markup=NEXT_SECTION_KEYBOARD)
             return True
 
-        if clean in ("👁️ CCTV Mode", "👁️ CCTV Motion Alert", "/cctv"):
-            res = laptop_cctv_toggle()
-            tg_send_message(chat_id, res, reply_markup=REPLY_KEYBOARD)
+        if clean in ("🌐 Open URL",) or cmd == "/open":
+            parts = clean.split(maxsplit=1)
+            if len(parts) > 1 and parts[0] == "/open":
+                target_url = parts[1].strip()
+                res = laptop_open_url(target_url)
+                tg_send_message(chat_id, res, reply_markup=NEXT_SECTION_KEYBOARD)
+            else:
+                tg_send_message(chat_id, "Usage: `/open https://youtube.com` ya `/open google.com`", reply_markup=NEXT_SECTION_KEYBOARD)
             return True
 
-        if clean in ("🚨 Siren Alarm", "/alarm", "/siren"):
-            res = laptop_alarm()
-            tg_send_message(chat_id, res, reply_markup=ALARM_REPLY_KEYBOARD)
+        if clean in ("📶 Wi-Fi Status", "/wifi"):
+            temp_id = tg_send_message(chat_id, "📶 Checking Wi-Fi...")
+            res = laptop_wifi()
+            tg_delete_message(chat_id, temp_id)
+            tg_send_message(chat_id, res, reply_markup=NEXT_SECTION_KEYBOARD)
             return True
 
-        if clean in ("⏹️ Stop Alarm", "/stopalarm"):
-            res = laptop_stop_alarm()
-            tg_send_message(chat_id, res, reply_markup=REPLY_KEYBOARD)
+        if clean in ("💬 Screen Popup",) or cmd == "/popup":
+            popup_val = clean[6:].strip() if cmd == "/popup" else ""
+            if popup_val:
+                res = laptop_popup("Telegram Notice", popup_val)
+                tg_send_message(chat_id, res, reply_markup=NEXT_SECTION_KEYBOARD)
+            else:
+                tg_send_message(chat_id, "Usage: `/popup Hello from phone!`", reply_markup=NEXT_SECTION_KEYBOARD)
             return True
 
-        if clean in ("📍 Find Laptop", "📍 Find My Laptop", "/locate", "/find", "/location"):
-            res = laptop_location()
-            tg_send_message(chat_id, res, reply_markup=REPLY_KEYBOARD)
+        if clean in ("🗣️ Speak Text",) or cmd == "/speak":
+            speak_val = clean[6:].strip() if cmd == "/speak" else ""
+            if speak_val:
+                res = laptop_speak(speak_val)
+                tg_send_message(chat_id, res, reply_markup=NEXT_SECTION_KEYBOARD)
+            else:
+                tg_send_message(chat_id, "Usage: `/speak Hello World`", reply_markup=NEXT_SECTION_KEYBOARD)
+            return True
+
+        # ======================================================================
+        # 9. Files & Diagnostic Tools Actions
+        # ======================================================================
+        if clean in ("📁 Workspace Files", "📁 Files") or cmd == "/files":
+            tg_send_message(chat_id, get_files_text(), reply_markup=TOOLS_REPLY_KEYBOARD)
+            return True
+
+        if clean in ("⚡ Quick Test",) or cmd == "/test":
+            tg_send_message(chat_id, get_quick_test_text(), reply_markup=TOOLS_REPLY_KEYBOARD)
+            return True
+
+        if clean in ("🧹 Reset Memory", "🧹 Reset") or cmd == "/reset":
+            session_id = f"tg_{chat_id}"
+            clear_history(session_id)
+            tg_send_message(
+                chat_id,
+                "🧹 Context clear ho gaya! Naya conversation shuru hai.",
+                reply_markup=TOOLS_REPLY_KEYBOARD,
+            )
+            return True
+
+        if clean in ("🌐 24/7 Hosting Guide", "🌐 24/7 Hosting") or cmd == "/vps":
+            tg_send_message(chat_id, get_vps_guide_text(), reply_markup=TOOLS_REPLY_KEYBOARD)
+            return True
+
+        if clean in ("💡 Help Guide", "💡 Help") or cmd == "/help":
+            tg_send_message(chat_id, get_help_text(), reply_markup=TOOLS_REPLY_KEYBOARD)
+            return True
+
+        # Status
+        if cmd == "/status" or clean in ("📊 Quick Status", "📊 Status", "📊 Full Status"):
+            tg_send_message(
+                chat_id,
+                get_status_text(),
+                reply_markup=MAIN_DASHBOARD_KEYBOARD,
+            )
+            return True
+
+        # Remind
+        if cmd == "/remind":
+            parts = clean.split(maxsplit=2)
+            if len(parts) >= 3:
+                time_str, reminder_msg = parts[1].lower(), parts[2]
+                seconds = 0
+                if time_str.endswith("s"):
+                    seconds = int(time_str[:-1])
+                elif time_str.endswith("m"):
+                    seconds = int(time_str[:-1]) * 60
+                elif time_str.endswith("h"):
+                    seconds = int(time_str[:-1]) * 3600
+                elif time_str.isdigit():
+                    seconds = int(time_str) * 60
+
+                if seconds > 0:
+                    schedule_reminder(chat_id, seconds, reminder_msg)
+                    tg_send_message(
+                        chat_id,
+                        f"⏰ Reminder set! Mai aapko `{time_str}` baad yaad dilaunga:\n_{reminder_msg}_",
+                        reply_markup=MAIN_DASHBOARD_KEYBOARD,
+                    )
+                    return True
+            tg_send_message(
+                chat_id,
+                "Usage: `/remind 10m check server` ya `/remind 30s check logs`",
+            )
+            return True
+
+        # Remember
+        if cmd == "/remember":
+            parts = clean.split(maxsplit=1)
+            if len(parts) > 1:
+                fact = parts[1]
+                save_fact(f"user_pref_{int(time.time())}", fact)
+                tg_send_message(chat_id, f"🧠 Remembered: _{fact}_")
+            else:
+                tg_send_message(chat_id, "Usage: `/remember your preference`")
             return True
 
         return False
@@ -1104,10 +1251,14 @@ class TelegramBotRunner:
                     image_mime="image/jpeg",
                     progress_callback=progress_update,
                 )
-                tg_send_message(chat_id, result, reply_markup=REPLY_KEYBOARD)
+                if status_msg_id:
+                    tg_delete_message(chat_id, status_msg_id)
+                tg_send_message(chat_id, result, reply_markup=MAIN_DASHBOARD_KEYBOARD)
             except Exception as e:
                 logger.error(f"Error analyzing image: {e}")
-                tg_send_message(chat_id, f"❌ Error: {str(e)}")
+                if status_msg_id:
+                    tg_delete_message(chat_id, status_msg_id)
+                tg_send_message(chat_id, f"❌ Error: {str(e)}", reply_markup=MAIN_DASHBOARD_KEYBOARD)
             return
 
         # 2. Handle Document / Code File Upload
@@ -1122,7 +1273,9 @@ class TelegramBotRunner:
 
             doc_bytes = download_telegram_file(file_id)
             if not doc_bytes:
-                tg_send_message(chat_id, "❌ Error: Document download nahi ho payi.")
+                if status_msg_id:
+                    tg_delete_message(chat_id, status_msg_id)
+                tg_send_message(chat_id, "❌ Error: Document download nahi ho payi.", reply_markup=MAIN_DASHBOARD_KEYBOARD)
                 return
 
             # Save to workspace uploads
@@ -1145,10 +1298,14 @@ class TelegramBotRunner:
                     user_message=file_prompt,
                     progress_callback=progress_update,
                 )
-                tg_send_message(chat_id, result, reply_markup=REPLY_KEYBOARD)
+                if status_msg_id:
+                    tg_delete_message(chat_id, status_msg_id)
+                tg_send_message(chat_id, result, reply_markup=MAIN_DASHBOARD_KEYBOARD)
             except Exception as e:
                 logger.error(f"Error analyzing document: {e}")
-                tg_send_message(chat_id, f"❌ Error: {str(e)}")
+                if status_msg_id:
+                    tg_delete_message(chat_id, status_msg_id)
+                tg_send_message(chat_id, f"❌ Error: {str(e)}", reply_markup=MAIN_DASHBOARD_KEYBOARD)
             return
 
         # 3. Handle Regular Text Message
@@ -1171,14 +1328,18 @@ class TelegramBotRunner:
                 user_message=text,
                 progress_callback=progress_update,
             )
+            if status_msg_id:
+                tg_delete_message(chat_id, status_msg_id)
             tg_send_message(
                 chat_id,
                 result,
-                reply_markup=REPLY_KEYBOARD,
+                reply_markup=MAIN_DASHBOARD_KEYBOARD,
             )
         except Exception as e:
             logger.error(f"Error executing agent task: {e}")
-            tg_send_message(chat_id, f"❌ Error: {str(e)}")
+            if status_msg_id:
+                tg_delete_message(chat_id, status_msg_id)
+            tg_send_message(chat_id, f"❌ Error: {str(e)}", reply_markup=MAIN_DASHBOARD_KEYBOARD)
 
     def start_polling(self) -> None:
         """Run long polling loop handling messages and callback queries."""
