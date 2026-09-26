@@ -48,6 +48,7 @@ from bridge import (
     laptop_power_poweroff,
     laptop_power_reboot,
     laptop_power_sleep,
+    laptop_screen_on,
     laptop_screenshot,
     laptop_speak,
     laptop_stop_alarm,
@@ -95,8 +96,8 @@ UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
 # 1. Main Dashboard (Top-level Category Switcher)
 MAIN_DASHBOARD_KEYBOARD = {
     "keyboard": [
-        [{"text": "🛡️ Spy & Security"}, {"text": "🤖 AI & Terminal"}],
-        [{"text": "🎵 Media & Sound"}, {"text": "⚡ System & Power"}],
+        [{"text": "🛡️ Spy & Security"}, {"text": "🤖 Sandbox & AI"}],
+        [{"text": "⚡ Power & Ghost Mode"}, {"text": "🎵 Media & Sound"}],
         [{"text": "📁 Files & Tools"}, {"text": "🌟 Next Section ➡️"}],
         [{"text": "📸 Quick Screen"}, {"text": "📊 Quick Status"}],
     ],
@@ -116,11 +117,12 @@ SPY_REPLY_KEYBOARD = {
     "is_persistent": True,
 }
 
-# 3. AI & Sandbox Terminal Sub-menu
+# 3. AI & Sandbox Terminal Sub-menu (Send Box Approvals & Actions)
 AI_REPLY_KEYBOARD = {
     "keyboard": [
         [{"text": "✅ Approve (Enter)"}, {"text": "🟢 Send 'y'"}, {"text": "🔴 Send 'n'"}],
         [{"text": "🛑 Ctrl+C"}, {"text": "📊 AI Status"}, {"text": "📸 Screen Peek"}],
+        [{"text": "⌨️ Type Text"}, {"text": "💻 Run Bash Cmd"}],
         [{"text": "🔙 Main Menu"}],
     ],
     "resize_keyboard": True,
@@ -132,6 +134,7 @@ MEDIA_REPLY_KEYBOARD = {
     "keyboard": [
         [{"text": "🔉 Vol -"}, {"text": "🔊 Vol +"}, {"text": "🔇 Mute"}],
         [{"text": "⏯️ Play/Pause"}, {"text": "⏹️ Stop Music"}],
+        [{"text": "🗣️ Speak Text"}, {"text": "🎵 Play Music"}],
         [{"text": "🔙 Main Menu"}],
     ],
     "resize_keyboard": True,
@@ -139,9 +142,10 @@ MEDIA_REPLY_KEYBOARD = {
 }
 VOLUME_REPLY_KEYBOARD = MEDIA_REPLY_KEYBOARD
 
-# 5. System & Power Sub-menu
+# 5. System & Power Sub-menu (With Ghost Mode Screen OFF and Screen ON)
 POWER_REPLY_KEYBOARD = {
     "keyboard": [
+        [{"text": "🕶️ Ghost Mode (Screen OFF)"}, {"text": "☀️ Screen ON"}],
         [{"text": "📸 Screenshot"}, {"text": "🔋 Battery"}, {"text": "🔒 Lock Screen"}],
         [{"text": "💤 Sleep Laptop"}, {"text": "🔄 Restart Laptop"}, {"text": "⛔ Shutdown Laptop"}],
         [{"text": "📋 Clipboard"}, {"text": "📱 Running Apps"}],
@@ -166,9 +170,9 @@ TOOLS_REPLY_KEYBOARD = {
 # 7. Next Section / Uncategorized & New Features (Extendable Page 2)
 NEXT_SECTION_KEYBOARD = {
     "keyboard": [
-        [{"text": "🕶️ Ghost Mode (Screen Off)"}, {"text": "🌐 Open URL"}],
-        [{"text": "📶 Wi-Fi Status"}, {"text": "💬 Screen Popup"}],
-        [{"text": "📱 Running Apps"}, {"text": "🗣️ Speak Text"}],
+        [{"text": "🕶️ Ghost Mode (Screen OFF)"}, {"text": "☀️ Screen ON"}],
+        [{"text": "🌐 Open URL"}, {"text": "💬 Screen Popup"}],
+        [{"text": "📶 Wi-Fi Status"}, {"text": "📱 Running Apps"}],
         [{"text": "⬅️ Previous Section"}, {"text": "🔙 Main Menu"}],
     ],
     "resize_keyboard": True,
@@ -263,6 +267,10 @@ def get_power_keyboard() -> dict:
     """Power management keypad."""
     return {
         "inline_keyboard": [
+            [
+                {"text": "🕶️ Ghost Mode (Screen OFF)", "callback_data": "lap_ghost"},
+                {"text": "☀️ Screen ON", "callback_data": "lap_screen_on"},
+            ],
             [
                 {"text": "💤 Sleep Laptop", "callback_data": "lap_power_sleep"},
             ],
@@ -668,11 +676,18 @@ class TelegramBotRunner:
             )
             return True
 
-        # Category 2: AI & Terminal
-        if clean in ("🤖 AI & Terminal", "🤖 AI & Coding", "/sandbox", "/coder"):
+        # Category 2: Sandbox & AI Terminal
+        if clean in (
+            "🤖 Sandbox & AI",
+            "🤖 AI & Terminal",
+            "🤖 AI & Coding",
+            "🤖 Sandbox",
+            "/sandbox",
+            "/coder",
+        ) or clean.lower() in ("send box", "sendbox", "sandbox", "sandbox & ai"):
             send_or_replace_nav(
                 chat_id,
-                "🤖 *Antigravity AI & Terminal Keypad:*\nApproval commands (Enter, 'y', 'n', Ctrl+C) aur live status niche buttons se control karein:",
+                "🤖 *Antigravity AI & Sandbox Terminal Keypad:*\nApproval commands (Enter, 'y', 'n', Ctrl+C) aur live status niche buttons se control karein:",
                 reply_markup=AI_REPLY_KEYBOARD,
             )
             return True
@@ -686,11 +701,11 @@ class TelegramBotRunner:
             )
             return True
 
-        # Category 4: System & Power
-        if clean in ("⚡ System & Power", "⚡ Power & Lock", "/power"):
+        # Category 4: System & Power & Ghost Mode
+        if clean in ("⚡ Power & Ghost Mode", "⚡ System & Power", "⚡ Power & Lock", "/power"):
             send_or_replace_nav(
                 chat_id,
-                "⚡ *System & Power Controls:*\nScreenshot, battery, lock, sleep, restart aur running apps niche se control karein:",
+                "⚡ *System & Power Controls:*\nGhost mode, Screen ON, screenshot, battery, lock, sleep, restart aur running apps niche se control karein:",
                 reply_markup=POWER_REPLY_KEYBOARD,
             )
             return True
@@ -913,13 +928,33 @@ class TelegramBotRunner:
             return True
 
         # ======================================================================
-        # 8. Next Section / New & Extra Features Actions
+        # 8. Power, Screen & Next Section Actions
         # ======================================================================
-        if clean in ("🕶️ Ghost Mode (Screen Off)", "/ghost"):
+        if clean in (
+            "🕶️ Ghost Mode (Screen OFF)",
+            "🕶️ Ghost Mode (Screen Off)",
+            "🕶️ Ghost Mode",
+            "/ghost",
+            "ghost mode",
+            "ghost",
+        ) or clean.lower() in ("ghost mode", "ghost", "/ghost"):
             temp_id = tg_send_message(chat_id, "🕶️ Activating Ghost Mode...")
             res = laptop_ghost_mode()
             tg_delete_message(chat_id, temp_id)
-            tg_send_message(chat_id, res, reply_markup=NEXT_SECTION_KEYBOARD)
+            tg_send_message(chat_id, res, reply_markup=POWER_REPLY_KEYBOARD)
+            return True
+
+        if clean in (
+            "☀️ Screen ON",
+            "☀️ Screen On",
+            "☀️ Screen",
+            "/screenon",
+            "screen on",
+        ) or clean.lower() in ("screen on", "screenon", "/screenon"):
+            temp_id = tg_send_message(chat_id, "☀️ Display turn ON kar rahe hain...")
+            res = laptop_screen_on()
+            tg_delete_message(chat_id, temp_id)
+            tg_send_message(chat_id, res, reply_markup=POWER_REPLY_KEYBOARD)
             return True
 
         if clean in ("🌐 Open URL",) or cmd == "/open":
@@ -1131,6 +1166,12 @@ class TelegramBotRunner:
                 "⚡ *Laptop Power Management:*\nAction select karein:",
                 reply_markup=get_power_keyboard(),
             )
+        elif data == "lap_ghost":
+            res = laptop_ghost_mode()
+            tg_send_message(chat_id, res, reply_markup=get_power_keyboard())
+        elif data == "lap_screen_on":
+            res = laptop_screen_on()
+            tg_send_message(chat_id, res, reply_markup=get_power_keyboard())
         elif data == "lap_power_sleep":
             res = laptop_power_sleep()
             tg_send_message(chat_id, res, reply_markup=get_laptop_control_keyboard())

@@ -188,3 +188,8 @@ def laptop_ghost_mode() -> str:
 
 def laptop_open_url(url: str) -> str:
     return dispatch_to_laptop(f"__ACTION_OPEN_URL__{url}")
+
+
+def laptop_screen_on() -> str:
+    return dispatch_to_laptop("__ACTION_SCREEN_ON__")
+

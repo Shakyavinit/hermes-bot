@@ -30,6 +30,20 @@ OWNER_CHAT_ID = 8616271645
 WORKSPACE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
+def get_x11_env() -> dict:
+    """Construct environment with active DISPLAY, WAYLAND_DISPLAY, and dynamic Mutter Xwayland auth."""
+    env = os.environ.copy()
+    env["DISPLAY"] = ":0"
+    env["WAYLAND_DISPLAY"] = "wayland-0"
+    env["XDG_RUNTIME_DIR"] = "/run/user/1000"
+    mutter_auths = glob.glob("/run/user/1000/.mutter-Xwaylandauth*")
+    if mutter_auths:
+        env["XAUTHORITY"] = mutter_auths[0]
+    elif os.path.exists("/home/mrx/.Xauthority"):
+        env["XAUTHORITY"] = "/home/mrx/.Xauthority"
+    return env
+
+
 def send_tg_msg(text: str, reply_markup: Optional[dict] = None) -> bool:
     """Send text message directly to owner on Telegram."""
     url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
@@ -175,10 +189,12 @@ def execute_action(cmd: str) -> str:
     # 1. Live Desktop Screenshot
     if clean == "__ACTION_SCREENSHOT__":
         img_path = "/tmp/hermes_screenshot.png"
-        os.system(f"DISPLAY=:0 scrot -z {img_path} 2>/dev/null")
+        env = get_x11_env()
+        res = subprocess.run(["scrot", "-z", "-o", img_path], env=env, capture_output=True)
         if send_tg_photo(img_path, "📸 *Laptop Live Desktop Screenshot*"):
             return "✅ Live Desktop screenshot captured & sent to chat!"
-        return "❌ Screenshot capture failed (check display session)."
+        err_msg = res.stderr.decode("utf-8", errors="ignore").strip()
+        return f"❌ Screenshot capture failed: {err_msg if err_msg else 'Check display session'}"
 
     # 2. Live Front Camera Snapshot
     if clean == "__ACTION_WEBCAM__":
@@ -252,27 +268,51 @@ def execute_action(cmd: str) -> str:
         except Exception as e:
             return f"Error reading apps: {e}"
 
-    # 11. Antigravity & Terminal Keystroke Simulation
+    # 11. Antigravity & Sandbox Keystroke Simulation
     if clean == "__ACTION_KEY_ENTER__":
-        os.system("DISPLAY=:0 xdotool key Return 2>/dev/null")
+        env = get_x11_env()
+        subprocess.run(["xdotool", "key", "--clearmodifiers", "Return"], env=env)
+        time.sleep(0.5)
+        confirm_path = "/tmp/hermes_key_confirm.png"
+        subprocess.run(["scrot", "-z", "-o", confirm_path], env=env)
+        if os.path.exists(confirm_path) and os.path.getsize(confirm_path) > 0:
+            send_tg_photo(confirm_path, "⏎ *Approve (Enter) Sent!* Current screen state:")
         return "⏎ Enter key sent to laptop!"
 
     if clean == "__ACTION_KEY_Y__":
-        os.system("DISPLAY=:0 xdotool key y Return 2>/dev/null")
+        env = get_x11_env()
+        subprocess.run(["xdotool", "key", "--clearmodifiers", "y", "Return"], env=env)
+        time.sleep(0.5)
+        confirm_path = "/tmp/hermes_key_confirm.png"
+        subprocess.run(["scrot", "-z", "-o", confirm_path], env=env)
+        if os.path.exists(confirm_path) and os.path.getsize(confirm_path) > 0:
+            send_tg_photo(confirm_path, "🟢 *Send 'y' Sent!* Current screen state:")
         return "🟢 'y' + Enter sent to laptop!"
 
     if clean == "__ACTION_KEY_N__":
-        os.system("DISPLAY=:0 xdotool key n Return 2>/dev/null")
+        env = get_x11_env()
+        subprocess.run(["xdotool", "key", "--clearmodifiers", "n", "Return"], env=env)
+        time.sleep(0.5)
+        confirm_path = "/tmp/hermes_key_confirm.png"
+        subprocess.run(["scrot", "-z", "-o", confirm_path], env=env)
+        if os.path.exists(confirm_path) and os.path.getsize(confirm_path) > 0:
+            send_tg_photo(confirm_path, "🔴 *Send 'n' Sent!* Current screen state:")
         return "🔴 'n' + Enter sent to laptop!"
 
     if clean == "__ACTION_KEY_CTRLC__":
-        os.system("DISPLAY=:0 xdotool key ctrl+c 2>/dev/null")
+        env = get_x11_env()
+        subprocess.run(["xdotool", "key", "--clearmodifiers", "ctrl+c"], env=env)
+        time.sleep(0.5)
+        confirm_path = "/tmp/hermes_key_confirm.png"
+        subprocess.run(["scrot", "-z", "-o", confirm_path], env=env)
+        if os.path.exists(confirm_path) and os.path.getsize(confirm_path) > 0:
+            send_tg_photo(confirm_path, "🛑 *Ctrl+C Sent!* Current screen state:")
         return "🛑 Ctrl+C sent to laptop!"
 
     if clean.startswith("__ACTION_TYPE__"):
         text_to_type = clean[len("__ACTION_TYPE__"):].strip()
-        escaped = text_to_type.replace('"', '\\"')
-        os.system(f'DISPLAY=:0 xdotool type --delay 20 "{escaped}" 2>/dev/null')
+        env = get_x11_env()
+        subprocess.run(["xdotool", "type", "--delay", "20", text_to_type], env=env)
         return f"⌨️ Typed text on active window: `{text_to_type}`"
 
     # 12. Antigravity AI Status
@@ -310,13 +350,14 @@ def execute_action(cmd: str) -> str:
     # 15. Clipboard Sync
     if clean.startswith("__ACTION_CLIPBOARD__"):
         clip_text = clean[len("__ACTION_CLIPBOARD__"):].strip()
+        env = get_x11_env()
         if clip_text:
-            p = subprocess.Popen(["xclip", "-selection", "clipboard"], stdin=subprocess.PIPE, env={**os.environ, "DISPLAY": ":0"})
+            p = subprocess.Popen(["xclip", "-selection", "clipboard"], stdin=subprocess.PIPE, env=env)
             p.communicate(input=clip_text.encode("utf-8"))
             return f"📋 Copied to laptop clipboard: `{clip_text}`"
         else:
             try:
-                out = subprocess.check_output("DISPLAY=:0 xclip -o -selection clipboard 2>/dev/null", shell=True, text=True).strip()
+                out = subprocess.check_output(["xclip", "-o", "-selection", "clipboard"], env=env, text=True).strip()
                 return f"📋 *Laptop Clipboard Content:*\n```\n{out or '(Empty)'}\n```"
             except Exception:
                 return "📋 Clipboard is empty or inaccessible."
@@ -331,9 +372,10 @@ def execute_action(cmd: str) -> str:
     if clean.startswith("__ACTION_POPUP__"):
         raw = clean[len("__ACTION_POPUP__"):].strip()
         parts = raw.split("|||", 1)
-        title = parts[0].replace('"', '\\"') if len(parts) > 1 else "Telegram Notice"
-        body = (parts[1] if len(parts) > 1 else raw).replace('"', '\\"')
-        os.system(f'DISPLAY=:0 notify-send "{title}" "{body}" 2>/dev/null')
+        title = parts[0] if len(parts) > 1 else "Telegram Notice"
+        body = parts[1] if len(parts) > 1 else raw
+        env = get_x11_env()
+        subprocess.run(["notify-send", title, body], env=env)
         return f"📢 Notification sent to laptop screen: *{title}*"
 
     # 18. Power Management
@@ -410,22 +452,45 @@ def execute_action(cmd: str) -> str:
         except Exception as e:
             return f"📍 Location lookup error: {e}"
 
-    # 23. Ghost Mode (Stealth Screen Off)
+    # 23. Ghost Mode (Stealth Screen Off) & Screen ON
     if clean == "__ACTION_GHOST_MODE__":
-        os.system("DISPLAY=:0 xset dpms force off 2>/dev/null")
+        # Native GNOME Mutter DisplayConfig DPMS off (Wayland)
+        subprocess.run([
+            "busctl", "--user", "set-property",
+            "org.gnome.Mutter.DisplayConfig",
+            "/org/gnome/Mutter/DisplayConfig",
+            "org.gnome.Mutter.DisplayConfig",
+            "PowerSaveMode", "i", "3"
+        ], capture_output=True)
+        env = get_x11_env()
+        subprocess.run(["xset", "dpms", "force", "off"], env=env, stderr=subprocess.DEVNULL)
         return (
-            "🕶️ *Ghost Mode Activated!*\n"
-            "Laptop display blank/off ho gaya hai.\n"
-            "Sabhi background tasks, downloads aur Antigravity active hain!\n"
-            "_(Screen wapas on karne ke liye koi bhi key dabayein ya mouse move karein)_"
+            "🕶️ *Ghost Mode ACTIVATED!* 🕶️\n\n"
+            "• Laptop screen turn OFF (blank) ho gayi hai.\n"
+            "• Sabhi background downloads, Antigravity AI aur terminal active hain!\n\n"
+            "💡 Wapas screen ON karne ke liye: `☀️ Screen ON` button dabayein ya mouse hilayein."
         )
+
+    if clean == "__ACTION_SCREEN_ON__":
+        # Native GNOME Mutter DisplayConfig DPMS on (Wayland)
+        subprocess.run([
+            "busctl", "--user", "set-property",
+            "org.gnome.Mutter.DisplayConfig",
+            "/org/gnome/Mutter/DisplayConfig",
+            "org.gnome.Mutter.DisplayConfig",
+            "PowerSaveMode", "i", "0"
+        ], capture_output=True)
+        env = get_x11_env()
+        subprocess.run(["xset", "dpms", "force", "on"], env=env, stderr=subprocess.DEVNULL)
+        return "☀️ *Laptop Display is ON!* Screen wapas active ho gayi hai."
 
     # 24. Remote URL Launcher
     if clean.startswith("__ACTION_OPEN_URL__"):
         url = clean[len("__ACTION_OPEN_URL__"):].strip()
         if not url.startswith("http://") and not url.startswith("https://"):
             url = f"https://{url}"
-        os.system(f'DISPLAY=:0 xdg-open "{url}" >/dev/null 2>&1 &')
+        env = get_x11_env()
+        subprocess.Popen(["xdg-open", url], env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         return f"🌐 *Opened in Laptop Browser:*\n`{url}`"
 
     # General Shell Command
@@ -525,13 +590,14 @@ def antigravity_watcher_thread():
                     if ("bypasssandbox" in line_lower or "sandbox" in line_lower) and (now - last_alert_time > 15):
                         last_alert_time = now
                         img_path = "/tmp/hermes_prompt_screen.png"
-                        os.system(f"DISPLAY=:0 scrot -z {img_path} 2>/dev/null")
+                        env = get_x11_env()
+                        subprocess.run(["scrot", "-z", "-o", img_path], env=env)
                         alert_msg = (
                             "⚠️ *Antigravity Alert: Sandbox / Approval Required!*\n\n"
                             "Terminal ya tool sandbox confirmation mang raha hai.\n"
                             "Niche diye buttons se direct approve karein:"
                         )
-                        if os.path.exists(img_path):
+                        if os.path.exists(img_path) and os.path.getsize(img_path) > 0:
                             send_tg_photo(img_path, alert_msg, reply_markup=sandbox_keyboard)
                         else:
                             send_tg_msg(alert_msg, reply_markup=sandbox_keyboard)
