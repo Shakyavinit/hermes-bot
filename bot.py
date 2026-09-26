@@ -26,12 +26,27 @@ from agent import AgentEngine
 from bridge import (
     get_pending_task,
     is_laptop_online,
+    laptop_ai_status,
     laptop_apps,
     laptop_battery,
+    laptop_clipboard,
+    laptop_key_ctrlc,
+    laptop_key_enter,
+    laptop_key_n,
+    laptop_key_y,
     laptop_lock,
+    laptop_mic,
     laptop_mute,
+    laptop_play_music,
     laptop_playpause,
+    laptop_popup,
+    laptop_power_poweroff,
+    laptop_power_reboot,
+    laptop_power_sleep,
     laptop_screenshot,
+    laptop_speak,
+    laptop_stop_music,
+    laptop_type,
     laptop_vol_down,
     laptop_vol_up,
     laptop_webcam,
@@ -70,8 +85,8 @@ UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
 REPLY_KEYBOARD = {
     "keyboard": [
         [{"text": "📸 Screenshot"}, {"text": "📷 Webcam"}],
-        [{"text": "🔋 Battery"}, {"text": "🎛️ Laptop Control"}],
-        [{"text": "💻 Laptop Exec"}, {"text": "☁️ Cloud Server"}],
+        [{"text": "🤖 AI / Sandbox"}, {"text": "🎛️ Laptop Control"}],
+        [{"text": "💻 Laptop Exec"}, {"text": "🎙️ Mic (10s)"}],
         [{"text": "📊 Status"}, {"text": "📱 Menu"}],
     ],
     "resize_keyboard": True,
@@ -88,6 +103,14 @@ def get_laptop_control_keyboard() -> dict:
                 {"text": "📷 Front Webcam", "callback_data": "lap_webcam"},
             ],
             [
+                {"text": "🤖 AI & Sandbox Keys", "callback_data": "lap_coder_menu"},
+                {"text": "📊 AI Status", "callback_data": "lap_ai_status"},
+            ],
+            [
+                {"text": "🎙️ Record Mic (10s)", "callback_data": "lap_mic"},
+                {"text": "⏹️ Stop Music", "callback_data": "lap_stop_music"},
+            ],
+            [
                 {"text": "🔋 Battery Status", "callback_data": "lap_battery"},
                 {"text": "📶 Wi-Fi Status", "callback_data": "lap_wifi"},
             ],
@@ -98,11 +121,58 @@ def get_laptop_control_keyboard() -> dict:
                 {"text": "⏯️ Play/Pause", "callback_data": "lap_playpause"},
             ],
             [
+                {"text": "📋 Clipboard", "callback_data": "lap_clipboard"},
+                {"text": "⚡ Power Menu", "callback_data": "lap_power_menu"},
+            ],
+            [
                 {"text": "📱 Running Apps", "callback_data": "lap_apps"},
                 {"text": "🔒 Lock Screen", "callback_data": "lap_lock"},
             ],
             [
                 {"text": "🔙 Back to Main Menu", "callback_data": "btn_status"},
+            ],
+        ]
+    }
+
+
+def get_coder_keyboard() -> dict:
+    """Keypad for remote terminal and sandbox approvals."""
+    return {
+        "inline_keyboard": [
+            [
+                {"text": "✅ Approve (Enter)", "callback_data": "lap_key_enter"},
+                {"text": "🟢 Send 'y'", "callback_data": "lap_key_y"},
+            ],
+            [
+                {"text": "🔴 Send 'n'", "callback_data": "lap_key_n"},
+                {"text": "🛑 Ctrl+C", "callback_data": "lap_key_ctrlc"},
+            ],
+            [
+                {"text": "📸 Screen Peek", "callback_data": "lap_screenshot"},
+                {"text": "🤖 AI Live Status", "callback_data": "lap_ai_status"},
+            ],
+            [
+                {"text": "🔙 Back to Laptop Controls", "callback_data": "lap_controls"},
+            ],
+        ]
+    }
+
+
+def get_power_keyboard() -> dict:
+    """Power management keypad."""
+    return {
+        "inline_keyboard": [
+            [
+                {"text": "💤 Sleep Laptop", "callback_data": "lap_power_sleep"},
+            ],
+            [
+                {"text": "🔄 Restart Laptop", "callback_data": "lap_power_reboot"},
+            ],
+            [
+                {"text": "⛔ Shutdown Laptop", "callback_data": "lap_power_poweroff"},
+            ],
+            [
+                {"text": "🔙 Back to Laptop Controls", "callback_data": "lap_controls"},
             ],
         ]
     }
@@ -575,6 +645,106 @@ class TelegramBotRunner:
                 tg_send_message(chat_id, "Usage: `/remember your preference`")
             return True
 
+        # AI & Sandbox Remote Controls
+        if clean in ("🤖 AI / Sandbox", "/sandbox", "/coder"):
+            tg_send_message(
+                chat_id,
+                "🤖 *Terminal & Sandbox Approval Keypad:*\nApproval button dabayein ya screen peek karein:",
+                reply_markup=get_coder_keyboard(),
+            )
+            return True
+
+        if cmd in ("/enter", "/approve"):
+            res = laptop_key_enter()
+            tg_send_message(chat_id, res, reply_markup=get_coder_keyboard())
+            return True
+
+        if cmd in ("/yes", "/y"):
+            res = laptop_key_y()
+            tg_send_message(chat_id, res, reply_markup=get_coder_keyboard())
+            return True
+
+        if cmd in ("/no", "/n"):
+            res = laptop_key_n()
+            tg_send_message(chat_id, res, reply_markup=get_coder_keyboard())
+            return True
+
+        if cmd in ("/ctrlc", "/cancel"):
+            res = laptop_key_ctrlc()
+            tg_send_message(chat_id, res, reply_markup=get_coder_keyboard())
+            return True
+
+        if cmd == "/aistatus":
+            res = laptop_ai_status()
+            tg_send_message(chat_id, res, reply_markup=get_coder_keyboard())
+            return True
+
+        if cmd == "/type":
+            type_text = clean[5:].strip()
+            if type_text:
+                res = laptop_type(type_text)
+                tg_send_message(chat_id, res, reply_markup=get_coder_keyboard())
+            else:
+                tg_send_message(chat_id, "Usage: `/type text to type on screen`")
+            return True
+
+        if cmd == "/cmd":
+            bash_cmd = clean[4:].strip()
+            if bash_cmd:
+                tg_send_message(chat_id, f"💻 *Running on Laptop:*\n`{bash_cmd}`")
+                res = execute_on_laptop(bash_cmd)
+                tg_send_message(chat_id, f"💻 *Laptop Terminal Output:*\n```\n{res}\n```")
+            else:
+                tg_send_message(chat_id, "Usage: `/cmd ls -la` ya `/cmd uname -a`")
+            return True
+
+        # Audio, Music & TTS
+        if clean in ("🎙️ Mic (10s)", "/mic", "/record"):
+            tg_send_message(chat_id, "🎙️ 10-second laptop mic audio recording chalu hai...")
+            res = laptop_mic(10)
+            tg_send_message(chat_id, res, reply_markup=get_laptop_control_keyboard())
+            return True
+
+        if cmd == "/play":
+            song = clean[5:].strip()
+            if song:
+                tg_send_message(chat_id, f"🎵 Playing '{song}' on laptop...")
+                res = laptop_play_music(song)
+                tg_send_message(chat_id, res, reply_markup=get_laptop_control_keyboard())
+            else:
+                tg_send_message(chat_id, "Usage: `/play arjit singh songs`")
+            return True
+
+        if cmd in ("/stop", "/stopmusic"):
+            res = laptop_stop_music()
+            tg_send_message(chat_id, res, reply_markup=get_laptop_control_keyboard())
+            return True
+
+        if cmd == "/speak":
+            speak_val = clean[6:].strip()
+            if speak_val:
+                res = laptop_speak(speak_val)
+                tg_send_message(chat_id, res)
+            else:
+                tg_send_message(chat_id, "Usage: `/speak Hello World`")
+            return True
+
+        if cmd == "/popup":
+            popup_val = clean[6:].strip()
+            if popup_val:
+                res = laptop_popup("Telegram Notice", popup_val)
+                tg_send_message(chat_id, res)
+            else:
+                tg_send_message(chat_id, "Usage: `/popup Hello from phone!`")
+            return True
+
+        if cmd in ("/clip", "/clipboard"):
+            parts = clean.split(maxsplit=1)
+            clip_val = parts[1] if len(parts) > 1 else ""
+            res = laptop_clipboard(clip_val)
+            tg_send_message(chat_id, res)
+            return True
+
         return False
 
     def process_callback_query(self, cq: dict) -> None:
@@ -634,6 +804,52 @@ class TelegramBotRunner:
                 "🎛️ *Laptop Live Control Panel:*\nButtons se direct laptop control karein:",
                 reply_markup=get_laptop_control_keyboard(),
             )
+        elif data == "lap_coder_menu":
+            tg_send_message(
+                chat_id,
+                "🤖 *Terminal & Sandbox Approval Keypad:*\nApproval button dabayein ya screen peek karein:",
+                reply_markup=get_coder_keyboard(),
+            )
+        elif data == "lap_key_enter":
+            res = laptop_key_enter()
+            tg_send_message(chat_id, res, reply_markup=get_coder_keyboard())
+        elif data == "lap_key_y":
+            res = laptop_key_y()
+            tg_send_message(chat_id, res, reply_markup=get_coder_keyboard())
+        elif data == "lap_key_n":
+            res = laptop_key_n()
+            tg_send_message(chat_id, res, reply_markup=get_coder_keyboard())
+        elif data == "lap_key_ctrlc":
+            res = laptop_key_ctrlc()
+            tg_send_message(chat_id, res, reply_markup=get_coder_keyboard())
+        elif data == "lap_ai_status":
+            res = laptop_ai_status()
+            tg_send_message(chat_id, res, reply_markup=get_coder_keyboard())
+        elif data == "lap_mic":
+            tg_send_message(chat_id, "🎙️ 10-second laptop mic audio recording chalu hai...")
+            res = laptop_mic(10)
+            tg_send_message(chat_id, res, reply_markup=get_laptop_control_keyboard())
+        elif data == "lap_stop_music":
+            res = laptop_stop_music()
+            tg_send_message(chat_id, res, reply_markup=get_laptop_control_keyboard())
+        elif data == "lap_clipboard":
+            res = laptop_clipboard()
+            tg_send_message(chat_id, res, reply_markup=get_laptop_control_keyboard())
+        elif data == "lap_power_menu":
+            tg_send_message(
+                chat_id,
+                "⚡ *Laptop Power Management:*\nAction select karein:",
+                reply_markup=get_power_keyboard(),
+            )
+        elif data == "lap_power_sleep":
+            res = laptop_power_sleep()
+            tg_send_message(chat_id, res, reply_markup=get_laptop_control_keyboard())
+        elif data == "lap_power_reboot":
+            res = laptop_power_reboot()
+            tg_send_message(chat_id, res, reply_markup=get_laptop_control_keyboard())
+        elif data == "lap_power_poweroff":
+            res = laptop_power_poweroff()
+            tg_send_message(chat_id, res, reply_markup=get_laptop_control_keyboard())
         elif data == "btn_laptop":
             if is_laptop_online():
                 res = execute_on_laptop("uname -a && uptime -p && free -h")

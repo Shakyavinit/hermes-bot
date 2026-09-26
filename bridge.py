@@ -97,3 +97,65 @@ def laptop_wifi() -> str:
 
 def laptop_apps() -> str:
     return dispatch_to_laptop("__ACTION_APPS__")
+
+
+# Antigravity & Terminal Keystroke Helpers
+def laptop_key_enter() -> str:
+    return dispatch_to_laptop("__ACTION_KEY_ENTER__")
+
+
+def laptop_key_y() -> str:
+    return dispatch_to_laptop("__ACTION_KEY_Y__")
+
+
+def laptop_key_n() -> str:
+    return dispatch_to_laptop("__ACTION_KEY_N__")
+
+
+def laptop_key_ctrlc() -> str:
+    return dispatch_to_laptop("__ACTION_KEY_CTRLC__")
+
+
+def laptop_type(text: str) -> str:
+    return dispatch_to_laptop(f"__ACTION_TYPE__{text}")
+
+
+def laptop_ai_status() -> str:
+    return dispatch_to_laptop("__ACTION_AI_STATUS__")
+
+
+# Audio, Mic, Clipboard, and Power Helpers
+def laptop_mic(seconds: int = 10) -> str:
+    return dispatch_to_laptop(f"__ACTION_MIC__{seconds}", timeout=45)
+
+
+def laptop_stop_music() -> str:
+    return dispatch_to_laptop("__ACTION_STOP_MUSIC__")
+
+
+def laptop_play_music(query: str) -> str:
+    return dispatch_to_laptop(f"__ACTION_PLAY_MUSIC__{query}")
+
+
+def laptop_clipboard(text: str = "") -> str:
+    return dispatch_to_laptop(f"__ACTION_CLIPBOARD__{text}")
+
+
+def laptop_speak(text: str) -> str:
+    return dispatch_to_laptop(f"__ACTION_SPEAK__{text}")
+
+
+def laptop_popup(title: str, msg: str) -> str:
+    return dispatch_to_laptop(f"__ACTION_POPUP__{title}|||{msg}")
+
+
+def laptop_power_sleep() -> str:
+    return dispatch_to_laptop("__ACTION_POWER_SLEEP__")
+
+
+def laptop_power_reboot() -> str:
+    return dispatch_to_laptop("__ACTION_POWER_REBOOT__")
+
+
+def laptop_power_poweroff() -> str:
+    return dispatch_to_laptop("__ACTION_POWER_SHUTDOWN__")
