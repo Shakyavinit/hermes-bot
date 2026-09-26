@@ -86,13 +86,54 @@ API_BASE = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}"
 UPLOADS_DIR = BASE_DIR / "data" / "uploads"
 UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
 
-# Persistent Bottom Reply Keyboard (Quick Access Buttons)
+# Persistent Bottom Reply Keyboards (Clean App-Like Navigation)
 REPLY_KEYBOARD = {
     "keyboard": [
-        [{"text": "📸 Screenshot"}, {"text": "📷 Webcam"}],
-        [{"text": "🤖 AI / Sandbox"}, {"text": "🎛️ Laptop Control"}],
-        [{"text": "💻 Laptop Exec"}, {"text": "🎙️ Mic (10s)"}],
-        [{"text": "📊 Status"}, {"text": "📱 Menu"}],
+        [{"text": "📸 Screenshot"}, {"text": "🎥 Video (10s)"}, {"text": "📷 Webcam"}],
+        [{"text": "🎙️ Mic (10s)"}, {"text": "👁️ CCTV Mode"}, {"text": "🚨 Siren Alarm"}],
+        [{"text": "🤖 AI & Terminal"}, {"text": "📍 Find Laptop"}, {"text": "🔋 Battery"}],
+        [{"text": "🔊 Volume & Media"}, {"text": "⚡ Power & Lock"}, {"text": "📊 Status"}],
+    ],
+    "resize_keyboard": True,
+    "is_persistent": True,
+}
+
+AI_REPLY_KEYBOARD = {
+    "keyboard": [
+        [{"text": "✅ Approve (Enter)"}, {"text": "🟢 Send 'y'"}],
+        [{"text": "🔴 Send 'n'"}, {"text": "🛑 Ctrl+C"}],
+        [{"text": "📊 AI Status"}, {"text": "📸 Screenshot"}],
+        [{"text": "🔙 Main Menu"}],
+    ],
+    "resize_keyboard": True,
+    "is_persistent": True,
+}
+
+VOLUME_REPLY_KEYBOARD = {
+    "keyboard": [
+        [{"text": "🔉 Vol -"}, {"text": "🔊 Vol +"}, {"text": "🔇 Mute"}],
+        [{"text": "⏯️ Play/Pause"}, {"text": "⏹️ Stop Music"}],
+        [{"text": "🔙 Main Menu"}],
+    ],
+    "resize_keyboard": True,
+    "is_persistent": True,
+}
+
+POWER_REPLY_KEYBOARD = {
+    "keyboard": [
+        [{"text": "🔒 Lock Screen"}, {"text": "💤 Sleep Laptop"}],
+        [{"text": "🔄 Restart Laptop"}, {"text": "⛔ Shutdown Laptop"}],
+        [{"text": "📋 Clipboard"}, {"text": "🔙 Main Menu"}],
+    ],
+    "resize_keyboard": True,
+    "is_persistent": True,
+}
+
+ALARM_REPLY_KEYBOARD = {
+    "keyboard": [
+        [{"text": "⏹️ Stop Alarm"}],
+        [{"text": "🔒 Lock Screen"}, {"text": "🎥 Video (10s)"}],
+        [{"text": "🔙 Main Menu"}],
     ],
     "resize_keyboard": True,
     "is_persistent": True,
@@ -517,28 +558,28 @@ class TelegramBotRunner:
         if clean in ("📸 Screenshot", "/screenshot"):
             tg_send_message(chat_id, "📸 Laptop screen capture ho rahi hai...")
             res = laptop_screenshot()
-            tg_send_message(chat_id, res, reply_markup=get_laptop_control_keyboard())
+            tg_send_message(chat_id, res, reply_markup=REPLY_KEYBOARD)
             return True
 
         # Webcam
         if clean in ("📷 Webcam", "/webcam"):
             tg_send_message(chat_id, "📷 Webcam photo capture ho rahi hai...")
             res = laptop_webcam()
-            tg_send_message(chat_id, res, reply_markup=get_laptop_control_keyboard())
+            tg_send_message(chat_id, res, reply_markup=REPLY_KEYBOARD)
             return True
 
         # Battery
         if clean in ("🔋 Battery", "/battery"):
             res = laptop_battery()
-            tg_send_message(chat_id, res, reply_markup=get_laptop_control_keyboard())
+            tg_send_message(chat_id, res, reply_markup=REPLY_KEYBOARD)
             return True
 
         # Laptop Control Panel
         if clean in ("🎛️ Laptop Control", "/controls"):
             tg_send_message(
                 chat_id,
-                "🎛️ *Laptop Live Remote Control Panel:*\nNiche diye buttons se volume, screen, battery, aur apps control karein:",
-                reply_markup=get_laptop_control_keyboard(),
+                "🎛️ *Laptop Live Remote Control Panel:*\nNiche menu bar me sabhi buttons available hain:",
+                reply_markup=REPLY_KEYBOARD,
             )
             return True
 
@@ -658,45 +699,66 @@ class TelegramBotRunner:
                 tg_send_message(chat_id, "Usage: `/remember your preference`")
             return True
 
-        # AI & Sandbox Remote Controls
-        if clean in ("🤖 AI / Sandbox", "/sandbox", "/coder"):
+        # Navigation & Sub-Menus
+        if clean in ("🤖 AI & Terminal", "🤖 AI / Sandbox", "/sandbox", "/coder"):
             tg_send_message(
                 chat_id,
-                "🤖 *Terminal & Sandbox Approval Keypad:*\nApproval button dabayein ya screen peek karein:",
-                reply_markup=get_coder_keyboard(),
+                "🤖 *AI & Sandbox Terminal Keypad:*\nNiche diye buttons se action lein:",
+                reply_markup=AI_REPLY_KEYBOARD,
             )
             return True
 
-        if cmd in ("/enter", "/approve"):
+        if clean in ("🔊 Volume & Media", "/volume"):
+            tg_send_message(
+                chat_id,
+                "🔊 *Volume & Media Controls:*\nNiche diye buttons se sound aur music control karein:",
+                reply_markup=VOLUME_REPLY_KEYBOARD,
+            )
+            return True
+
+        if clean in ("⚡ Power & Lock", "⚡ Power Menu", "/power"):
+            tg_send_message(
+                chat_id,
+                "⚡ *Power & Lock Controls:*\nNiche diye buttons se system control karein:",
+                reply_markup=POWER_REPLY_KEYBOARD,
+            )
+            return True
+
+        if clean in ("🔙 Main Menu", "🔙 Back to Main Menu"):
+            tg_send_message(chat_id, "📱 *Main Menu:*", reply_markup=REPLY_KEYBOARD)
+            return True
+
+        # AI & Terminal Buttons (Bottom Keypad)
+        if clean in ("✅ Approve (Enter)", "/enter", "/approve"):
             res = laptop_key_enter()
-            tg_send_message(chat_id, res, reply_markup=get_coder_keyboard())
+            tg_send_message(chat_id, res, reply_markup=AI_REPLY_KEYBOARD)
             return True
 
-        if cmd in ("/yes", "/y"):
+        if clean in ("🟢 Send 'y'", "/yes", "/y"):
             res = laptop_key_y()
-            tg_send_message(chat_id, res, reply_markup=get_coder_keyboard())
+            tg_send_message(chat_id, res, reply_markup=AI_REPLY_KEYBOARD)
             return True
 
-        if cmd in ("/no", "/n"):
+        if clean in ("🔴 Send 'n'", "/no", "/n"):
             res = laptop_key_n()
-            tg_send_message(chat_id, res, reply_markup=get_coder_keyboard())
+            tg_send_message(chat_id, res, reply_markup=AI_REPLY_KEYBOARD)
             return True
 
-        if cmd in ("/ctrlc", "/cancel"):
+        if clean in ("🛑 Ctrl+C", "/ctrlc", "/cancel"):
             res = laptop_key_ctrlc()
-            tg_send_message(chat_id, res, reply_markup=get_coder_keyboard())
+            tg_send_message(chat_id, res, reply_markup=AI_REPLY_KEYBOARD)
             return True
 
-        if cmd == "/aistatus":
+        if clean in ("📊 AI Status", "/aistatus"):
             res = laptop_ai_status()
-            tg_send_message(chat_id, res, reply_markup=get_coder_keyboard())
+            tg_send_message(chat_id, res, reply_markup=AI_REPLY_KEYBOARD)
             return True
 
         if cmd == "/type":
             type_text = clean[5:].strip()
             if type_text:
                 res = laptop_type(type_text)
-                tg_send_message(chat_id, res, reply_markup=get_coder_keyboard())
+                tg_send_message(chat_id, res, reply_markup=AI_REPLY_KEYBOARD)
             else:
                 tg_send_message(chat_id, "Usage: `/type text to type on screen`")
             return True
@@ -706,16 +768,35 @@ class TelegramBotRunner:
             if bash_cmd:
                 tg_send_message(chat_id, f"💻 *Running on Laptop:*\n`{bash_cmd}`")
                 res = execute_on_laptop(bash_cmd)
-                tg_send_message(chat_id, f"💻 *Laptop Terminal Output:*\n```\n{res}\n```")
+                tg_send_message(chat_id, f"💻 *Laptop Terminal Output:*\n```\n{res}\n```", reply_markup=REPLY_KEYBOARD)
             else:
                 tg_send_message(chat_id, "Usage: `/cmd ls -la` ya `/cmd uname -a`")
             return True
 
-        # Audio, Music & TTS
-        if clean in ("🎙️ Mic (10s)", "/mic", "/record"):
-            tg_send_message(chat_id, "🎙️ 10-second laptop mic audio recording chalu hai...")
-            res = laptop_mic(10)
-            tg_send_message(chat_id, res, reply_markup=get_laptop_control_keyboard())
+        # Volume & Media Buttons (Bottom Keypad)
+        if clean == "🔉 Vol -":
+            res = laptop_vol_down()
+            tg_send_message(chat_id, res, reply_markup=VOLUME_REPLY_KEYBOARD)
+            return True
+
+        if clean == "🔊 Vol +":
+            res = laptop_vol_up()
+            tg_send_message(chat_id, res, reply_markup=VOLUME_REPLY_KEYBOARD)
+            return True
+
+        if clean == "🔇 Mute":
+            res = laptop_mute()
+            tg_send_message(chat_id, res, reply_markup=VOLUME_REPLY_KEYBOARD)
+            return True
+
+        if clean == "⏯️ Play/Pause":
+            res = laptop_playpause()
+            tg_send_message(chat_id, res, reply_markup=VOLUME_REPLY_KEYBOARD)
+            return True
+
+        if clean in ("⏹️ Stop Music", "/stop", "/stopmusic"):
+            res = laptop_stop_music()
+            tg_send_message(chat_id, res, reply_markup=VOLUME_REPLY_KEYBOARD)
             return True
 
         if cmd == "/play":
@@ -723,21 +804,16 @@ class TelegramBotRunner:
             if song:
                 tg_send_message(chat_id, f"🎵 Playing '{song}' on laptop...")
                 res = laptop_play_music(song)
-                tg_send_message(chat_id, res, reply_markup=get_laptop_control_keyboard())
+                tg_send_message(chat_id, res, reply_markup=VOLUME_REPLY_KEYBOARD)
             else:
-                tg_send_message(chat_id, "Usage: `/play arjit singh songs`")
-            return True
-
-        if cmd in ("/stop", "/stopmusic"):
-            res = laptop_stop_music()
-            tg_send_message(chat_id, res, reply_markup=get_laptop_control_keyboard())
+                tg_send_message(chat_id, "Usage: `/play arijit singh songs`")
             return True
 
         if cmd == "/speak":
             speak_val = clean[6:].strip()
             if speak_val:
                 res = laptop_speak(speak_val)
-                tg_send_message(chat_id, res)
+                tg_send_message(chat_id, res, reply_markup=REPLY_KEYBOARD)
             else:
                 tg_send_message(chat_id, "Usage: `/speak Hello World`")
             return True
@@ -746,47 +822,70 @@ class TelegramBotRunner:
             popup_val = clean[6:].strip()
             if popup_val:
                 res = laptop_popup("Telegram Notice", popup_val)
-                tg_send_message(chat_id, res)
+                tg_send_message(chat_id, res, reply_markup=REPLY_KEYBOARD)
             else:
                 tg_send_message(chat_id, "Usage: `/popup Hello from phone!`")
             return True
 
-        if cmd in ("/clip", "/clipboard"):
-            parts = clean.split(maxsplit=1)
-            clip_val = parts[1] if len(parts) > 1 else ""
-            res = laptop_clipboard(clip_val)
-            tg_send_message(chat_id, res)
+        # Power & Lock Buttons (Bottom Keypad)
+        if clean in ("🔒 Lock Screen", "/lock"):
+            res = laptop_lock()
+            tg_send_message(chat_id, res, reply_markup=POWER_REPLY_KEYBOARD)
             return True
 
-        # Security, CCTV & Video Commands
-        if clean in ("🎥 Video Clip (10s)", "/video", "/webcamvideo"):
+        if clean == "💤 Sleep Laptop":
+            res = laptop_power_sleep()
+            tg_send_message(chat_id, res, reply_markup=POWER_REPLY_KEYBOARD)
+            return True
+
+        if clean == "🔄 Restart Laptop":
+            res = laptop_power_reboot()
+            tg_send_message(chat_id, res, reply_markup=POWER_REPLY_KEYBOARD)
+            return True
+
+        if clean == "⛔ Shutdown Laptop":
+            res = laptop_power_poweroff()
+            tg_send_message(chat_id, res, reply_markup=POWER_REPLY_KEYBOARD)
+            return True
+
+        if clean == "📋 Clipboard" or cmd in ("/clip", "/clipboard"):
+            parts = clean.split(maxsplit=1)
+            clip_val = parts[1] if len(parts) > 1 and parts[0] in ("/clip", "/clipboard") else ""
+            res = laptop_clipboard(clip_val)
+            tg_send_message(chat_id, res, reply_markup=POWER_REPLY_KEYBOARD)
+            return True
+
+        # Security, CCTV & Video Buttons (Bottom Keypad)
+        if clean in ("🎥 Video (10s)", "🎥 Video Clip (10s)", "/video", "/webcamvideo"):
             tg_send_message(chat_id, "🎥 10-second webcam video + audio recording chalu hai...")
             res = laptop_webcam_video()
-            tg_send_message(chat_id, res, reply_markup=get_laptop_control_keyboard())
+            tg_send_message(chat_id, res, reply_markup=REPLY_KEYBOARD)
             return True
 
-        if clean in ("👁️ CCTV Motion Alert", "/cctv"):
+        if clean in ("🎙️ Mic (10s)", "/mic", "/record"):
+            tg_send_message(chat_id, "🎙️ 10-second laptop mic audio recording chalu hai...")
+            res = laptop_mic(10)
+            tg_send_message(chat_id, res, reply_markup=REPLY_KEYBOARD)
+            return True
+
+        if clean in ("👁️ CCTV Mode", "👁️ CCTV Motion Alert", "/cctv"):
             res = laptop_cctv_toggle()
-            tg_send_message(chat_id, res, reply_markup=get_laptop_control_keyboard())
+            tg_send_message(chat_id, res, reply_markup=REPLY_KEYBOARD)
             return True
 
-        if cmd in ("/alarm", "/siren"):
+        if clean in ("🚨 Siren Alarm", "/alarm", "/siren"):
             res = laptop_alarm()
-            tg_send_message(
-                chat_id,
-                res,
-                reply_markup={"inline_keyboard": [[{"text": "⏹️ Stop Alarm", "callback_data": "lap_stop_alarm"}]]},
-            )
+            tg_send_message(chat_id, res, reply_markup=ALARM_REPLY_KEYBOARD)
             return True
 
-        if cmd in ("/stopalarm",):
+        if clean in ("⏹️ Stop Alarm", "/stopalarm"):
             res = laptop_stop_alarm()
-            tg_send_message(chat_id, res, reply_markup=get_laptop_control_keyboard())
+            tg_send_message(chat_id, res, reply_markup=REPLY_KEYBOARD)
             return True
 
-        if cmd in ("/locate", "/find", "/location"):
+        if clean in ("📍 Find Laptop", "📍 Find My Laptop", "/locate", "/find", "/location"):
             res = laptop_location()
-            tg_send_message(chat_id, res, reply_markup=get_laptop_control_keyboard())
+            tg_send_message(chat_id, res, reply_markup=REPLY_KEYBOARD)
             return True
 
         return False
