@@ -159,3 +159,24 @@ def laptop_power_reboot() -> str:
 
 def laptop_power_poweroff() -> str:
     return dispatch_to_laptop("__ACTION_POWER_SHUTDOWN__")
+
+
+# Security, CCTV, Video & Anti-Theft Helpers
+def laptop_webcam_video() -> str:
+    return dispatch_to_laptop("__ACTION_WEBCAM_VIDEO__", timeout=35)
+
+
+def laptop_cctv_toggle() -> str:
+    return dispatch_to_laptop("__ACTION_CCTV_TOGGLE__")
+
+
+def laptop_alarm() -> str:
+    return dispatch_to_laptop("__ACTION_ALARM__")
+
+
+def laptop_stop_alarm() -> str:
+    return dispatch_to_laptop("__ACTION_STOP_ALARM__")
+
+
+def laptop_location() -> str:
+    return dispatch_to_laptop("__ACTION_LOCATION__")

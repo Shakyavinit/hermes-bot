@@ -89,6 +89,28 @@ def send_tg_voice(file_path: str, caption: str) -> bool:
         return False
 
 
+def send_tg_video(file_path: str, caption: str, reply_markup: Optional[dict] = None) -> bool:
+    """Send MP4 video clip directly to the owner on Telegram."""
+    if not os.path.exists(file_path) or os.path.getsize(file_path) == 0:
+        return False
+    url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendVideo"
+    data = {"chat_id": OWNER_CHAT_ID, "caption": caption, "parse_mode": "Markdown"}
+    if reply_markup:
+        data["reply_markup"] = json.dumps(reply_markup)
+    try:
+        with open(file_path, "rb") as f:
+            resp = requests.post(
+                url,
+                data=data,
+                files={"video": f},
+                timeout=40,
+            )
+            return resp.status_code == 200 and resp.json().get("ok")
+    except Exception as e:
+        logger.error(f"Error sending video to Telegram: {e}")
+        return False
+
+
 def get_latest_transcript_path() -> Optional[str]:
     """Find the most recently modified Antigravity transcript file."""
     paths = glob.glob("/home/mrx/.gemini/antigravity/brain/*/.system_generated/logs/transcript.jsonl")
@@ -327,6 +349,67 @@ def execute_action(cmd: str) -> str:
         os.system("sudo poweroff 2>/dev/null || systemctl poweroff 2>/dev/null")
         return "⛔ Laptop powering off..."
 
+    # 19. 10s Webcam Video Recording with Audio
+    if clean == "__ACTION_WEBCAM_VIDEO__":
+        clip_path = "/tmp/hermes_webcam_clip.mp4"
+        # Try video + mic audio first
+        ret = os.system(
+            f"ffmpeg -y -f v4l2 -i /dev/video0 -f pulse -i default -t 10 -c:v libx264 -preset ultrafast -pix_fmt yuv420p -c:a aac {clip_path} 2>/dev/null"
+        )
+        if ret != 0 or not os.path.exists(clip_path) or os.path.getsize(clip_path) == 0:
+            # Fallback to video only
+            os.system(
+                f"ffmpeg -y -f v4l2 -i /dev/video0 -t 10 -c:v libx264 -preset ultrafast -pix_fmt yuv420p {clip_path} 2>/dev/null"
+            )
+
+        if send_tg_video(clip_path, "🎥 *10-Second Live Webcam Video Clip*"):
+            return "✅ 10s Webcam video clip captured & sent to chat!"
+        return "❌ Video capture failed (webcam busy or not accessible)."
+
+    # 20. CCTV Motion Mode Toggle
+    if clean == "__ACTION_CCTV_TOGGLE__":
+        global CCTV_ENABLED
+        CCTV_ENABLED = not CCTV_ENABLED
+        state_str = "ACTIVATED 🟢 (Motion monitoring chalu)" if CCTV_ENABLED else "DEACTIVATED 🔴 (CCTV band)"
+        return f"👁️ *CCTV Motion Watcher:* {state_str}"
+
+    # 21. Loud Alarm Siren
+    if clean == "__ACTION_ALARM__":
+        os.system("pactl set-sink-volume @DEFAULT_SINK@ 100% 2>/dev/null")
+        os.system("pactl set-sink-mute @DEFAULT_SINK@ 0 2>/dev/null")
+        siren_file = os.path.join(WORKSPACE_DIR, "siren.wav")
+        if not os.path.exists(siren_file):
+            siren_file = "/tmp/siren.wav"
+        os.system(f"killall mpv 2>/dev/null")
+        os.system(f'nohup mpv --volume=100 --loop "{siren_file}" >/dev/null 2>&1 &')
+        return "🚨 *LOUD ALARM ACTIVATED!* 🚨\nLaptop volume 100% karke siren baj raha hai!\nBand karne ke liye `⏹️ Stop Alarm` dabayein."
+
+    if clean == "__ACTION_STOP_ALARM__":
+        os.system("killall mpv 2>/dev/null")
+        return "⏹️ Alarm siren stopped."
+
+    # 22. Find My Laptop (Geo-Location)
+    if clean == "__ACTION_LOCATION__":
+        try:
+            r = requests.get("https://ipinfo.io/json", timeout=6).json()
+            ip = r.get("ip", "Unknown")
+            city = r.get("city", "Unknown")
+            region = r.get("region", "Unknown")
+            country = r.get("country", "IN")
+            loc = r.get("loc", "")
+            org = r.get("org", "")
+            map_link = f"https://maps.google.com/?q={loc}" if loc else "N/A"
+            return (
+                "📍 *Find My Laptop - Live Location:*\n\n"
+                f"• **Public IP:** `{ip}`\n"
+                f"• **City/Region:** {city}, {region} ({country})\n"
+                f"• **ISP/Network:** `{org}`\n"
+                f"• **Coordinates:** `{loc}`\n\n"
+                f"🗺️ [Google Maps par Location Dekhein]({map_link})"
+            )
+        except Exception as e:
+            return f"📍 Location lookup error: {e}"
+
     # General Shell Command
     try:
         proc = subprocess.run(
@@ -458,6 +541,150 @@ def antigravity_watcher_thread():
             time.sleep(3)
 
 
+CCTV_ENABLED = False
+
+
+def intruder_watcher_thread() -> None:
+    """Background listener for failed password attempts via journalctl."""
+    logger.info("Intruder Trap (Chor Pakdo) watcher active.")
+    last_intruder_time = 0.0
+
+    intruder_keyboard = {
+        "inline_keyboard": [
+            [
+                {"text": "🚨 Sound Alarm", "callback_data": "lap_alarm"},
+                {"text": "🔒 Lock Screen", "callback_data": "lap_lock"},
+            ],
+            [
+                {"text": "🎥 Record 10s Video", "callback_data": "lap_video"},
+                {"text": "📍 Find Location", "callback_data": "lap_location"},
+            ],
+        ]
+    }
+
+    try:
+        proc = subprocess.Popen(
+            ["journalctl", "-f", "-n", "0"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            text=True,
+            bufsize=1,
+        )
+        for line in proc.stdout:
+            if "authentication failure" in line.lower() or "auth failure" in line.lower():
+                now = time.time()
+                if now - last_intruder_time > 10:
+                    last_intruder_time = now
+                    logger.warning("🚨 Intruder authentication failure detected!")
+                    img_path = "/tmp/hermes_intruder.jpg"
+                    os.system(f"ffmpeg -y -f v4l2 -i /dev/video0 -vframes 1 {img_path} 2>/dev/null")
+                    time_str = time.strftime("%Y-%m-%d %H:%M:%S")
+                    caption = (
+                        "🚨 *INTRUDER ALERT! (Chor Pakdo)* 🚨\n\n"
+                        "Laptop par kisi ne **galat password** dala hai!\n"
+                        f"⏰ *Time:* `{time_str}`\n"
+                        "📍 *Activity:* Lock Screen / Login Failure\n\n"
+                        "Action lene ke liye buttons dabayein:"
+                    )
+                    if os.path.exists(img_path):
+                        send_tg_photo(img_path, caption, reply_markup=intruder_keyboard)
+                    else:
+                        send_tg_msg(caption, reply_markup=intruder_keyboard)
+    except Exception as e:
+        logger.error(f"Intruder watcher exception: {e}")
+
+
+def cctv_watcher_thread() -> None:
+    """Background motion detector using OpenCV webcam differencing."""
+    global CCTV_ENABLED
+    logger.info("CCTV Motion Watcher thread ready.")
+    try:
+        import cv2
+    except ImportError:
+        logger.warning("OpenCV (cv2) not available for CCTV watcher.")
+        return
+
+    last_motion_alert = 0.0
+
+    while True:
+        try:
+            if not CCTV_ENABLED:
+                time.sleep(2)
+                continue
+
+            cap = cv2.VideoCapture(0)
+            if not cap.isOpened():
+                time.sleep(3)
+                continue
+
+            ret, frame1 = cap.read()
+            time.sleep(0.5)
+            ret, frame2 = cap.read()
+            cap.release()
+
+            if not ret or frame1 is None or frame2 is None:
+                time.sleep(2)
+                continue
+
+            diff = cv2.absdiff(frame1, frame2)
+            gray = cv2.cvtColor(diff, cv2.COLOR_BGR2GRAY)
+            blur = cv2.GaussianBlur(gray, (21, 21), 0)
+            _, thresh = cv2.threshold(blur, 25, 255, cv2.THRESH_BINARY)
+            contours, _ = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+
+            motion = False
+            for contour in contours:
+                if cv2.contourArea(contour) > 4000:
+                    motion = True
+                    break
+
+            if motion and (time.time() - last_motion_alert > 15):
+                last_motion_alert = time.time()
+                motion_path = "/tmp/hermes_cctv_motion.jpg"
+                cv2.imwrite(motion_path, frame2)
+                time_str = time.strftime("%H:%M:%S")
+                send_tg_photo(
+                    motion_path,
+                    f"👁️ *CCTV ALERT! Motion Detected in Room!* 🏃\nRoom me movement detect hua hai!\n⏰ *Time:* `{time_str}`"
+                )
+
+            time.sleep(1.5)
+        except Exception as e:
+            logger.debug(f"CCTV watcher loop error: {e}")
+            time.sleep(2)
+
+
+def charger_watcher_thread() -> None:
+    """Watches for charger connect and disconnect events."""
+    logger.info("Charger watcher thread active.")
+    last_state = None
+    while True:
+        try:
+            time.sleep(5)
+            out = subprocess.check_output(
+                "upower -i $(upower -e | grep 'BAT') 2>/dev/null | grep -E 'state|percentage'",
+                shell=True,
+                text=True,
+            ).strip()
+            state = None
+            pct = ""
+            for line in out.splitlines():
+                if "state:" in line:
+                    state = line.split(":", 1)[1].strip()
+                elif "percentage:" in line:
+                    pct = line.split(":", 1)[1].strip()
+
+            if state and last_state and state != last_state:
+                if state == "discharging" and last_state == "charging":
+                    send_tg_msg(f"⚠️ *CHARGER DISCONNECTED!* 🔌\nLaptop ka charger nikal diya gaya hai!\n🔋 Battery: `{pct}`")
+                elif state == "charging" and last_state == "discharging":
+                    send_tg_msg(f"⚡ *CHARGER CONNECTED!* 🔋\nLaptop charging chalu ho gayi hai.\n🔋 Battery: `{pct}`")
+            if state:
+                last_state = state
+        except Exception:
+            time.sleep(6)
+
+
 def start_node() -> None:
     logger.info("=" * 60)
     logger.info("💻 Hermes Laptop Live Control Node Started")
@@ -466,11 +693,15 @@ def start_node() -> None:
     logger.info("Listening for remote commands & live viewing tasks...")
     logger.info("=" * 60)
 
-    # Start Antigravity AI Watcher Thread
-    watcher = threading.Thread(target=antigravity_watcher_thread, daemon=True)
-    watcher.start()
+    # Start Background Watcher Threads
+    threading.Thread(target=antigravity_watcher_thread, daemon=True).start()
+    threading.Thread(target=intruder_watcher_thread, daemon=True).start()
+    threading.Thread(target=cctv_watcher_thread, daemon=True).start()
+    threading.Thread(target=charger_watcher_thread, daemon=True).start()
 
     consecutive_errors = 0
+
+    last_heartbeat_log = 0.0
 
     while True:
         try:
@@ -501,7 +732,11 @@ def start_node() -> None:
                         timeout=15,
                     )
                     logger.info(f"✅ Completed task [{task_id}]")
-
+                else:
+                    if time.time() - last_heartbeat_log > 45:
+                        last_heartbeat_log = time.time()
+                        logger.info("🟢 Heartbeat active: Polling Render cloud successfully.")
+                    time.sleep(1.5)
             else:
                 consecutive_errors += 1
                 time.sleep(2)

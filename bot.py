@@ -27,13 +27,16 @@ from bridge import (
     get_pending_task,
     is_laptop_online,
     laptop_ai_status,
+    laptop_alarm,
     laptop_apps,
     laptop_battery,
+    laptop_cctv_toggle,
     laptop_clipboard,
     laptop_key_ctrlc,
     laptop_key_enter,
     laptop_key_n,
     laptop_key_y,
+    laptop_location,
     laptop_lock,
     laptop_mic,
     laptop_mute,
@@ -45,11 +48,13 @@ from bridge import (
     laptop_power_sleep,
     laptop_screenshot,
     laptop_speak,
+    laptop_stop_alarm,
     laptop_stop_music,
     laptop_type,
     laptop_vol_down,
     laptop_vol_up,
     laptop_webcam,
+    laptop_webcam_video,
     laptop_wifi,
     record_heartbeat,
     store_task_result,
@@ -101,6 +106,14 @@ def get_laptop_control_keyboard() -> dict:
             [
                 {"text": "📸 Live Screenshot", "callback_data": "lap_screenshot"},
                 {"text": "📷 Front Webcam", "callback_data": "lap_webcam"},
+            ],
+            [
+                {"text": "🎥 Video Clip (10s)", "callback_data": "lap_video"},
+                {"text": "👁️ CCTV Motion Alert", "callback_data": "lap_cctv"},
+            ],
+            [
+                {"text": "🚨 Siren Alarm", "callback_data": "lap_alarm"},
+                {"text": "📍 Find My Laptop", "callback_data": "lap_location"},
             ],
             [
                 {"text": "🤖 AI & Sandbox Keys", "callback_data": "lap_coder_menu"},
@@ -745,6 +758,37 @@ class TelegramBotRunner:
             tg_send_message(chat_id, res)
             return True
 
+        # Security, CCTV & Video Commands
+        if clean in ("🎥 Video Clip (10s)", "/video", "/webcamvideo"):
+            tg_send_message(chat_id, "🎥 10-second webcam video + audio recording chalu hai...")
+            res = laptop_webcam_video()
+            tg_send_message(chat_id, res, reply_markup=get_laptop_control_keyboard())
+            return True
+
+        if clean in ("👁️ CCTV Motion Alert", "/cctv"):
+            res = laptop_cctv_toggle()
+            tg_send_message(chat_id, res, reply_markup=get_laptop_control_keyboard())
+            return True
+
+        if cmd in ("/alarm", "/siren"):
+            res = laptop_alarm()
+            tg_send_message(
+                chat_id,
+                res,
+                reply_markup={"inline_keyboard": [[{"text": "⏹️ Stop Alarm", "callback_data": "lap_stop_alarm"}]]},
+            )
+            return True
+
+        if cmd in ("/stopalarm",):
+            res = laptop_stop_alarm()
+            tg_send_message(chat_id, res, reply_markup=get_laptop_control_keyboard())
+            return True
+
+        if cmd in ("/locate", "/find", "/location"):
+            res = laptop_location()
+            tg_send_message(chat_id, res, reply_markup=get_laptop_control_keyboard())
+            return True
+
         return False
 
     def process_callback_query(self, cq: dict) -> None:
@@ -849,6 +893,26 @@ class TelegramBotRunner:
             tg_send_message(chat_id, res, reply_markup=get_laptop_control_keyboard())
         elif data == "lap_power_poweroff":
             res = laptop_power_poweroff()
+            tg_send_message(chat_id, res, reply_markup=get_laptop_control_keyboard())
+        elif data == "lap_video":
+            tg_send_message(chat_id, "🎥 10-second webcam video + audio recording chalu hai...")
+            res = laptop_webcam_video()
+            tg_send_message(chat_id, res, reply_markup=get_laptop_control_keyboard())
+        elif data == "lap_cctv":
+            res = laptop_cctv_toggle()
+            tg_send_message(chat_id, res, reply_markup=get_laptop_control_keyboard())
+        elif data == "lap_alarm":
+            res = laptop_alarm()
+            tg_send_message(
+                chat_id,
+                res,
+                reply_markup={"inline_keyboard": [[{"text": "⏹️ Stop Alarm", "callback_data": "lap_stop_alarm"}]]},
+            )
+        elif data == "lap_stop_alarm":
+            res = laptop_stop_alarm()
+            tg_send_message(chat_id, res, reply_markup=get_laptop_control_keyboard())
+        elif data == "lap_location":
+            res = laptop_location()
             tg_send_message(chat_id, res, reply_markup=get_laptop_control_keyboard())
         elif data == "btn_laptop":
             if is_laptop_online():
