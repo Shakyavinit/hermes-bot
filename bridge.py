@@ -56,3 +56,44 @@ def dispatch_to_laptop(command: str, timeout: int = 40) -> str:
         time.sleep(0.5)
 
     return f"⚠️ Timeout: Laptop did not return response within {timeout} seconds."
+
+
+# High-level live remote control helpers
+def laptop_screenshot() -> str:
+    return dispatch_to_laptop("__ACTION_SCREENSHOT__")
+
+
+def laptop_webcam() -> str:
+    return dispatch_to_laptop("__ACTION_WEBCAM__")
+
+
+def laptop_battery() -> str:
+    return dispatch_to_laptop("__ACTION_BATTERY__")
+
+
+def laptop_vol_up() -> str:
+    return dispatch_to_laptop("__ACTION_VOL_UP__")
+
+
+def laptop_vol_down() -> str:
+    return dispatch_to_laptop("__ACTION_VOL_DOWN__")
+
+
+def laptop_mute() -> str:
+    return dispatch_to_laptop("__ACTION_MUTE__")
+
+
+def laptop_playpause() -> str:
+    return dispatch_to_laptop("__ACTION_PLAYPAUSE__")
+
+
+def laptop_lock() -> str:
+    return dispatch_to_laptop("__ACTION_LOCK__")
+
+
+def laptop_wifi() -> str:
+    return dispatch_to_laptop("__ACTION_WIFI__")
+
+
+def laptop_apps() -> str:
+    return dispatch_to_laptop("__ACTION_APPS__")

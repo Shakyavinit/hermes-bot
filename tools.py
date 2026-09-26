@@ -157,7 +157,20 @@ def fetch_url(url: str, timeout: int = 15) -> str:
         return f"Error fetching URL: {str(e)}"
 
 
-from bridge import dispatch_to_laptop, is_laptop_online
+from bridge import (
+    dispatch_to_laptop,
+    is_laptop_online,
+    laptop_apps,
+    laptop_battery,
+    laptop_lock,
+    laptop_mute,
+    laptop_playpause,
+    laptop_screenshot,
+    laptop_vol_down,
+    laptop_vol_up,
+    laptop_webcam,
+    laptop_wifi,
+)
 
 
 def execute_on_laptop(command: str) -> str:
@@ -179,11 +192,65 @@ def smart_execute(command: str, prefer_laptop: bool = True) -> str:
         return f"☁️ *Cloud Server:*\n{res}"
 
 
+def capture_laptop_screenshot() -> str:
+    """Capture a live screenshot of the user's laptop desktop and send it to Telegram."""
+    return laptop_screenshot()
+
+
+def capture_laptop_webcam() -> str:
+    """Capture a live front camera photo from the user's laptop and send it to Telegram."""
+    return laptop_webcam()
+
+
+def get_laptop_battery() -> str:
+    """Get live battery percentage, charging state, and remaining runtime of laptop."""
+    return laptop_battery()
+
+
+def control_laptop_volume(action: str) -> str:
+    """Control laptop speaker volume: 'up', 'down', or 'mute'."""
+    act = action.lower()
+    if act in ("up", "increase", "+"):
+        return laptop_vol_up()
+    elif act in ("down", "decrease", "-"):
+        return laptop_vol_down()
+    else:
+        return laptop_mute()
+
+
+def control_laptop_media(action: str = "play_pause") -> str:
+    """Play or pause active media/music player on laptop."""
+    return laptop_playpause()
+
+
+def lock_laptop_screen() -> str:
+    """Instantly lock the physical laptop display."""
+    return laptop_lock()
+
+
+def get_laptop_wifi() -> str:
+    """Get connected Wi-Fi network name, signal strength, and local IP."""
+    return laptop_wifi()
+
+
+def get_laptop_apps() -> str:
+    """List the top running applications and processes on the laptop."""
+    return laptop_apps()
+
+
 # Tool Registry & Schemas
 TOOLS_MAP: Dict[str, Callable] = {
     "execute_bash": execute_bash,
     "execute_on_laptop": execute_on_laptop,
     "smart_execute": smart_execute,
+    "capture_laptop_screenshot": capture_laptop_screenshot,
+    "capture_laptop_webcam": capture_laptop_webcam,
+    "get_laptop_battery": get_laptop_battery,
+    "control_laptop_volume": control_laptop_volume,
+    "control_laptop_media": control_laptop_media,
+    "lock_laptop_screen": lock_laptop_screen,
+    "get_laptop_wifi": get_laptop_wifi,
+    "get_laptop_apps": get_laptop_apps,
     "read_file": read_file,
     "write_file": write_file,
     "list_directory": list_directory,
@@ -237,6 +304,64 @@ GEMINI_FUNCTION_DECLARATIONS = [
             },
             "required": ["command"],
         },
+    },
+    {
+        "name": "capture_laptop_screenshot",
+        "description": "Capture a live high-resolution screenshot of the physical laptop desktop screen and send it as a photo to Telegram.",
+        "parameters": {"type": "object", "properties": {}},
+    },
+    {
+        "name": "capture_laptop_webcam",
+        "description": "Capture a live front camera/webcam snapshot from the physical laptop and send it as a photo to Telegram.",
+        "parameters": {"type": "object", "properties": {}},
+    },
+    {
+        "name": "get_laptop_battery",
+        "description": "Check live laptop battery level, charging/discharging state, and estimated runtime.",
+        "parameters": {"type": "object", "properties": {}},
+    },
+    {
+        "name": "control_laptop_volume",
+        "description": "Adjust laptop speaker volume or toggle mute.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "action": {
+                    "type": "string",
+                    "enum": ["up", "down", "mute"],
+                    "description": "Volume action to perform.",
+                }
+            },
+            "required": ["action"],
+        },
+    },
+    {
+        "name": "control_laptop_media",
+        "description": "Play or pause current music/video playback on the physical laptop.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "action": {
+                    "type": "string",
+                    "description": "Media action (default 'play_pause').",
+                }
+            },
+        },
+    },
+    {
+        "name": "lock_laptop_screen",
+        "description": "Immediately lock the screen of the physical laptop.",
+        "parameters": {"type": "object", "properties": {}},
+    },
+    {
+        "name": "get_laptop_wifi",
+        "description": "Get current connected Wi-Fi SSID, signal quality, and local network IP on laptop.",
+        "parameters": {"type": "object", "properties": {}},
+    },
+    {
+        "name": "get_laptop_apps",
+        "description": "Get a list of currently running applications and high CPU/RAM processes on the laptop.",
+        "parameters": {"type": "object", "properties": {}},
     },
     {
         "name": "read_file",

@@ -26,6 +26,16 @@ from agent import AgentEngine
 from bridge import (
     get_pending_task,
     is_laptop_online,
+    laptop_apps,
+    laptop_battery,
+    laptop_lock,
+    laptop_mute,
+    laptop_playpause,
+    laptop_screenshot,
+    laptop_vol_down,
+    laptop_vol_up,
+    laptop_webcam,
+    laptop_wifi,
     record_heartbeat,
     store_task_result,
 )
@@ -59,13 +69,43 @@ UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
 # Persistent Bottom Reply Keyboard (Quick Access Buttons)
 REPLY_KEYBOARD = {
     "keyboard": [
+        [{"text": "📸 Screenshot"}, {"text": "📷 Webcam"}],
+        [{"text": "🔋 Battery"}, {"text": "🎛️ Laptop Control"}],
         [{"text": "💻 Laptop Exec"}, {"text": "☁️ Cloud Server"}],
-        [{"text": "📊 Status"}, {"text": "📁 Files"}],
-        [{"text": "⚡ Quick Test"}, {"text": "📱 Menu"}],
+        [{"text": "📊 Status"}, {"text": "📱 Menu"}],
     ],
     "resize_keyboard": True,
     "is_persistent": True,
 }
+
+
+def get_laptop_control_keyboard() -> dict:
+    """Full remote control keypad for physical laptop."""
+    return {
+        "inline_keyboard": [
+            [
+                {"text": "📸 Live Screenshot", "callback_data": "lap_screenshot"},
+                {"text": "📷 Front Webcam", "callback_data": "lap_webcam"},
+            ],
+            [
+                {"text": "🔋 Battery Status", "callback_data": "lap_battery"},
+                {"text": "📶 Wi-Fi Status", "callback_data": "lap_wifi"},
+            ],
+            [
+                {"text": "🔉 Vol -", "callback_data": "lap_vol_down"},
+                {"text": "🔊 Vol +", "callback_data": "lap_vol_up"},
+                {"text": "🔇 Mute", "callback_data": "lap_mute"},
+                {"text": "⏯️ Play/Pause", "callback_data": "lap_playpause"},
+            ],
+            [
+                {"text": "📱 Running Apps", "callback_data": "lap_apps"},
+                {"text": "🔒 Lock Screen", "callback_data": "lap_lock"},
+            ],
+            [
+                {"text": "🔙 Back to Main Menu", "callback_data": "btn_status"},
+            ],
+        ]
+    }
 
 
 def get_main_inline_keyboard() -> dict:
@@ -73,19 +113,20 @@ def get_main_inline_keyboard() -> dict:
     return {
         "inline_keyboard": [
             [
+                {"text": "🎛️ Live Laptop Controls", "callback_data": "lap_controls"},
+                {"text": "📸 Live Screenshot", "callback_data": "lap_screenshot"},
+            ],
+            [
                 {"text": "💻 Test Laptop", "callback_data": "btn_laptop"},
                 {"text": "☁️ Test Cloud Server", "callback_data": "btn_cloud"},
             ],
             [
-                {"text": "📊 System Status", "callback_data": "btn_status"},
+                {"text": "📊 Full Status", "callback_data": "btn_status"},
                 {"text": "📁 Workspace Files", "callback_data": "btn_files"},
             ],
             [
                 {"text": "⚡ Quick Diagnostics", "callback_data": "btn_test"},
                 {"text": "🧹 Clear Memory", "callback_data": "btn_reset"},
-            ],
-            [
-                {"text": "💡 Help & Guide", "callback_data": "btn_help"},
             ],
         ]
     }
@@ -389,6 +430,35 @@ class TelegramBotRunner:
             )
             return True
 
+        # Screenshot
+        if clean in ("📸 Screenshot", "/screenshot"):
+            tg_send_message(chat_id, "📸 Laptop screen capture ho rahi hai...")
+            res = laptop_screenshot()
+            tg_send_message(chat_id, res, reply_markup=get_laptop_control_keyboard())
+            return True
+
+        # Webcam
+        if clean in ("📷 Webcam", "/webcam"):
+            tg_send_message(chat_id, "📷 Webcam photo capture ho rahi hai...")
+            res = laptop_webcam()
+            tg_send_message(chat_id, res, reply_markup=get_laptop_control_keyboard())
+            return True
+
+        # Battery
+        if clean in ("🔋 Battery", "/battery"):
+            res = laptop_battery()
+            tg_send_message(chat_id, res, reply_markup=get_laptop_control_keyboard())
+            return True
+
+        # Laptop Control Panel
+        if clean in ("🎛️ Laptop Control", "/controls"):
+            tg_send_message(
+                chat_id,
+                "🎛️ *Laptop Live Remote Control Panel:*\nNiche diye buttons se volume, screen, battery, aur apps control karein:",
+                reply_markup=get_laptop_control_keyboard(),
+            )
+            return True
+
         # Laptop Exec
         if clean in ("💻 Laptop Exec", "/laptop"):
             status = "ONLINE 🟢 (Connected)" if is_laptop_online() else "OFFLINE 🔴 (Laptop band hai)"
@@ -526,7 +596,45 @@ class TelegramBotRunner:
 
         tg_answer_callback_query(cq_id)
 
-        if data == "btn_laptop":
+        if data == "lap_screenshot":
+            tg_send_message(chat_id, "📸 Laptop screen capture ho rahi hai...")
+            res = laptop_screenshot()
+            tg_send_message(chat_id, res, reply_markup=get_laptop_control_keyboard())
+        elif data == "lap_webcam":
+            tg_send_message(chat_id, "📷 Front camera photo capture ho rahi hai...")
+            res = laptop_webcam()
+            tg_send_message(chat_id, res, reply_markup=get_laptop_control_keyboard())
+        elif data == "lap_battery":
+            res = laptop_battery()
+            tg_send_message(chat_id, res, reply_markup=get_laptop_control_keyboard())
+        elif data == "lap_vol_up":
+            res = laptop_vol_up()
+            tg_send_message(chat_id, res, reply_markup=get_laptop_control_keyboard())
+        elif data == "lap_vol_down":
+            res = laptop_vol_down()
+            tg_send_message(chat_id, res, reply_markup=get_laptop_control_keyboard())
+        elif data == "lap_mute":
+            res = laptop_mute()
+            tg_send_message(chat_id, res, reply_markup=get_laptop_control_keyboard())
+        elif data == "lap_playpause":
+            res = laptop_playpause()
+            tg_send_message(chat_id, res, reply_markup=get_laptop_control_keyboard())
+        elif data == "lap_apps":
+            res = laptop_apps()
+            tg_send_message(chat_id, res, reply_markup=get_laptop_control_keyboard())
+        elif data == "lap_lock":
+            res = laptop_lock()
+            tg_send_message(chat_id, res, reply_markup=get_laptop_control_keyboard())
+        elif data == "lap_wifi":
+            res = laptop_wifi()
+            tg_send_message(chat_id, res, reply_markup=get_laptop_control_keyboard())
+        elif data == "lap_controls":
+            tg_send_message(
+                chat_id,
+                "🎛️ *Laptop Live Control Panel:*\nButtons se direct laptop control karein:",
+                reply_markup=get_laptop_control_keyboard(),
+            )
+        elif data == "btn_laptop":
             if is_laptop_online():
                 res = execute_on_laptop("uname -a && uptime -p && free -h")
                 msg = f"💻 *Physical Laptop (Online 🟢):*\n```\n{res}\n```\n✅ Laptop execution verified!"
@@ -556,10 +664,6 @@ class TelegramBotRunner:
                 "🧹 Context clear ho gaya!",
                 reply_markup=get_main_inline_keyboard(),
             )
-        elif data == "btn_vps":
-            tg_send_message(chat_id, get_vps_guide_text(), reply_markup=get_main_inline_keyboard())
-        elif data == "btn_help":
-            tg_send_message(chat_id, get_help_text(), reply_markup=get_main_inline_keyboard())
         elif data == "btn_vps":
             tg_send_message(chat_id, get_vps_guide_text(), reply_markup=get_main_inline_keyboard())
         elif data == "btn_help":
