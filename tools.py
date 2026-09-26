@@ -167,10 +167,23 @@ def execute_on_laptop(command: str) -> str:
     return dispatch_to_laptop(command)
 
 
+def smart_execute(command: str, prefer_laptop: bool = True) -> str:
+    """Execute command: runs on physical laptop if connected, otherwise automatically executes on 24/7 cloud server."""
+    if prefer_laptop and is_laptop_online():
+        res = dispatch_to_laptop(command)
+        return f"💻 *Physical Laptop:*\n{res}"
+    else:
+        res = execute_bash(command)
+        if prefer_laptop and not is_laptop_online():
+            return f"ℹ️ *(Laptop offline tha, ☁️ Cloud Server par run kiya)*\n\n{res}"
+        return f"☁️ *Cloud Server:*\n{res}"
+
+
 # Tool Registry & Schemas
 TOOLS_MAP: Dict[str, Callable] = {
     "execute_bash": execute_bash,
     "execute_on_laptop": execute_on_laptop,
+    "smart_execute": smart_execute,
     "read_file": read_file,
     "write_file": write_file,
     "list_directory": list_directory,
@@ -202,6 +215,24 @@ GEMINI_FUNCTION_DECLARATIONS = [
                 "command": {
                     "type": "string",
                     "description": "The shell command line to run on user's physical laptop.",
+                }
+            },
+            "required": ["command"],
+        },
+    },
+    {
+        "name": "smart_execute",
+        "description": "Execute any Linux bash shell command with automatic targeting: runs on physical laptop if connected; if laptop is offline/closed, automatically executes on 24/7 cloud server.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "command": {
+                    "type": "string",
+                    "description": "The shell command to execute.",
+                },
+                "prefer_laptop": {
+                    "type": "boolean",
+                    "description": "Whether to prefer running on physical laptop if connected (default True).",
                 }
             },
             "required": ["command"],

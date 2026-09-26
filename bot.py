@@ -38,7 +38,13 @@ from config import (
     set_owner,
 )
 from memory import clear_history, get_all_facts, save_fact
-from tools import execute_bash, list_directory, system_status
+from tools import (
+    execute_bash,
+    execute_on_laptop,
+    list_directory,
+    smart_execute,
+    system_status,
+)
 
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
@@ -53,9 +59,9 @@ UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
 # Persistent Bottom Reply Keyboard (Quick Access Buttons)
 REPLY_KEYBOARD = {
     "keyboard": [
+        [{"text": "💻 Laptop Exec"}, {"text": "☁️ Cloud Server"}],
         [{"text": "📊 Status"}, {"text": "📁 Files"}],
-        [{"text": "⚡ Quick Test"}, {"text": "🧹 Reset"}],
-        [{"text": "📱 Menu"}, {"text": "💡 Help"}],
+        [{"text": "⚡ Quick Test"}, {"text": "📱 Menu"}],
     ],
     "resize_keyboard": True,
     "is_persistent": True,
@@ -67,15 +73,18 @@ def get_main_inline_keyboard() -> dict:
     return {
         "inline_keyboard": [
             [
+                {"text": "💻 Test Laptop", "callback_data": "btn_laptop"},
+                {"text": "☁️ Test Cloud Server", "callback_data": "btn_cloud"},
+            ],
+            [
                 {"text": "📊 System Status", "callback_data": "btn_status"},
                 {"text": "📁 Workspace Files", "callback_data": "btn_files"},
             ],
             [
-                {"text": "⚡ Quick Test", "callback_data": "btn_test"},
+                {"text": "⚡ Quick Diagnostics", "callback_data": "btn_test"},
                 {"text": "🧹 Clear Memory", "callback_data": "btn_reset"},
             ],
             [
-                {"text": "🌐 24/7 Hosting Guide", "callback_data": "btn_vps"},
                 {"text": "💡 Help & Guide", "callback_data": "btn_help"},
             ],
         ]
@@ -380,8 +389,28 @@ class TelegramBotRunner:
             )
             return True
 
+        # Laptop Exec
+        if clean in ("💻 Laptop Exec", "/laptop"):
+            status = "ONLINE 🟢 (Connected)" if is_laptop_online() else "OFFLINE 🔴 (Laptop band hai)"
+            msg = (
+                f"💻 *Laptop Execution Mode*\n• **Status:** {status}\n\n"
+                "Task bhejein, laptop online hone par **laptop par run hoga**.\n"
+                "Agar laptop band hua to **automatic ☁️ Cloud Server par fallback hoga**!"
+            )
+            tg_send_message(chat_id, msg, reply_markup=get_main_inline_keyboard())
+            return True
+
+        # Cloud Server
+        if clean in ("☁️ Cloud Server", "/server", "/cloud"):
+            msg = (
+                "☁️ *24/7 Cloud Server Mode*\n• **Status:** ONLINE 🟢 (Render)\n\n"
+                "Task bhejein, seedhe 24/7 Cloud Server par run hoga."
+            )
+            tg_send_message(chat_id, msg, reply_markup=get_main_inline_keyboard())
+            return True
+
         # Status
-        if cmd == "/status" or clean == "📊 Status":
+        if cmd == "/status" or clean in ("📊 Status", "📊 Full Status"):
             tg_send_message(
                 chat_id,
                 get_status_text(),
@@ -497,7 +526,24 @@ class TelegramBotRunner:
 
         tg_answer_callback_query(cq_id)
 
-        if data == "btn_status":
+        if data == "btn_laptop":
+            if is_laptop_online():
+                res = execute_on_laptop("uname -a && uptime -p && free -h")
+                msg = f"💻 *Physical Laptop (Online 🟢):*\n```\n{res}\n```\n✅ Laptop execution verified!"
+            else:
+                cloud_res = execute_bash("uname -a && uptime -p && free -h")
+                msg = (
+                    "💻 *Laptop Status:* OFFLINE 🔴 (Laptop band hai)\n\n"
+                    "🔄 *Auto-Fallback to ☁️ Cloud Server:*\n"
+                    f"```\n{cloud_res}\n```\n"
+                    "✅ Fallback to 24/7 Cloud Server successful!"
+                )
+            tg_send_message(chat_id, msg, reply_markup=get_main_inline_keyboard())
+        elif data == "btn_cloud":
+            res = execute_bash("uname -a && uptime -p && free -h")
+            msg = f"☁️ *24/7 Render Cloud Server (Online 🟢):*\n```\n{res}\n```\n✅ Cloud Server execution verified!"
+            tg_send_message(chat_id, msg, reply_markup=get_main_inline_keyboard())
+        elif data == "btn_status":
             tg_send_message(chat_id, get_status_text(), reply_markup=get_main_inline_keyboard())
         elif data == "btn_files":
             tg_send_message(chat_id, get_files_text(), reply_markup=get_main_inline_keyboard())
@@ -510,6 +556,10 @@ class TelegramBotRunner:
                 "🧹 Context clear ho gaya!",
                 reply_markup=get_main_inline_keyboard(),
             )
+        elif data == "btn_vps":
+            tg_send_message(chat_id, get_vps_guide_text(), reply_markup=get_main_inline_keyboard())
+        elif data == "btn_help":
+            tg_send_message(chat_id, get_help_text(), reply_markup=get_main_inline_keyboard())
         elif data == "btn_vps":
             tg_send_message(chat_id, get_vps_guide_text(), reply_markup=get_main_inline_keyboard())
         elif data == "btn_help":
