@@ -370,6 +370,94 @@ def fetch_url(url: str, timeout: int = 15) -> str:
         return f"Error fetching URL: {str(e)}"
 
 
+def query_public_api(service: str, query: str = "") -> str:
+    """Query zero-auth public APIs for real-time external data (crypto, weather, IP, wiki, dictionary)."""
+    s = service.strip().lower()
+    q = query.strip()
+    try:
+        if any(k in s for k in ("crypto", "coin", "bitcoin", "btc", "eth")):
+            target = q.lower() if q else "bitcoin,ethereum,solana"
+            url = f"https://api.coingecko.com/api/v3/simple/price?ids={target}&vs_currencies=inr,usd"
+            r = requests.get(url, timeout=10)
+            if r.status_code == 200 and r.json():
+                return f"🪙 Live Crypto Prices:\n" + json.dumps(r.json(), indent=2)
+            # Binance fallback
+            sym = f"{q.upper()}USDT" if q else "BTCUSDT"
+            r_b = requests.get(f"https://api.binance.com/api/v3/ticker/price?symbol={sym}", timeout=10)
+            return f"🪙 Live Price:\n" + json.dumps(r_b.json(), indent=2)
+
+        elif any(k in s for k in ("weather", "mausam", "temp", "temperature")):
+            city = q if q else "Delhi"
+            r = requests.get(f"https://wttr.in/{city}?format=%C+%t+%w+%h", timeout=10)
+            if r.status_code == 200:
+                return f"🌤️ Live Weather in {city.capitalize()}: {r.text.strip()}"
+            return f"Weather data for {city} currently unavailable."
+
+        elif any(k in s for k in ("ip", "geo", "location", "isp")):
+            url = f"http://ip-api.com/json/{q}" if q else "http://ip-api.com/json/"
+            r = requests.get(url, timeout=10)
+            data = r.json()
+            return (
+                f"📍 IP Geolocation:\n"
+                f"• IP: {data.get('query')}\n"
+                f"• City: {data.get('city')}, {data.get('regionName')}\n"
+                f"• Country: {data.get('country')}\n"
+                f"• ISP: {data.get('isp')}\n"
+                f"• Timezone: {data.get('timezone')}"
+            )
+
+        elif any(k in s for k in ("wiki", "wikipedia", "encyclopedia", "search", "info")):
+            url = f"https://en.wikipedia.org/w/api.php?action=opensearch&search={q}&limit=3&namespace=0&format=json"
+            r = requests.get(url, headers={"User-Agent": "HermesBot/1.0"}, timeout=10)
+            data = r.json()
+            results = [f"• {title}: {link}" for title, link in zip(data[1], data[3])]
+            return "📚 Wikipedia Real-time Knowledge:\n" + ("\n".join(results) if results else f"No Wikipedia entries found for '{q}'.")
+
+        elif any(k in s for k in ("dict", "dictionary", "meaning", "define")):
+            r = requests.get(f"https://api.dictionaryapi.dev/api/v2/entries/en/{q}", timeout=10)
+            if r.status_code == 200:
+                d = r.json()[0]
+                meanings = d.get("meanings", [{}])[0].get("definitions", [{}])[0].get("definition", "")
+                return f"📖 Definition of '{q}': {meanings}"
+            return f"No definition found for '{q}'."
+
+        else:
+            return f"Service '{service}' not recognized. Supported services: 'crypto', 'weather', 'ip', 'wikipedia', 'dictionary'."
+    except Exception as e:
+        return f"Error querying public API ({service}): {str(e)}"
+
+
+def call_api(url: str, method: str = "GET", headers_json: str = "{}", body_json: str = "{}") -> str:
+    """Execute any external HTTP/REST API request (GET, POST, PUT, DELETE) dynamically."""
+    if not url.startswith("http://") and not url.startswith("https://"):
+        return "Error: URL must begin with http:// or https://"
+    try:
+        method = method.upper().strip()
+        headers = json.loads(headers_json) if headers_json and headers_json.strip() else {}
+        body = json.loads(body_json) if body_json and body_json.strip() else None
+
+        if "User-Agent" not in headers:
+            headers["User-Agent"] = "HermesAutonomousAgent/1.0"
+
+        if method == "GET":
+            resp = requests.get(url, headers=headers, params=body, timeout=20)
+        elif method == "POST":
+            resp = requests.post(url, headers=headers, json=body, timeout=20)
+        elif method == "PUT":
+            resp = requests.put(url, headers=headers, json=body, timeout=20)
+        elif method == "DELETE":
+            resp = requests.delete(url, headers=headers, json=body, timeout=20)
+        else:
+            return f"Error: Unsupported HTTP method '{method}'."
+
+        res_text = resp.text
+        if len(res_text) > 4000:
+            res_text = res_text[:4000] + f"\n...[Truncated, {len(resp.text)} bytes total]..."
+        return f"HTTP {resp.status_code} ({resp.reason})\nResponse:\n{res_text}"
+    except Exception as e:
+        return f"API execution failed: {str(e)}"
+
+
 # Tool Registry & Schemas
 TOOLS_MAP: Dict[str, Callable] = {
     "execute_bash": execute_bash,
@@ -402,6 +490,8 @@ TOOLS_MAP: Dict[str, Callable] = {
     "list_directory": list_directory,
     "system_status": system_status,
     "fetch_url": fetch_url,
+    "query_public_api": query_public_api,
+    "call_api": call_api,
 }
 
 GEMINI_FUNCTION_DECLARATIONS = [
@@ -689,6 +779,50 @@ GEMINI_FUNCTION_DECLARATIONS = [
                     "type": "string",
                     "description": "The full HTTP/HTTPS URL to fetch.",
                 }
+            },
+            "required": ["url"],
+        },
+    },
+    {
+        "name": "query_public_api",
+        "description": "Query zero-key, completely free public APIs for real-time live data: 'crypto' (Bitcoin, Ethereum, Solana prices in INR/USD), 'weather' (live weather for any city e.g. 'Delhi', 'Mumbai'), 'ip' (IP address, ISP, city, location), 'wikipedia' (encyclopedia knowledge & summaries), 'dictionary' (word definitions).",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "service": {
+                    "type": "string",
+                    "description": "The public service to query: 'crypto', 'weather', 'ip', 'wikipedia', or 'dictionary'.",
+                },
+                "query": {
+                    "type": "string",
+                    "description": "Specific query e.g. 'bitcoin', 'Delhi', 'Elon Musk', 'quantum computing'.",
+                },
+            },
+            "required": ["service"],
+        },
+    },
+    {
+        "name": "call_api",
+        "description": "Execute any generic REST API request (GET, POST, PUT, DELETE) to any external URL with optional JSON headers and payload.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "url": {
+                    "type": "string",
+                    "description": "The API endpoint URL to call.",
+                },
+                "method": {
+                    "type": "string",
+                    "description": "HTTP method: GET, POST, PUT, or DELETE. Default is GET.",
+                },
+                "headers_json": {
+                    "type": "string",
+                    "description": "Optional JSON string of HTTP headers, e.g. '{\"Authorization\": \"Bearer ...\"}'.",
+                },
+                "body_json": {
+                    "type": "string",
+                    "description": "Optional JSON string of request body or params.",
+                },
             },
             "required": ["url"],
         },
