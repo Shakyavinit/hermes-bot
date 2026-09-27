@@ -36,6 +36,7 @@ from bridge import (
     laptop_key_ctrlc,
     laptop_key_enter,
     laptop_key_n,
+    laptop_key_num,
     laptop_key_y,
     laptop_location,
     laptop_lock,
@@ -276,20 +277,24 @@ def get_laptop_control_keyboard() -> dict:
 
 
 def get_coder_keyboard() -> dict:
-    """Keypad for remote terminal and sandbox approvals."""
+    """Keypad for remote terminal and sandbox approvals with Best Option highlighted."""
     return {
         "inline_keyboard": [
             [
-                {"text": "✅ Approve (Enter)", "callback_data": "lap_key_enter"},
-                {"text": "🟢 Send 'y'", "callback_data": "lap_key_y"},
+                {"text": "⭐ (Best Option) Approve & Run", "callback_data": "lap_key_enter"},
             ],
             [
-                {"text": "🔴 Send 'n'", "callback_data": "lap_key_n"},
-                {"text": "🛑 Ctrl+C", "callback_data": "lap_key_ctrlc"},
+                {"text": "🟢 Always Allow ('y')", "callback_data": "lap_key_y"},
+                {"text": "🔴 Deny / Skip ('n')", "callback_data": "lap_key_n"},
             ],
             [
+                {"text": "1️⃣ Choice 1", "callback_data": "lap_key_1"},
+                {"text": "2️⃣ Choice 2", "callback_data": "lap_key_2"},
+                {"text": "3️⃣ Choice 3", "callback_data": "lap_key_3"},
+            ],
+            [
+                {"text": "🛑 Cancel (Ctrl+C)", "callback_data": "lap_key_ctrlc"},
                 {"text": "📸 Screen Peek", "callback_data": "lap_screenshot"},
-                {"text": "🤖 AI Live Status", "callback_data": "lap_ai_status"},
             ],
             [
                 {"text": "🔙 Back to Laptop Controls", "callback_data": "lap_controls"},
@@ -1309,6 +1314,7 @@ class TelegramBotRunner:
         user_id = from_user.get("id")
         username = from_user.get("username", "")
         message = cq.get("message", {})
+        cq_msg_id = message.get("message_id")
         chat_id = message.get("chat", {}).get("id")
         data = cq.get("data", "")
 
@@ -1366,17 +1372,67 @@ class TelegramBotRunner:
                 reply_markup=get_coder_keyboard(),
             )
         elif data == "lap_key_enter":
+            if cq_msg_id:
+                tg_delete_message(chat_id, cq_msg_id)
             res = laptop_key_enter()
-            tg_send_message(chat_id, res, reply_markup=get_coder_keyboard())
+            tg_send_message(
+                chat_id,
+                "✅ *Approval Completed!*\n\n"
+                "📋 *Short Summary:* Best option (Approve/Enter) execute kar diya gaya hai. Sandbox prompt saf ho gaya.",
+                reply_markup=ROOT_CHOICE_KEYBOARD,
+            )
         elif data == "lap_key_y":
+            if cq_msg_id:
+                tg_delete_message(chat_id, cq_msg_id)
             res = laptop_key_y()
-            tg_send_message(chat_id, res, reply_markup=get_coder_keyboard())
+            tg_send_message(
+                chat_id,
+                "🟢 *Always Allow Executed!*\n\n"
+                "📋 *Short Summary:* 'y' key send kar di gayi hai. Action permanently approve ho gaya.",
+                reply_markup=ROOT_CHOICE_KEYBOARD,
+            )
         elif data == "lap_key_n":
+            if cq_msg_id:
+                tg_delete_message(chat_id, cq_msg_id)
             res = laptop_key_n()
-            tg_send_message(chat_id, res, reply_markup=get_coder_keyboard())
+            tg_send_message(
+                chat_id,
+                "🔴 *Action Denied / Skipped!*\n\n"
+                "📋 *Short Summary:* 'n' key send karke action reject kar diya gaya hai.",
+                reply_markup=ROOT_CHOICE_KEYBOARD,
+            )
         elif data == "lap_key_ctrlc":
+            if cq_msg_id:
+                tg_delete_message(chat_id, cq_msg_id)
             res = laptop_key_ctrlc()
-            tg_send_message(chat_id, res, reply_markup=get_coder_keyboard())
+            tg_send_message(
+                chat_id,
+                "🛑 *Process Cancelled!*\n\n"
+                "📋 *Short Summary:* Ctrl+C send karke current task abort kar diya gaya hai.",
+                reply_markup=ROOT_CHOICE_KEYBOARD,
+            )
+        elif data.startswith("lap_key_") and data[len("lap_key_"):].isdigit():
+            num = data[len("lap_key_"):]
+            if cq_msg_id:
+                tg_delete_message(chat_id, cq_msg_id)
+            res = laptop_key_num(int(num))
+            tg_send_message(
+                chat_id,
+                f"🔢 *Choice {num} Selected!*\n\n"
+                f"📋 *Short Summary:* Option {num} select karke Enter bhej diya gaya hai.",
+                reply_markup=ROOT_CHOICE_KEYBOARD,
+            )
+        elif data.startswith("lap_opt_") and data[len("lap_opt_"):].isdigit():
+            opt_num = data[len("lap_opt_"):]
+            if cq_msg_id:
+                tg_delete_message(chat_id, cq_msg_id)
+            res = laptop_key_num(int(opt_num))
+            tg_send_message(
+                chat_id,
+                f"⭐ *Best Option Selected!* (Choice {opt_num})\n\n"
+                f"📋 *Short Summary:* Antigravity question ka choice {opt_num} select ho gaya hai.",
+                reply_markup=ROOT_CHOICE_KEYBOARD,
+            )
         elif data == "lap_ai_status":
             res = laptop_ai_status()
             tg_send_message(chat_id, res, reply_markup=get_coder_keyboard())

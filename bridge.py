@@ -116,6 +116,10 @@ def laptop_key_ctrlc() -> str:
     return dispatch_to_laptop("__ACTION_KEY_CTRLC__")
 
 
+def laptop_key_num(num: int) -> str:
+    return dispatch_to_laptop(f"__ACTION_KEY_NUM__{num}")
+
+
 def laptop_type(text: str) -> str:
     return dispatch_to_laptop(f"__ACTION_TYPE__{text}")
 

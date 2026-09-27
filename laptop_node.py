@@ -75,8 +75,11 @@ def release_camera_lock() -> None:
 
 
 
-def send_tg_msg(text: str, reply_markup: Optional[dict] = None) -> bool:
-    """Send text message directly to owner on Telegram."""
+_active_prompt_msg_id: Optional[int] = None
+
+
+def send_tg_msg(text: str, reply_markup: Optional[dict] = None) -> Optional[int]:
+    """Send text message directly to owner on Telegram and return message_id."""
     url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
     payload = {
         "chat_id": OWNER_CHAT_ID,
@@ -87,14 +90,36 @@ def send_tg_msg(text: str, reply_markup: Optional[dict] = None) -> bool:
         payload["reply_markup"] = reply_markup
     try:
         resp = requests.post(url, json=payload, timeout=20)
-        return resp.status_code == 200 and resp.json().get("ok")
+        if resp.status_code == 200 and resp.json().get("ok"):
+            return resp.json().get("result", {}).get("message_id")
     except Exception as e:
         logger.error(f"Error sending text to Telegram: {e}")
+    return None
+
+
+def delete_tg_msg(message_id: Optional[int]) -> bool:
+    """Delete a Telegram message by ID to keep the chat clean."""
+    if not message_id:
+        return False
+    url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/deleteMessage"
+    try:
+        resp = requests.post(url, json={"chat_id": OWNER_CHAT_ID, "message_id": message_id}, timeout=10)
+        return resp.status_code == 200 and resp.json().get("ok")
+    except Exception as e:
+        logger.debug(f"Error deleting Telegram message {message_id}: {e}")
         return False
 
 
-def send_tg_photo(file_path: str, caption: str, reply_markup: Optional[dict] = None, auto_delete: bool = True) -> bool:
-    """Send photo directly to the owner on Telegram and auto-delete local temporary file."""
+def clear_active_prompt() -> None:
+    """Clean up and delete any active sandbox approval / prompt message."""
+    global _active_prompt_msg_id
+    if _active_prompt_msg_id:
+        delete_tg_msg(_active_prompt_msg_id)
+        _active_prompt_msg_id = None
+
+
+def send_tg_photo(file_path: str, caption: str, reply_markup: Optional[dict] = None, auto_delete: bool = True) -> Optional[int]:
+    """Send photo directly to the owner on Telegram and return message_id."""
     if not os.path.exists(file_path) or os.path.getsize(file_path) < 10000:
         logger.warning(f"send_tg_photo: Rejecting {file_path} - missing or size < 10KB (black/corrupt prevention).")
         if os.path.exists(file_path):
@@ -102,12 +127,12 @@ def send_tg_photo(file_path: str, caption: str, reply_markup: Optional[dict] = N
                 os.remove(file_path)
             except Exception:
                 pass
-        return False
+        return None
     url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendPhoto"
     data = {"chat_id": OWNER_CHAT_ID, "caption": caption, "parse_mode": "Markdown"}
     if reply_markup:
         data["reply_markup"] = json.dumps(reply_markup)
-    success = False
+    msg_id = None
     try:
         with open(file_path, "rb") as f:
             resp = requests.post(
@@ -116,11 +141,12 @@ def send_tg_photo(file_path: str, caption: str, reply_markup: Optional[dict] = N
                 files={"photo": f},
                 timeout=25,
             )
-            success = (resp.status_code == 200 and resp.json().get("ok"))
-            return success
+            if resp.status_code == 200 and resp.json().get("ok"):
+                msg_id = resp.json().get("result", {}).get("message_id")
+            return msg_id
     except Exception as e:
         logger.error(f"Error sending photo to Telegram: {e}")
-        return False
+        return None
     finally:
         if auto_delete:
             try:
@@ -339,44 +365,35 @@ def execute_action(cmd: str) -> str:
 
     # 11. Antigravity & Sandbox Keystroke Simulation
     if clean == "__ACTION_KEY_ENTER__":
+        clear_active_prompt()
         env = get_x11_env()
         subprocess.run(["xdotool", "key", "--clearmodifiers", "Return"], env=env)
-        time.sleep(0.5)
-        confirm_path = "/tmp/hermes_key_confirm.png"
-        captured = capture_desktop_image(confirm_path)
-        if captured and os.path.exists(captured) and os.path.getsize(captured) > 15000:
-            send_tg_photo(captured, "⏎ *Approve (Enter) Sent!* Current screen state:")
-        return "⏎ Enter key sent to laptop!"
+        return "⏎ Enter key sent to laptop terminal."
 
     if clean == "__ACTION_KEY_Y__":
+        clear_active_prompt()
         env = get_x11_env()
         subprocess.run(["xdotool", "key", "--clearmodifiers", "y", "Return"], env=env)
-        time.sleep(0.5)
-        confirm_path = "/tmp/hermes_key_confirm.png"
-        captured = capture_desktop_image(confirm_path)
-        if captured and os.path.exists(captured) and os.path.getsize(captured) > 15000:
-            send_tg_photo(captured, "🟢 *Send 'y' Sent!* Current screen state:")
-        return "🟢 'y' + Enter sent to laptop!"
+        return "🟢 'y' + Enter sent to laptop terminal."
 
     if clean == "__ACTION_KEY_N__":
+        clear_active_prompt()
         env = get_x11_env()
         subprocess.run(["xdotool", "key", "--clearmodifiers", "n", "Return"], env=env)
-        time.sleep(0.5)
-        confirm_path = "/tmp/hermes_key_confirm.png"
-        captured = capture_desktop_image(confirm_path)
-        if captured and os.path.exists(captured) and os.path.getsize(captured) > 15000:
-            send_tg_photo(captured, "🔴 *Send 'n' Sent!* Current screen state:")
-        return "🔴 'n' + Enter sent to laptop!"
+        return "🔴 'n' + Enter sent to laptop terminal."
 
     if clean == "__ACTION_KEY_CTRLC__":
+        clear_active_prompt()
         env = get_x11_env()
         subprocess.run(["xdotool", "key", "--clearmodifiers", "ctrl+c"], env=env)
-        time.sleep(0.5)
-        confirm_path = "/tmp/hermes_key_confirm.png"
-        captured = capture_desktop_image(confirm_path)
-        if captured and os.path.exists(captured) and os.path.getsize(captured) > 15000:
-            send_tg_photo(captured, "🛑 *Ctrl+C Sent!* Current screen state:")
-        return "🛑 Ctrl+C sent to laptop!"
+        return "🛑 Ctrl+C sent to laptop terminal."
+
+    if clean.startswith("__ACTION_KEY_NUM__"):
+        num_str = clean[len("__ACTION_KEY_NUM__"):].strip()
+        clear_active_prompt()
+        env = get_x11_env()
+        subprocess.run(["xdotool", "key", "--clearmodifiers", num_str, "Return"], env=env)
+        return f"🔢 Option '{num_str}' + Enter sent to laptop terminal."
 
     if clean.startswith("__ACTION_TYPE__"):
         text_to_type = clean[len("__ACTION_TYPE__"):].strip()
@@ -680,16 +697,20 @@ def antigravity_watcher_thread():
     sandbox_keyboard = {
         "inline_keyboard": [
             [
-                {"text": "✅ Approve (Enter)", "callback_data": "lap_key_enter"},
-                {"text": "🟢 Send 'y'", "callback_data": "lap_key_y"},
+                {"text": "⭐ (Best Option) Approve & Run", "callback_data": "lap_key_enter"},
             ],
             [
-                {"text": "🔴 Send 'n'", "callback_data": "lap_key_n"},
-                {"text": "🛑 Ctrl+C", "callback_data": "lap_key_ctrlc"},
+                {"text": "🟢 Always Allow ('y')", "callback_data": "lap_key_y"},
+                {"text": "🔴 Deny / Skip ('n')", "callback_data": "lap_key_n"},
             ],
             [
+                {"text": "1️⃣ Choice 1", "callback_data": "lap_key_1"},
+                {"text": "2️⃣ Choice 2", "callback_data": "lap_key_2"},
+                {"text": "3️⃣ Choice 3", "callback_data": "lap_key_3"},
+            ],
+            [
+                {"text": "🛑 Cancel (Ctrl+C)", "callback_data": "lap_key_ctrlc"},
                 {"text": "📸 Screen Peek", "callback_data": "lap_screenshot"},
-                {"text": "🤖 AI Status", "callback_data": "lap_ai_status"},
             ],
         ]
     }
@@ -732,30 +753,70 @@ def antigravity_watcher_thread():
 
                     if ("bypasssandbox" in line_lower or "sandbox" in line_lower) and (now - last_alert_time > 15):
                         last_alert_time = now
+                        clear_active_prompt()
                         img_path = "/tmp/hermes_prompt_screen.png"
                         captured = capture_desktop_image(img_path)
                         alert_msg = (
-                            "⚠️ *Antigravity Alert: Sandbox / Approval Required!*\n\n"
-                            "Terminal ya tool sandbox confirmation mang raha hai.\n"
-                            "Niche diye buttons se direct approve karein:"
+                            "⚡ *Antigravity: Sandbox Approval Required*\n\n"
+                            "Terminal execution permission mang raha hai.\n"
+                            "Niche se best option select karein:"
                         )
                         if captured and os.path.exists(captured) and os.path.getsize(captured) > 15000:
-                            send_tg_photo(captured, alert_msg, reply_markup=sandbox_keyboard)
+                            _active_prompt_msg_id = send_tg_photo(captured, alert_msg, reply_markup=sandbox_keyboard)
                         else:
-                            send_tg_msg(alert_msg, reply_markup=sandbox_keyboard)
+                            _active_prompt_msg_id = send_tg_msg(alert_msg, reply_markup=sandbox_keyboard)
                         break
 
                     try:
                         d = json.loads(line)
                         if d.get("source") == "MODEL" and d.get("type") == "PLANNER_RESPONSE":
                             tool_calls = d.get("tool_calls", [])
+                            # 1. Parse ask_question tool if called
+                            for tc in tool_calls:
+                                if tc.get("name") == "ask_question":
+                                    args = tc.get("args", {})
+                                    questions = args.get("questions", [])
+                                    if questions and (now - last_alert_time > 10):
+                                        last_alert_time = now
+                                        clear_active_prompt()
+                                        q_obj = questions[0]
+                                        q_text = q_obj.get("question", "Antigravity clarification required:")
+                                        options = q_obj.get("options", [])
+
+                                        opt_keyboard = []
+                                        for idx, opt in enumerate(options):
+                                            is_rec = "(recommended)" in opt.lower()
+                                            label = f"⭐ {opt}" if is_rec else f"{idx+1}️⃣ {opt}"
+                                            opt_keyboard.append([{"text": label[:38], "callback_data": f"lap_opt_{idx+1}"}])
+                                        opt_keyboard.append([{"text": "🛑 Cancel (Ctrl+C)", "callback_data": "lap_key_ctrlc"}])
+
+                                        q_msg = (
+                                            "❓ *Antigravity Question / Selection:*\n\n"
+                                            f"📌 *Question:* {q_text}\n\n"
+                                            "Niche se best option select karein:"
+                                        )
+                                        _active_prompt_msg_id = send_tg_msg(q_msg, reply_markup={"inline_keyboard": opt_keyboard})
+                                        break
+
+                            # 2. Check for task completion
                             content = d.get("content")
                             if content and not tool_calls and (now - last_alert_time > 15):
                                 last_alert_time = now
+                                clear_active_prompt()
+                                clean_lines = [
+                                    l.strip() for l in content.split("\n")
+                                    if l.strip() and not l.strip().startswith("```") and not l.strip().startswith("#")
+                                ]
+                                summary_text = " ".join(clean_lines[:2])
+                                if len(summary_text) > 180:
+                                    summary_text = summary_text[:177] + "..."
+                                if not summary_text:
+                                    summary_text = "Task execution completed successfully."
+
                                 done_msg = (
-                                    "✅ *Antigravity: Code Task Completed!*\n\n"
-                                    f"Summary:\n_{str(content)[:250]}..._\n\n"
-                                    "Laptop screen dekhne ya controls use karne ke liye buttons dabayein:"
+                                    "🚀 *Antigravity: Update Completed!*\n\n"
+                                    f"📋 *Short Summary:* {summary_text}\n\n"
+                                    "Agla option select karein:"
                                 )
                                 send_tg_msg(done_msg, reply_markup=done_keyboard)
                                 break
