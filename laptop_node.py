@@ -95,7 +95,13 @@ def send_tg_msg(text: str, reply_markup: Optional[dict] = None) -> bool:
 
 def send_tg_photo(file_path: str, caption: str, reply_markup: Optional[dict] = None, auto_delete: bool = True) -> bool:
     """Send photo directly to the owner on Telegram and auto-delete local temporary file."""
-    if not os.path.exists(file_path) or os.path.getsize(file_path) == 0:
+    if not os.path.exists(file_path) or os.path.getsize(file_path) < 10000:
+        logger.warning(f"send_tg_photo: Rejecting {file_path} - missing or size < 10KB (black/corrupt prevention).")
+        if os.path.exists(file_path):
+            try:
+                os.remove(file_path)
+            except Exception:
+                pass
         return False
     url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendPhoto"
     data = {"chat_id": OWNER_CHAT_ID, "caption": caption, "parse_mode": "Markdown"}
@@ -248,7 +254,7 @@ def execute_action(cmd: str) -> str:
     if clean == "__ACTION_SCREENSHOT__":
         img_path = "/tmp/hermes_screenshot.png"
         captured = capture_desktop_image(img_path)
-        if captured and os.path.exists(captured) and os.path.getsize(captured) > 5000:
+        if captured and os.path.exists(captured) and os.path.getsize(captured) > 15000:
             if send_tg_photo(captured, "📸 *Laptop Live Desktop Screenshot*"):
                 return "✅ Live Desktop screenshot captured & sent to chat!"
         return "❌ Screenshot capture failed: Display session inactive ya screen locked."
@@ -337,9 +343,9 @@ def execute_action(cmd: str) -> str:
         subprocess.run(["xdotool", "key", "--clearmodifiers", "Return"], env=env)
         time.sleep(0.5)
         confirm_path = "/tmp/hermes_key_confirm.png"
-        capture_desktop_image(confirm_path)
-        if os.path.exists(confirm_path) and os.path.getsize(confirm_path) > 0:
-            send_tg_photo(confirm_path, "⏎ *Approve (Enter) Sent!* Current screen state:")
+        captured = capture_desktop_image(confirm_path)
+        if captured and os.path.exists(captured) and os.path.getsize(captured) > 15000:
+            send_tg_photo(captured, "⏎ *Approve (Enter) Sent!* Current screen state:")
         return "⏎ Enter key sent to laptop!"
 
     if clean == "__ACTION_KEY_Y__":
@@ -347,9 +353,9 @@ def execute_action(cmd: str) -> str:
         subprocess.run(["xdotool", "key", "--clearmodifiers", "y", "Return"], env=env)
         time.sleep(0.5)
         confirm_path = "/tmp/hermes_key_confirm.png"
-        capture_desktop_image(confirm_path)
-        if os.path.exists(confirm_path) and os.path.getsize(confirm_path) > 0:
-            send_tg_photo(confirm_path, "🟢 *Send 'y' Sent!* Current screen state:")
+        captured = capture_desktop_image(confirm_path)
+        if captured and os.path.exists(captured) and os.path.getsize(captured) > 15000:
+            send_tg_photo(captured, "🟢 *Send 'y' Sent!* Current screen state:")
         return "🟢 'y' + Enter sent to laptop!"
 
     if clean == "__ACTION_KEY_N__":
@@ -357,9 +363,9 @@ def execute_action(cmd: str) -> str:
         subprocess.run(["xdotool", "key", "--clearmodifiers", "n", "Return"], env=env)
         time.sleep(0.5)
         confirm_path = "/tmp/hermes_key_confirm.png"
-        capture_desktop_image(confirm_path)
-        if os.path.exists(confirm_path) and os.path.getsize(confirm_path) > 0:
-            send_tg_photo(confirm_path, "🔴 *Send 'n' Sent!* Current screen state:")
+        captured = capture_desktop_image(confirm_path)
+        if captured and os.path.exists(captured) and os.path.getsize(captured) > 15000:
+            send_tg_photo(captured, "🔴 *Send 'n' Sent!* Current screen state:")
         return "🔴 'n' + Enter sent to laptop!"
 
     if clean == "__ACTION_KEY_CTRLC__":
@@ -367,9 +373,9 @@ def execute_action(cmd: str) -> str:
         subprocess.run(["xdotool", "key", "--clearmodifiers", "ctrl+c"], env=env)
         time.sleep(0.5)
         confirm_path = "/tmp/hermes_key_confirm.png"
-        capture_desktop_image(confirm_path)
-        if os.path.exists(confirm_path) and os.path.getsize(confirm_path) > 0:
-            send_tg_photo(confirm_path, "🛑 *Ctrl+C Sent!* Current screen state:")
+        captured = capture_desktop_image(confirm_path)
+        if captured and os.path.exists(captured) and os.path.getsize(captured) > 15000:
+            send_tg_photo(captured, "🛑 *Ctrl+C Sent!* Current screen state:")
         return "🛑 Ctrl+C sent to laptop!"
 
     if clean.startswith("__ACTION_TYPE__"):
@@ -727,14 +733,14 @@ def antigravity_watcher_thread():
                     if ("bypasssandbox" in line_lower or "sandbox" in line_lower) and (now - last_alert_time > 15):
                         last_alert_time = now
                         img_path = "/tmp/hermes_prompt_screen.png"
-                        capture_desktop_image(img_path)
+                        captured = capture_desktop_image(img_path)
                         alert_msg = (
                             "⚠️ *Antigravity Alert: Sandbox / Approval Required!*\n\n"
                             "Terminal ya tool sandbox confirmation mang raha hai.\n"
                             "Niche diye buttons se direct approve karein:"
                         )
-                        if os.path.exists(img_path) and os.path.getsize(img_path) > 0:
-                            send_tg_photo(img_path, alert_msg, reply_markup=sandbox_keyboard)
+                        if captured and os.path.exists(captured) and os.path.getsize(captured) > 15000:
+                            send_tg_photo(captured, alert_msg, reply_markup=sandbox_keyboard)
                         else:
                             send_tg_msg(alert_msg, reply_markup=sandbox_keyboard)
                         break

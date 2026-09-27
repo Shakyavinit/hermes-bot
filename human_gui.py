@@ -262,16 +262,40 @@ def human_open_app(app_name: str) -> str:
     return f"🚀 *App Opened Like a Human:* `{clean_name}`\nScreen par search karke launch kar diya hai!"
 
 
+def is_valid_screen_image(path: str) -> bool:
+    """Strictly verify the image is non-empty, >15KB, and NOT completely black."""
+    if not os.path.exists(path) or os.path.getsize(path) < 15000:
+        return False
+    try:
+        from PIL import Image
+        with Image.open(path) as im:
+            extrema = im.getextrema()
+            # If all bands have max value 0, it is solid black
+            if isinstance(extrema, tuple):
+                if isinstance(extrema[0], tuple):
+                    if all(band[1] == 0 for band in extrema):
+                        return False
+                else:
+                    if extrema[1] == 0:
+                        return False
+        return True
+    except Exception:
+        return False
+
+
 def capture_desktop_image(path: str = "/tmp/hermes_screenshot.png") -> Optional[str]:
     """
     Capture a clean, full-color screenshot of the active desktop under GNOME Wayland & X11.
-    Uses flameshot as primary Wayland capture, then falls back to scrot/import.
+    Uses flameshot as primary Wayland capture, then falls back to other tools.
+    Never returns a black image.
     """
     env = os.environ.copy()
     env["LC_ALL"] = "C.UTF-8"
     env["XDG_RUNTIME_DIR"] = "/run/user/1000"
     env["WAYLAND_DISPLAY"] = "wayland-0"
     env["DISPLAY"] = ":0"
+    env["DBUS_SESSION_BUS_ADDRESS"] = "unix:path=/run/user/1000/bus"
+    env["XDG_CURRENT_DESKTOP"] = "GNOME"
     mutter_auths = glob.glob("/run/user/1000/.mutter-Xwaylandauth*")
     if mutter_auths:
         env["XAUTHORITY"] = mutter_auths[0]
@@ -282,7 +306,7 @@ def capture_desktop_image(path: str = "/tmp/hermes_screenshot.png") -> Optional[
         except Exception:
             pass
 
-    # 1. Primary: Flameshot (GNOME Wayland native)
+    # 1. Primary: Flameshot full screen (GNOME Wayland native)
     try:
         subprocess.run(
             ["flameshot", "full", "-p", path],
@@ -291,28 +315,49 @@ def capture_desktop_image(path: str = "/tmp/hermes_screenshot.png") -> Optional[
             stderr=subprocess.DEVNULL,
             timeout=8,
         )
-        if os.path.exists(path) and os.path.getsize(path) > 10000:
+        if is_valid_screen_image(path):
             return path
     except Exception as e:
-        logger.debug(f"Flameshot capture exception: {e}")
+        logger.debug(f"Flameshot full capture exception: {e}")
 
-    # 2. Secondary fallback: Scrot
+    # 2. Secondary: Flameshot screen
     try:
-        subprocess.run(["scrot", "-z", "-o", path], env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=5)
-        if os.path.exists(path) and os.path.getsize(path) > 10000:
+        subprocess.run(
+            ["flameshot", "screen", "-p", path],
+            env=env,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            timeout=8,
+        )
+        if is_valid_screen_image(path):
             return path
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug(f"Flameshot screen capture exception: {e}")
 
     # 3. Tertiary fallback: ImageMagick import
     try:
         subprocess.run(["import", "-window", "root", path], env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=5)
-        if os.path.exists(path) and os.path.getsize(path) > 10000:
+        if is_valid_screen_image(path):
             return path
     except Exception:
         pass
 
-    return path if (os.path.exists(path) and os.path.getsize(path) > 0) else None
+    # 4. Quaternary fallback: Scrot (only if not black!)
+    try:
+        subprocess.run(["scrot", "-z", "-o", path], env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=5)
+        if is_valid_screen_image(path):
+            return path
+    except Exception:
+        pass
+
+    # If any artifact was created but is invalid/black, clean it up
+    if os.path.exists(path):
+        try:
+            os.remove(path)
+        except Exception:
+            pass
+
+    return None
 
 
 def call_gemini_vision(image_path: str, prompt: str) -> Optional[str]:
