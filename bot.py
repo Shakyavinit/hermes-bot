@@ -29,6 +29,10 @@ from bridge import (
     laptop_ai_status,
     laptop_alarm,
     laptop_apps,
+    laptop_auto_off,
+    laptop_auto_on,
+    laptop_auto_status,
+    laptop_auto_toggle,
     laptop_battery,
     laptop_cctv_toggle,
     laptop_clipboard,
@@ -155,6 +159,7 @@ SPY_REPLY_KEYBOARD = {
 # 5. AI & Sandbox Terminal Sub-menu (Send Box Approvals & Actions)
 AI_REPLY_KEYBOARD = {
     "keyboard": [
+        [{"text": "⭐ Best Option"}, {"text": "⚡ Auto Mode (Toggle)"}],
         [{"text": "✅ Approve (Enter)"}, {"text": "🟢 Send 'y'"}, {"text": "🔴 Send 'n'"}],
         [{"text": "🛑 Ctrl+C"}, {"text": "📊 AI Status"}, {"text": "📸 Screen Peek"}],
         [{"text": "⌨️ Type Text"}, {"text": "💻 Run Bash Cmd"}],
@@ -245,7 +250,7 @@ def get_laptop_control_keyboard() -> dict:
             ],
             [
                 {"text": "🤖 AI & Sandbox Keys", "callback_data": "lap_coder_menu"},
-                {"text": "📊 AI Status", "callback_data": "lap_ai_status"},
+                {"text": "⚡ Auto Mode", "callback_data": "lap_auto_toggle"},
             ],
             [
                 {"text": "🎙️ Record Mic (10s)", "callback_data": "lap_mic"},
@@ -277,11 +282,15 @@ def get_laptop_control_keyboard() -> dict:
 
 
 def get_coder_keyboard() -> dict:
-    """Keypad for remote terminal and sandbox approvals with Best Option highlighted."""
+    """Keypad for remote terminal and sandbox approvals with Best Option highlighted and Auto-Approve."""
     return {
         "inline_keyboard": [
             [
                 {"text": "⭐ (Best Option) Approve & Run", "callback_data": "lap_key_enter"},
+            ],
+            [
+                {"text": "⚡ Turn ON Auto-Approve", "callback_data": "lap_auto_on"},
+                {"text": "🔄 Toggle Auto Mode", "callback_data": "lap_auto_toggle"},
             ],
             [
                 {"text": "🟢 Always Allow ('y')", "callback_data": "lap_key_y"},
@@ -942,6 +951,54 @@ class TelegramBotRunner:
         # ======================================================================
         # 5. AI & Sandbox Terminal Actions
         # ======================================================================
+        if clean in ("⭐ Best Option", "/best", "/recommended") or clean_lower in ("best", "best option"):
+            res = laptop_key_enter()
+            tg_send_message(
+                chat_id,
+                "⭐ *Best Option Executed!*\n\n"
+                "📋 *Short Summary:* Recommended option select karke Enter bhej diya gaya hai.",
+                reply_markup=AI_REPLY_KEYBOARD,
+            )
+            return True
+
+        if clean in ("⚡ Auto Mode (Toggle)", "/auto", "/autotoggle") or clean_lower in ("auto", "auto mode", "auto approve", "autotoggle"):
+            res = laptop_auto_toggle()
+            tg_send_message(
+                chat_id,
+                f"🔄 *Auto Mode Toggled!*\n\n📋 *Short Summary:* {res}",
+                reply_markup=AI_REPLY_KEYBOARD,
+            )
+            return True
+
+        if clean in ("/auto on", "/autoon") or clean_lower in ("auto on", "autoon"):
+            res = laptop_auto_on()
+            tg_send_message(
+                chat_id,
+                "⚡ *Auto-Approve Activated!*\n\n"
+                "📋 *Short Summary:* Ab sandbox approvals aur questions agent khud execute karega.",
+                reply_markup=AI_REPLY_KEYBOARD,
+            )
+            return True
+
+        if clean in ("/auto off", "/autooff") or clean_lower in ("auto off", "autooff"):
+            res = laptop_auto_off()
+            tg_send_message(
+                chat_id,
+                "🛑 *Auto-Approve Deactivated!*\n\n"
+                "📋 *Short Summary:* Auto mode OFF ho gaya hai. Ab har approval aapse poocha jayega.",
+                reply_markup=AI_REPLY_KEYBOARD,
+            )
+            return True
+
+        if clean in ("/auto status", "/autostatus") or clean_lower in ("auto status",):
+            res = laptop_auto_status()
+            tg_send_message(
+                chat_id,
+                f"📊 *Auto-Approve Status:*\n\n📋 *Short Summary:* {res}",
+                reply_markup=AI_REPLY_KEYBOARD,
+            )
+            return True
+
         if clean in ("✅ Approve (Enter)", "/enter", "/approve") or clean_lower in ("approve", "enter", "ok"):
             res = laptop_key_enter()
             tg_send_message(chat_id, res, reply_markup=AI_REPLY_KEYBOARD)
@@ -1370,6 +1427,33 @@ class TelegramBotRunner:
                 chat_id,
                 "🤖 *Terminal & Sandbox Approval Keypad:*\nApproval button dabayein ya screen peek karein:",
                 reply_markup=get_coder_keyboard(),
+            )
+        elif data == "lap_auto_on":
+            if cq_msg_id:
+                tg_delete_message(chat_id, cq_msg_id)
+            res = laptop_auto_on()
+            tg_send_message(
+                chat_id,
+                "⚡ *Auto-Approve Activated!*\n\n"
+                "📋 *Short Summary:* Auto Mode ON ho gaya hai. Ab sandbox approvals aur questions agent khud automatically execute karega.",
+                reply_markup=ROOT_CHOICE_KEYBOARD,
+            )
+        elif data == "lap_auto_off":
+            if cq_msg_id:
+                tg_delete_message(chat_id, cq_msg_id)
+            res = laptop_auto_off()
+            tg_send_message(
+                chat_id,
+                "🛑 *Auto-Approve Deactivated!*\n\n"
+                "📋 *Short Summary:* Auto Mode OFF ho gaya hai. Ab har approval aapse poocha jayega.",
+                reply_markup=ROOT_CHOICE_KEYBOARD,
+            )
+        elif data == "lap_auto_toggle":
+            res = laptop_auto_toggle()
+            tg_send_message(
+                chat_id,
+                f"🔄 *Auto Mode Toggled!*\n\n📋 *Short Summary:* {res}",
+                reply_markup=ROOT_CHOICE_KEYBOARD,
             )
         elif data == "lap_key_enter":
             if cq_msg_id:

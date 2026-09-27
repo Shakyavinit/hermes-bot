@@ -128,6 +128,22 @@ def laptop_ai_status() -> str:
     return dispatch_to_laptop("__ACTION_AI_STATUS__")
 
 
+def laptop_auto_toggle() -> str:
+    return dispatch_to_laptop("__ACTION_AUTO_APPROVE_TOGGLE__")
+
+
+def laptop_auto_on() -> str:
+    return dispatch_to_laptop("__ACTION_AUTO_APPROVE_ON__")
+
+
+def laptop_auto_off() -> str:
+    return dispatch_to_laptop("__ACTION_AUTO_APPROVE_OFF__")
+
+
+def laptop_auto_status() -> str:
+    return dispatch_to_laptop("__ACTION_AUTO_APPROVE_STATUS__")
+
+
 # Audio, Mic, Clipboard, and Power Helpers
 def laptop_mic(seconds: int = 10) -> str:
     return dispatch_to_laptop(f"__ACTION_MIC__{seconds}", timeout=45)

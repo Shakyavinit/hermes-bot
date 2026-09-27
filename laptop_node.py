@@ -75,6 +75,39 @@ def release_camera_lock() -> None:
 
 
 
+AUTO_APPROVE_FILE = os.path.join(WORKSPACE_DIR, "auto_approve_state.json")
+
+
+def get_auto_approve_state() -> bool:
+    """Check if automatic sandbox approval is enabled."""
+    try:
+        if os.path.exists(AUTO_APPROVE_FILE):
+            with open(AUTO_APPROVE_FILE, "r") as f:
+                data = json.load(f)
+                return bool(data.get("auto_approve", False))
+    except Exception:
+        pass
+    return False
+
+
+def set_auto_approve_state(enabled: bool) -> bool:
+    """Save automatic sandbox approval state."""
+    try:
+        with open(AUTO_APPROVE_FILE, "w") as f:
+            json.dump({"auto_approve": enabled, "updated_at": time.time()}, f)
+        return True
+    except Exception as e:
+        logger.error(f"Error saving auto approve state: {e}")
+        return False
+
+
+def toggle_auto_approve_state() -> bool:
+    """Toggle auto approve state."""
+    new_state = not get_auto_approve_state()
+    set_auto_approve_state(new_state)
+    return new_state
+
+
 _active_prompt_msg_id: Optional[int] = None
 
 
@@ -405,6 +438,29 @@ def execute_action(cmd: str) -> str:
     if clean == "__ACTION_AI_STATUS__":
         return get_antigravity_status()
 
+    # 12b. Auto-Approve Mode Actions
+    if clean == "__ACTION_AUTO_APPROVE_TOGGLE__":
+        state = toggle_auto_approve_state()
+        if state:
+            return "⚡ Auto-Approve Mode: ON 🟢\nAb sandbox approvals aur best options automatically approve honge!"
+        return "⚡ Auto-Approve Mode: OFF 🔴\nManual approval mode active hai."
+
+    if clean == "__ACTION_AUTO_APPROVE_ON__":
+        set_auto_approve_state(True)
+        clear_active_prompt()
+        env = get_x11_env()
+        subprocess.run(["xdotool", "key", "--clearmodifiers", "Return"], env=env)
+        return "⚡ Auto-Approve Mode: ON 🟢\nCurrent prompt approve kar diya gaya hai aur ab aage ke approvals automatic honge!"
+
+    if clean == "__ACTION_AUTO_APPROVE_OFF__":
+        set_auto_approve_state(False)
+        return "⚡ Auto-Approve Mode: OFF 🔴\nManual approval mode active hai."
+
+    if clean == "__ACTION_AUTO_APPROVE_STATUS__":
+        state = get_auto_approve_state()
+        status_str = "ON 🟢" if state else "OFF 🔴"
+        return f"⚡ Auto-Approve Mode: {status_str}"
+
     # 13. Audio / Mic Recording
     if clean.startswith("__ACTION_MIC__"):
         sec = 10
@@ -700,8 +756,12 @@ def antigravity_watcher_thread():
                 {"text": "⭐ (Best Option) Approve & Run", "callback_data": "lap_key_enter"},
             ],
             [
+                {"text": "⚡ Turn ON Auto-Approve", "callback_data": "lap_auto_on"},
                 {"text": "🟢 Always Allow ('y')", "callback_data": "lap_key_y"},
+            ],
+            [
                 {"text": "🔴 Deny / Skip ('n')", "callback_data": "lap_key_n"},
+                {"text": "🛑 Cancel (Ctrl+C)", "callback_data": "lap_key_ctrlc"},
             ],
             [
                 {"text": "1️⃣ Choice 1", "callback_data": "lap_key_1"},
@@ -709,7 +769,6 @@ def antigravity_watcher_thread():
                 {"text": "3️⃣ Choice 3", "callback_data": "lap_key_3"},
             ],
             [
-                {"text": "🛑 Cancel (Ctrl+C)", "callback_data": "lap_key_ctrlc"},
                 {"text": "📸 Screen Peek", "callback_data": "lap_screenshot"},
             ],
         ]
@@ -754,6 +813,17 @@ def antigravity_watcher_thread():
                     if ("bypasssandbox" in line_lower or "sandbox" in line_lower) and (now - last_alert_time > 15):
                         last_alert_time = now
                         clear_active_prompt()
+
+                        # Check if Auto-Approve is enabled
+                        if get_auto_approve_state():
+                            env = get_x11_env()
+                            subprocess.run(["xdotool", "key", "--clearmodifiers", "Return"], env=env)
+                            send_tg_msg(
+                                "⚡ *Auto-Approved (Auto Mode ON)*\n\n"
+                                "📋 *Short Summary:* Sandbox approval automatically execute kar diya gaya hai (Enter sent). Task bina ruke chal raha hai."
+                            )
+                            break
+
                         img_path = "/tmp/hermes_prompt_screen.png"
                         captured = capture_desktop_image(img_path)
                         alert_msg = (
@@ -783,12 +853,31 @@ def antigravity_watcher_thread():
                                         q_text = q_obj.get("question", "Antigravity clarification required:")
                                         options = q_obj.get("options", [])
 
+                                        best_title = options[0] if options else "Best Option"
+                                        for opt in options:
+                                            if "(recommended)" in opt.lower():
+                                                best_title = opt
+                                                break
+
+                                        if get_auto_approve_state():
+                                            env = get_x11_env()
+                                            subprocess.run(["xdotool", "key", "--clearmodifiers", "Return"], env=env)
+                                            send_tg_msg(
+                                                "⭐ *Auto-Selected Best Option (Auto Mode ON)*\n\n"
+                                                f"📌 *Choice:* {best_title}\n"
+                                                "📋 *Short Summary:* Recommended option automatically select karke task continue kar diya gaya hai."
+                                            )
+                                            break
+
                                         opt_keyboard = []
                                         for idx, opt in enumerate(options):
                                             is_rec = "(recommended)" in opt.lower()
                                             label = f"⭐ {opt}" if is_rec else f"{idx+1}️⃣ {opt}"
                                             opt_keyboard.append([{"text": label[:38], "callback_data": f"lap_opt_{idx+1}"}])
-                                        opt_keyboard.append([{"text": "🛑 Cancel (Ctrl+C)", "callback_data": "lap_key_ctrlc"}])
+                                        opt_keyboard.append([
+                                            {"text": "⚡ Enable Auto-Approve", "callback_data": "lap_auto_on"},
+                                            {"text": "🛑 Cancel (Ctrl+C)", "callback_data": "lap_key_ctrlc"}
+                                        ])
 
                                         q_msg = (
                                             "❓ *Antigravity Question / Selection:*\n\n"
