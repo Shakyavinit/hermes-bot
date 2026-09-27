@@ -31,6 +31,7 @@ from human_gui import (
     human_type_text,
     inspect_screen_vision,
     analyze_screen_and_click,
+    capture_desktop_image,
 )
 
 CLOUD_URL = os.getenv("HERMES_CLOUD_URL", "https://hermes-bot-kqv8.onrender.com").rstrip("/")
@@ -219,12 +220,11 @@ def execute_action(cmd: str) -> str:
     # 1. Live Desktop Screenshot
     if clean == "__ACTION_SCREENSHOT__":
         img_path = "/tmp/hermes_screenshot.png"
-        env = get_x11_env()
-        res = subprocess.run(["scrot", "-z", "-o", img_path], env=env, capture_output=True)
-        if send_tg_photo(img_path, "📸 *Laptop Live Desktop Screenshot*"):
-            return "✅ Live Desktop screenshot captured & sent to chat!"
-        err_msg = res.stderr.decode("utf-8", errors="ignore").strip()
-        return f"❌ Screenshot capture failed: {err_msg if err_msg else 'Check display session'}"
+        captured = capture_desktop_image(img_path)
+        if captured and os.path.exists(captured) and os.path.getsize(captured) > 5000:
+            if send_tg_photo(captured, "📸 *Laptop Live Desktop Screenshot*"):
+                return "✅ Live Desktop screenshot captured & sent to chat!"
+        return "❌ Screenshot capture failed: Display session inactive ya screen locked."
 
     # 2. Live Front Camera Snapshot
     if clean == "__ACTION_WEBCAM__":
@@ -310,7 +310,7 @@ def execute_action(cmd: str) -> str:
         subprocess.run(["xdotool", "key", "--clearmodifiers", "Return"], env=env)
         time.sleep(0.5)
         confirm_path = "/tmp/hermes_key_confirm.png"
-        subprocess.run(["scrot", "-z", "-o", confirm_path], env=env)
+        capture_desktop_image(confirm_path)
         if os.path.exists(confirm_path) and os.path.getsize(confirm_path) > 0:
             send_tg_photo(confirm_path, "⏎ *Approve (Enter) Sent!* Current screen state:")
         return "⏎ Enter key sent to laptop!"
@@ -320,7 +320,7 @@ def execute_action(cmd: str) -> str:
         subprocess.run(["xdotool", "key", "--clearmodifiers", "y", "Return"], env=env)
         time.sleep(0.5)
         confirm_path = "/tmp/hermes_key_confirm.png"
-        subprocess.run(["scrot", "-z", "-o", confirm_path], env=env)
+        capture_desktop_image(confirm_path)
         if os.path.exists(confirm_path) and os.path.getsize(confirm_path) > 0:
             send_tg_photo(confirm_path, "🟢 *Send 'y' Sent!* Current screen state:")
         return "🟢 'y' + Enter sent to laptop!"
@@ -330,7 +330,7 @@ def execute_action(cmd: str) -> str:
         subprocess.run(["xdotool", "key", "--clearmodifiers", "n", "Return"], env=env)
         time.sleep(0.5)
         confirm_path = "/tmp/hermes_key_confirm.png"
-        subprocess.run(["scrot", "-z", "-o", confirm_path], env=env)
+        capture_desktop_image(confirm_path)
         if os.path.exists(confirm_path) and os.path.getsize(confirm_path) > 0:
             send_tg_photo(confirm_path, "🔴 *Send 'n' Sent!* Current screen state:")
         return "🔴 'n' + Enter sent to laptop!"
@@ -340,7 +340,7 @@ def execute_action(cmd: str) -> str:
         subprocess.run(["xdotool", "key", "--clearmodifiers", "ctrl+c"], env=env)
         time.sleep(0.5)
         confirm_path = "/tmp/hermes_key_confirm.png"
-        subprocess.run(["scrot", "-z", "-o", confirm_path], env=env)
+        capture_desktop_image(confirm_path)
         if os.path.exists(confirm_path) and os.path.getsize(confirm_path) > 0:
             send_tg_photo(confirm_path, "🛑 *Ctrl+C Sent!* Current screen state:")
         return "🛑 Ctrl+C sent to laptop!"
@@ -552,8 +552,7 @@ def execute_action(cmd: str) -> str:
         clicks = int(parts[3]) if len(parts) > 3 and parts[3].isdigit() else 1
         res = human_mouse_click(x, y, button=btn, clicks=clicks)
         img_path = "/tmp/hermes_mouse_click.png"
-        env = get_x11_env()
-        subprocess.run(["scrot", "-z", "-o", img_path], env=env)
+        capture_desktop_image(img_path)
         if os.path.exists(img_path):
             send_tg_photo(img_path, f"🖱️ {res}")
         return res
@@ -701,8 +700,7 @@ def antigravity_watcher_thread():
                     if ("bypasssandbox" in line_lower or "sandbox" in line_lower) and (now - last_alert_time > 15):
                         last_alert_time = now
                         img_path = "/tmp/hermes_prompt_screen.png"
-                        env = get_x11_env()
-                        subprocess.run(["scrot", "-z", "-o", img_path], env=env)
+                        capture_desktop_image(img_path)
                         alert_msg = (
                             "⚠️ *Antigravity Alert: Sandbox / Approval Required!*\n\n"
                             "Terminal ya tool sandbox confirmation mang raha hai.\n"

@@ -104,10 +104,11 @@ UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
 # Multi-Level Nested Bottom Reply Keyboards (Clean, Categorized & Extendable)
 # ==============================================================================
 
-# 1. Main Root Switcher (ONLY 2 Options when Bot Starts: Laptop & Cloud)
+# 1. Main Root Switcher (Laptop, Cloud & Human GUI)
 ROOT_CHOICE_KEYBOARD = {
     "keyboard": [
         [{"text": "💻 Laptop Mode"}, {"text": "☁️ Cloud Server"}],
+        [{"text": "🖱️ Human Screen & Mouse"}, {"text": "👁️ Screen Vision"}],
     ],
     "resize_keyboard": True,
     "is_persistent": True,

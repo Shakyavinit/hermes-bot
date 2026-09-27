@@ -257,18 +257,62 @@ def human_open_app(app_name: str) -> str:
 
     # 4. Capture screenshot
     screen_path = "/tmp/hermes_app_opened.png"
-    subprocess.run(["scrot", "-z", "-o", screen_path], env=env)
+    capture_desktop_image(screen_path)
 
     return f"🚀 *App Opened Like a Human:* `{clean_name}`\nScreen par search karke launch kar diya hai!"
 
 
 def capture_desktop_image(path: str = "/tmp/hermes_screenshot.png") -> Optional[str]:
-    """Capture a clean screenshot of the active desktop."""
-    env = get_x11_env()
-    res = subprocess.run(["scrot", "-z", "-o", path], env=env, capture_output=True)
-    if os.path.exists(path) and os.path.getsize(path) > 0:
-        return path
-    return None
+    """
+    Capture a clean, full-color screenshot of the active desktop under GNOME Wayland & X11.
+    Uses flameshot as primary Wayland capture, then falls back to scrot/import.
+    """
+    env = os.environ.copy()
+    env["LC_ALL"] = "C.UTF-8"
+    env["XDG_RUNTIME_DIR"] = "/run/user/1000"
+    env["WAYLAND_DISPLAY"] = "wayland-0"
+    env["DISPLAY"] = ":0"
+    mutter_auths = glob.glob("/run/user/1000/.mutter-Xwaylandauth*")
+    if mutter_auths:
+        env["XAUTHORITY"] = mutter_auths[0]
+
+    if os.path.exists(path):
+        try:
+            os.remove(path)
+        except Exception:
+            pass
+
+    # 1. Primary: Flameshot (GNOME Wayland native)
+    try:
+        subprocess.run(
+            ["flameshot", "full", "-p", path],
+            env=env,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            timeout=8,
+        )
+        if os.path.exists(path) and os.path.getsize(path) > 10000:
+            return path
+    except Exception as e:
+        logger.debug(f"Flameshot capture exception: {e}")
+
+    # 2. Secondary fallback: Scrot
+    try:
+        subprocess.run(["scrot", "-z", "-o", path], env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=5)
+        if os.path.exists(path) and os.path.getsize(path) > 10000:
+            return path
+    except Exception:
+        pass
+
+    # 3. Tertiary fallback: ImageMagick import
+    try:
+        subprocess.run(["import", "-window", "root", path], env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=5)
+        if os.path.exists(path) and os.path.getsize(path) > 10000:
+            return path
+    except Exception:
+        pass
+
+    return path if (os.path.exists(path) and os.path.getsize(path) > 0) else None
 
 
 def call_gemini_vision(image_path: str, prompt: str) -> Optional[str]:
