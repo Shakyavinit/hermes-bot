@@ -37,6 +37,7 @@ load_env()
 # API Keys & Secrets
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 GEMINI_API_KEY_2 = os.getenv("GEMINI_API_KEY_2", "")
 _keys_raw = os.getenv("GEMINI_API_KEYS", "")
@@ -47,7 +48,7 @@ else:
 WORKSPACE_DIR = Path(os.getenv("WORKSPACE_DIR", str(BASE_DIR))).resolve()
 
 # Default models
-GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
+GROQ_MODEL = os.getenv("GROQ_MODEL", "openai/gpt-oss-120b")
 GEMINI_MODELS = [
     "gemini-flash-lite-latest",
     "gemini-flash-latest",

@@ -14,6 +14,8 @@ import requests
 from config import (
     GEMINI_API_KEYS,
     GEMINI_MODELS,
+    GROQ_API_KEY,
+    GROQ_MODEL,
     WORKSPACE_DIR,
 )
 from memory import add_message, get_all_facts, get_history
@@ -97,6 +99,36 @@ class AgentEngine:
 
         return None
 
+    def _call_groq_fallback(self, user_message: str) -> Optional[str]:
+        """High-speed emergency fallback to Groq Cloud (GPT-OSS-120B / Qwen) when Gemini is unavailable."""
+        if not GROQ_API_KEY:
+            return None
+        url = "https://api.groq.com/openai/v1/chat/completions"
+        headers = {
+            "Authorization": f"Bearer {GROQ_API_KEY}",
+            "Content-Type": "application/json",
+        }
+        for model in [GROQ_MODEL, "openai/gpt-oss-120b", "qwen/qwen3.8-27b"]:
+            payload = {
+                "model": model,
+                "messages": [
+                    {"role": "system", "content": SYSTEM_PROMPT},
+                    {"role": "user", "content": user_message},
+                ],
+                "temperature": 0.3,
+            }
+            try:
+                resp = requests.post(url, json=payload, headers=headers, timeout=20)
+                if resp.status_code == 200:
+                    data = resp.json()
+                    choices = data.get("choices", [])
+                    if choices:
+                        return choices[0].get("message", {}).get("content", "").strip()
+            except Exception as e:
+                logger.warning(f"Groq fallback failed for {model}: {e}")
+                continue
+        return None
+
     def run_task(
         self,
         session_id: str,
@@ -156,7 +188,14 @@ class AgentEngine:
             model_content = self._call_gemini_api(contents, with_tools=True)
 
             if not model_content:
-                return "⚠️ Error: Unable to contact Gemini API backend. Please verify your connection."
+                # Emergency fast fallback to Groq Cloud
+                if progress_callback:
+                    progress_callback("Failing over to Groq LPU engine...")
+                groq_reply = self._call_groq_fallback(user_message)
+                if groq_reply:
+                    add_message(session_id, "assistant", groq_reply)
+                    return groq_reply
+                return "⚠️ Error: Gemini aur Groq dono backend reach nahi ho rahe hain. Kripya network check karein."
 
             parts = model_content.get("parts", [])
 
