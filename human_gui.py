@@ -371,106 +371,122 @@ def call_gemini_vision(image_path: str, prompt: str) -> Optional[str]:
 def inspect_screen_vision(instruction: str = "Describe what is currently visible on screen") -> str:
     """
     Capture live screenshot and use Gemini Vision to explain what is currently displayed on screen.
+    Auto-cleans temporary screenshot after analysis.
     """
     img_path = capture_desktop_image()
     if not img_path:
         return "❌ Error: Could not capture screen image for visual inspection."
 
     try:
-        with Image.open(img_path) as im:
-            w, h = im.size
-    except Exception:
-        w, h = 1920, 1080
+        try:
+            with Image.open(img_path) as im:
+                w, h = im.size
+        except Exception:
+            w, h = 1920, 1080
 
-    prompt = (
-        f"You are a computer vision desktop assistant. Resolution: {w}x{h}.\n"
-        f"User query / instruction: {instruction}\n\n"
-        "Provide a concise, clear description in natural Hindi/Hinglish of:\n"
-        "1. Active open applications and windows.\n"
-        "2. Main content displayed (e.g. website, code editor, terminal, media player).\n"
-        "3. Key buttons, search bars, or interactive elements visible.\n"
-        "Keep it direct and informative (under 4-5 bullet points)."
-    )
+        prompt = (
+            f"You are a computer vision desktop assistant. Resolution: {w}x{h}.\n"
+            f"User query / instruction: {instruction}\n\n"
+            "Provide a concise, clear description in natural Hindi/Hinglish of:\n"
+            "1. Active open applications and windows.\n"
+            "2. Main content displayed (e.g. website, code editor, terminal, media player).\n"
+            "3. Key buttons, search bars, or interactive elements visible.\n"
+            "Keep it direct and informative (under 4-5 bullet points)."
+        )
 
-    result = call_gemini_vision(img_path, prompt)
-    if result:
-        return f"👁️ *Visual Screen Analysis ({w}x{h}):*\n\n{result}"
-    return "⚠️ Vision AI screen ko process nahi kar saka. Please check network/API key."
+        result = call_gemini_vision(img_path, prompt)
+        if result:
+            return f"👁️ *Visual Screen Analysis ({w}x{h}):*\n\n{result}"
+        return "⚠️ Vision AI screen ko process nahi kar saka. Please check network/API key."
+    finally:
+        try:
+            if img_path and os.path.exists(img_path):
+                os.remove(img_path)
+        except Exception:
+            pass
 
 
 def analyze_screen_and_click(target_element: str, instruction: str = "") -> str:
     """
     Inspect the screen using Gemini Vision to find target_element,
     extract exact (x, y) coordinates, glide the mouse like a human, and click it.
+    Auto-cleans temporary images after execution.
     """
     img_path = capture_desktop_image()
     if not img_path:
         return "❌ Error: Could not capture screen image."
 
+    confirm_img = None
     try:
-        with Image.open(img_path) as im:
-            w, h = im.size
-    except Exception:
-        w, h = 1920, 1080
+        try:
+            with Image.open(img_path) as im:
+                w, h = im.size
+        except Exception:
+            w, h = 1920, 1080
 
-    prompt = (
-        f"You are a GUI Automation Vision Agent. The screen resolution is {w}x{h} pixels.\n"
-        f"Target element to find and click: '{target_element}'.\n"
-        f"Additional context: '{instruction}'.\n\n"
-        "Carefully analyze this desktop screenshot. Identify where the target element is located.\n"
-        "Return ONLY a pure JSON object (no markdown code blocks, no other text) with this format:\n"
-        "{\n"
-        '  "found": true,\n'
-        f'  "x": <integer x coordinate between 0 and {w}>,\n'
-        f'  "y": <integer y coordinate between 0 and {h}>,\n'
-        '  "element_name": "<text or label of the element found>",\n'
-        '  "screen_summary": "<1 sentence summary of what is on screen>"\n'
-        "}\n"
-        'If the element is not found on screen, return: {"found": false, "screen_summary": "..."}'
-    )
+        prompt = (
+            f"You are a GUI Automation Vision Agent. The screen resolution is {w}x{h} pixels.\n"
+            f"Target element to find and click: '{target_element}'.\n"
+            f"Additional context: '{instruction}'.\n\n"
+            "Carefully analyze this desktop screenshot. Identify where the target element is located.\n"
+            "Return ONLY a pure JSON object (no markdown code blocks, no other text) with this format:\n"
+            "{\n"
+            '  "found": true,\n'
+            f'  "x": <integer x coordinate between 0 and {w}>,\n'
+            f'  "y": <integer y coordinate between 0 and {h}>,\n'
+            '  "element_name": "<text or label of the element found>",\n'
+            '  "screen_summary": "<1 sentence summary of what is on screen>"\n'
+            "}\n"
+            'If the element is not found on screen, return: {"found": false, "screen_summary": "..."}'
+        )
 
-    vision_out = call_gemini_vision(img_path, prompt)
-    if not vision_out:
-        return f"⚠️ Vision AI couldn't locate '{target_element}' on screen."
+        vision_out = call_gemini_vision(img_path, prompt)
+        if not vision_out:
+            return f"⚠️ Vision AI couldn't locate '{target_element}' on screen."
 
-    # Parse JSON from model output
-    clean_json = vision_out.strip()
-    if clean_json.startswith("```"):
-        clean_json = re.sub(r"^```[a-zA-Z]*\n", "", clean_json)
-        clean_json = re.sub(r"\n```$", "", clean_json).strip()
+        clean_json = vision_out.strip()
+        if clean_json.startswith("```"):
+            clean_json = re.sub(r"^```[a-zA-Z]*\n", "", clean_json)
+            clean_json = re.sub(r"\n```$", "", clean_json).strip()
 
-    try:
-        data = json.loads(clean_json)
-    except Exception:
-        # Fallback regex search for x and y
-        m_x = re.search(r'"x"\s*:\s*(\d+)', clean_json)
-        m_y = re.search(r'"y"\s*:\s*(\d+)', clean_json)
-        if m_x and m_y:
-            data = {"found": True, "x": int(m_x.group(1)), "y": int(m_y.group(1)), "element_name": target_element}
-        else:
-            return f"👁️ Screen Summary:\n{vision_out}\n\n⚠️ Target '{target_element}' ke coordinates extract nahi ho paye."
+        try:
+            data = json.loads(clean_json)
+        except Exception:
+            m_x = re.search(r'"x"\s*:\s*(\d+)', clean_json)
+            m_y = re.search(r'"y"\s*:\s*(\d+)', clean_json)
+            if m_x and m_y:
+                data = {"found": True, "x": int(m_x.group(1)), "y": int(m_y.group(1)), "element_name": target_element}
+            else:
+                return f"👁️ Screen Summary:\n{vision_out}\n\n⚠️ Target '{target_element}' ke coordinates extract nahi ho paye."
 
-    if not data.get("found"):
-        summary = data.get("screen_summary", "Element screen par nahi mila.")
-        return f"❌ Target '{target_element}' screen par nahi mila.\n\nSummary: {summary}"
+        if not data.get("found"):
+            summary = data.get("screen_summary", "Element screen par nahi mila.")
+            return f"❌ Target '{target_element}' screen par nahi mila.\n\nSummary: {summary}"
 
-    x = int(data.get("x", 0))
-    y = int(data.get("y", 0))
-    el_name = data.get("element_name", target_element)
-    summary = data.get("screen_summary", "")
+        x = int(data.get("x", 0))
+        y = int(data.get("y", 0))
+        el_name = data.get("element_name", target_element)
+        summary = data.get("screen_summary", "")
 
-    # Execute human mouse glide and click!
-    human_mouse_click(x, y, button="left", clicks=1)
+        # Execute human mouse glide and click!
+        human_mouse_click(x, y, button="left", clicks=1)
 
-    # Capture follow-up confirmation screenshot
-    confirm_img = "/tmp/hermes_clicked_state.png"
-    time.sleep(0.6)
-    capture_desktop_image(confirm_img)
+        # Capture follow-up confirmation screenshot
+        confirm_img = "/tmp/hermes_clicked_state.png"
+        time.sleep(0.6)
+        capture_desktop_image(confirm_img)
 
-    return (
-        f"🎯 *Target Found & Clicked like a Human!*\n\n"
-        f"• **Element:** {el_name}\n"
-        f"• **Screen Coordinates:** `(x={x}, y={y})`\n"
-        f"• **Context:** {summary}\n\n"
-        "Mouse smoothly glide hoke button par click ho gaya hai!"
-    )
+        return (
+            f"🎯 *Target Found & Clicked like a Human!*\n\n"
+            f"• **Element:** {el_name}\n"
+            f"• **Screen Coordinates:** `(x={x}, y={y})`\n"
+            f"• **Context:** {summary}\n\n"
+            "Mouse smoothly glide hoke button par click ho gaya hai!"
+        )
+    finally:
+        for fpath in (img_path, confirm_img):
+            if fpath and os.path.exists(fpath):
+                try:
+                    os.remove(fpath)
+                except Exception:
+                    pass

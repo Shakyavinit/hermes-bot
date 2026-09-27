@@ -93,14 +93,15 @@ def send_tg_msg(text: str, reply_markup: Optional[dict] = None) -> bool:
         return False
 
 
-def send_tg_photo(file_path: str, caption: str, reply_markup: Optional[dict] = None) -> bool:
-    """Send photo directly to the owner on Telegram."""
+def send_tg_photo(file_path: str, caption: str, reply_markup: Optional[dict] = None, auto_delete: bool = True) -> bool:
+    """Send photo directly to the owner on Telegram and auto-delete local temporary file."""
     if not os.path.exists(file_path) or os.path.getsize(file_path) == 0:
         return False
     url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendPhoto"
     data = {"chat_id": OWNER_CHAT_ID, "caption": caption, "parse_mode": "Markdown"}
     if reply_markup:
         data["reply_markup"] = json.dumps(reply_markup)
+    success = False
     try:
         with open(file_path, "rb") as f:
             resp = requests.post(
@@ -109,17 +110,26 @@ def send_tg_photo(file_path: str, caption: str, reply_markup: Optional[dict] = N
                 files={"photo": f},
                 timeout=25,
             )
-            return resp.status_code == 200 and resp.json().get("ok")
+            success = (resp.status_code == 200 and resp.json().get("ok"))
+            return success
     except Exception as e:
         logger.error(f"Error sending photo to Telegram: {e}")
         return False
+    finally:
+        if auto_delete:
+            try:
+                if os.path.exists(file_path):
+                    os.remove(file_path)
+            except Exception:
+                pass
 
 
-def send_tg_voice(file_path: str, caption: str) -> bool:
-    """Send audio/voice note directly to the owner on Telegram."""
+def send_tg_voice(file_path: str, caption: str, auto_delete: bool = True) -> bool:
+    """Send audio/voice note directly to the owner on Telegram and auto-delete local file."""
     if not os.path.exists(file_path) or os.path.getsize(file_path) == 0:
         return False
     url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendVoice"
+    success = False
     try:
         with open(file_path, "rb") as f:
             resp = requests.post(
@@ -128,20 +138,29 @@ def send_tg_voice(file_path: str, caption: str) -> bool:
                 files={"voice": f},
                 timeout=30,
             )
-            return resp.status_code == 200 and resp.json().get("ok")
+            success = (resp.status_code == 200 and resp.json().get("ok"))
+            return success
     except Exception as e:
         logger.error(f"Error sending voice note to Telegram: {e}")
         return False
+    finally:
+        if auto_delete:
+            try:
+                if os.path.exists(file_path):
+                    os.remove(file_path)
+            except Exception:
+                pass
 
 
-def send_tg_video(file_path: str, caption: str, reply_markup: Optional[dict] = None) -> bool:
-    """Send MP4 video clip directly to the owner on Telegram."""
+def send_tg_video(file_path: str, caption: str, reply_markup: Optional[dict] = None, auto_delete: bool = True) -> bool:
+    """Send MP4 video clip directly to the owner on Telegram and auto-delete local file."""
     if not os.path.exists(file_path) or os.path.getsize(file_path) == 0:
         return False
     url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendVideo"
     data = {"chat_id": OWNER_CHAT_ID, "caption": caption, "parse_mode": "Markdown"}
     if reply_markup:
         data["reply_markup"] = json.dumps(reply_markup)
+    success = False
     try:
         with open(file_path, "rb") as f:
             resp = requests.post(
@@ -150,10 +169,18 @@ def send_tg_video(file_path: str, caption: str, reply_markup: Optional[dict] = N
                 files={"video": f},
                 timeout=40,
             )
-            return resp.status_code == 200 and resp.json().get("ok")
+            success = (resp.status_code == 200 and resp.json().get("ok"))
+            return success
     except Exception as e:
         logger.error(f"Error sending video to Telegram: {e}")
         return False
+    finally:
+        if auto_delete:
+            try:
+                if os.path.exists(file_path):
+                    os.remove(file_path)
+            except Exception:
+                pass
 
 
 def get_latest_transcript_path() -> Optional[str]:
@@ -914,6 +941,31 @@ def heartbeat_thread() -> None:
         time.sleep(5)
 
 
+def media_janitor_thread() -> None:
+    """Background janitor that periodically purges old temporary screenshots and media files."""
+    logger.info("Media Janitor active: Auto-cleaning temp images and media.")
+    while True:
+      try:
+        patterns = [
+            "/tmp/hermes_*",
+            "/tmp/flame*",
+            "/tmp/test_capture*",
+            "/tmp/live_test*",
+        ]
+        now = time.time()
+        for pat in patterns:
+          for fpath in glob.glob(pat):
+            try:
+              if now - os.path.getmtime(fpath) > 90:
+                os.remove(fpath)
+                logger.debug(f"Janitor removed stale temp file: {fpath}")
+            except Exception:
+              pass
+      except Exception as e:
+        logger.debug(f"Janitor error: {e}")
+      time.sleep(180)
+
+
 def start_node() -> None:
     logger.info("=" * 60)
     logger.info("💻 Hermes Laptop Live Control Node Started")
@@ -928,6 +980,7 @@ def start_node() -> None:
     threading.Thread(target=intruder_watcher_thread, daemon=True).start()
     threading.Thread(target=cctv_watcher_thread, daemon=True).start()
     threading.Thread(target=charger_watcher_thread, daemon=True).start()
+    threading.Thread(target=media_janitor_thread, daemon=True).start()
 
     consecutive_errors = 0
 
