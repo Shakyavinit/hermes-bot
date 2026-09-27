@@ -1,7 +1,30 @@
 """
 Hermes Agent Tools Module
-Provides executable tools for the autonomous agent:
-- execute_bash
+Provides comprehensive executable tools for the autonomous Gemini agent:
+- execute_bash (auto-targets physical laptop when online, cloud if offline)
+- execute_on_laptop
+- execute_cloud_bash
+- capture_laptop_screenshot
+- capture_laptop_webcam
+- capture_laptop_video
+- record_laptop_mic
+- toggle_laptop_cctv
+- trigger_laptop_alarm
+- stop_laptop_alarm
+- find_laptop_location
+- ghost_mode_screen_off
+- screen_on
+- get_laptop_battery
+- control_laptop_volume
+- control_laptop_media
+- lock_laptop_screen
+- get_laptop_wifi
+- get_laptop_apps
+- open_url_on_laptop
+- play_music_on_laptop
+- stop_music_on_laptop
+- speak_on_laptop
+- send_laptop_key
 - read_file
 - write_file
 - list_directory
@@ -20,10 +43,47 @@ from typing import Any, Callable, Dict, List
 import requests
 
 from config import WORKSPACE_DIR
+from bridge import (
+    dispatch_to_laptop,
+    is_laptop_online,
+    laptop_ai_status,
+    laptop_alarm,
+    laptop_apps,
+    laptop_battery,
+    laptop_cctv_toggle,
+    laptop_clipboard,
+    laptop_ghost_mode,
+    laptop_key_ctrlc,
+    laptop_key_enter,
+    laptop_key_n,
+    laptop_key_y,
+    laptop_location,
+    laptop_lock,
+    laptop_mic,
+    laptop_mute,
+    laptop_open_url,
+    laptop_play_music,
+    laptop_playpause,
+    laptop_popup,
+    laptop_power_poweroff,
+    laptop_power_reboot,
+    laptop_power_sleep,
+    laptop_screen_on,
+    laptop_screenshot,
+    laptop_speak,
+    laptop_stop_alarm,
+    laptop_stop_music,
+    laptop_type,
+    laptop_vol_down,
+    laptop_vol_up,
+    laptop_webcam,
+    laptop_webcam_video,
+    laptop_wifi,
+)
 
 
-def execute_bash(command: str, timeout: int = 60) -> str:
-    """Execute a bash command in the workspace directory with timeout and safety checks."""
+def _execute_cloud_bash(command: str, timeout: int = 60) -> str:
+    """Execute a bash command locally in the workspace directory (cloud host)."""
     if not command.strip():
         return "Error: Empty command provided."
 
@@ -49,7 +109,6 @@ def execute_bash(command: str, timeout: int = 60) -> str:
         res.append(f"Exit Code: {code}")
 
         out_str = "\n".join(res)
-        # Cap output to 8000 characters
         if len(out_str) > 8000:
             out_str = out_str[:4000] + "\n...[Output truncated]...\n" + out_str[-4000:]
         return out_str if out_str else "(Command finished with empty output)"
@@ -59,6 +118,160 @@ def execute_bash(command: str, timeout: int = 60) -> str:
         return f"Error executing command: {str(e)}"
 
 
+def execute_bash(command: str, timeout: int = 60) -> str:
+    """
+    Execute any bash shell command.
+    Automatically routes to physical laptop if connected; falls back to cloud server if laptop is offline.
+    """
+    return smart_execute(command, prefer_laptop=True)
+
+
+def execute_on_laptop(command: str) -> str:
+    """Execute a bash command strictly on the user's physical laptop."""
+    if not is_laptop_online():
+        return "⚠️ Laptop is currently OFFLINE (laptop band hai ya laptop_node disconnect hai)."
+    return dispatch_to_laptop(command)
+
+
+def execute_cloud_bash(command: str, timeout: int = 60) -> str:
+    """Execute a bash command strictly on the 24/7 Render cloud container."""
+    return _execute_cloud_bash(command, timeout)
+
+
+def smart_execute(command: str, prefer_laptop: bool = True) -> str:
+    """Execute command: runs on physical laptop if connected, otherwise automatically executes on cloud server."""
+    if prefer_laptop and is_laptop_online():
+        res = dispatch_to_laptop(command)
+        return f"💻 *Physical Laptop:*\n{res}"
+    else:
+        res = _execute_cloud_bash(command)
+        if prefer_laptop and not is_laptop_online():
+            return f"ℹ️ *(Laptop offline tha, ☁️ Cloud Server par run kiya)*\n\n{res}"
+        return f"☁️ *Cloud Server:*\n{res}"
+
+
+# Physical Laptop Remote Controls
+def capture_laptop_screenshot() -> str:
+    """Capture a live screenshot of the user's laptop desktop and send it to Telegram."""
+    return laptop_screenshot()
+
+
+def capture_laptop_webcam() -> str:
+    """Capture a live front camera photo from the user's laptop and send it to Telegram."""
+    return laptop_webcam()
+
+
+def capture_laptop_video() -> str:
+    """Record a 10-second live webcam video clip with audio from laptop and send to Telegram."""
+    return laptop_webcam_video()
+
+
+def record_laptop_mic(seconds: int = 10) -> str:
+    """Record audio from laptop room microphone and send as a voice note to Telegram."""
+    return laptop_mic(seconds)
+
+
+def toggle_laptop_cctv() -> str:
+    """Toggle CCTV motion monitoring alert on laptop webcam."""
+    return laptop_cctv_toggle()
+
+
+def trigger_laptop_alarm() -> str:
+    """Sound a loud 100% volume siren alarm on the laptop."""
+    return laptop_alarm()
+
+
+def stop_laptop_alarm() -> str:
+    """Stop the siren alarm on the laptop."""
+    return laptop_stop_alarm()
+
+
+def find_laptop_location() -> str:
+    """Get live physical location, public IP, city, and Google Maps pin of laptop."""
+    return laptop_location()
+
+
+def ghost_mode_screen_off() -> str:
+    """Turn OFF the laptop display stealthily while keeping background processes/downloads running."""
+    return laptop_ghost_mode()
+
+
+def screen_on() -> str:
+    """Turn the laptop screen back ON."""
+    return laptop_screen_on()
+
+
+def get_laptop_battery() -> str:
+    """Get live battery percentage, charging state, and remaining runtime of laptop."""
+    return laptop_battery()
+
+
+def control_laptop_volume(action: str) -> str:
+    """Control laptop speaker volume: 'up', 'down', or 'mute'."""
+    act = action.lower()
+    if act in ("up", "increase", "+"):
+        return laptop_vol_up()
+    elif act in ("down", "decrease", "-"):
+        return laptop_vol_down()
+    else:
+        return laptop_mute()
+
+
+def control_laptop_media(action: str = "play_pause") -> str:
+    """Play or pause active media/music player on laptop."""
+    return laptop_playpause()
+
+
+def lock_laptop_screen() -> str:
+    """Instantly lock the physical laptop display."""
+    return laptop_lock()
+
+
+def get_laptop_wifi() -> str:
+    """Get connected Wi-Fi network name, signal strength, and local IP."""
+    return laptop_wifi()
+
+
+def get_laptop_apps() -> str:
+    """List the top running applications and processes on the laptop."""
+    return laptop_apps()
+
+
+def open_url_on_laptop(url: str) -> str:
+    """Open a website URL in the default browser on the laptop."""
+    return laptop_open_url(url)
+
+
+def play_music_on_laptop(query: str) -> str:
+    """Search and play a song or music on laptop speakers via mpv/YouTube."""
+    return laptop_play_music(query)
+
+
+def stop_music_on_laptop() -> str:
+    """Stop any music or audio currently playing on the laptop."""
+    return laptop_stop_music()
+
+
+def speak_on_laptop(text: str) -> str:
+    """Speak text out loud on laptop speakers using text-to-speech."""
+    return laptop_speak(text)
+
+
+def send_laptop_key(key: str) -> str:
+    """Simulate keypress on active laptop window: 'enter' (approve), 'y', 'n', or 'ctrl+c'."""
+    k = key.lower().strip()
+    if "enter" in k or "approve" in k:
+        return laptop_key_enter()
+    elif k in ("y", "yes"):
+        return laptop_key_y()
+    elif k in ("n", "no"):
+        return laptop_key_n()
+    elif "ctrl" in k or "cancel" in k:
+        return laptop_key_ctrlc()
+    return laptop_key_enter()
+
+
+# File System & Standard Diagnostic Tools
 def resolve_path(filepath: str) -> Path:
     """Resolve file path relative to workspace directory."""
     p = Path(filepath)
@@ -157,100 +370,33 @@ def fetch_url(url: str, timeout: int = 15) -> str:
         return f"Error fetching URL: {str(e)}"
 
 
-from bridge import (
-    dispatch_to_laptop,
-    is_laptop_online,
-    laptop_apps,
-    laptop_battery,
-    laptop_lock,
-    laptop_mute,
-    laptop_playpause,
-    laptop_screenshot,
-    laptop_vol_down,
-    laptop_vol_up,
-    laptop_webcam,
-    laptop_wifi,
-)
-
-
-def execute_on_laptop(command: str) -> str:
-    """Execute a bash command directly on user's physical laptop if connected."""
-    if not is_laptop_online():
-        return "⚠️ Laptop is currently OFFLINE (laptop band hai ya laptop_node disconnect hai)."
-    return dispatch_to_laptop(command)
-
-
-def smart_execute(command: str, prefer_laptop: bool = True) -> str:
-    """Execute command: runs on physical laptop if connected, otherwise automatically executes on 24/7 cloud server."""
-    if prefer_laptop and is_laptop_online():
-        res = dispatch_to_laptop(command)
-        return f"💻 *Physical Laptop:*\n{res}"
-    else:
-        res = execute_bash(command)
-        if prefer_laptop and not is_laptop_online():
-            return f"ℹ️ *(Laptop offline tha, ☁️ Cloud Server par run kiya)*\n\n{res}"
-        return f"☁️ *Cloud Server:*\n{res}"
-
-
-def capture_laptop_screenshot() -> str:
-    """Capture a live screenshot of the user's laptop desktop and send it to Telegram."""
-    return laptop_screenshot()
-
-
-def capture_laptop_webcam() -> str:
-    """Capture a live front camera photo from the user's laptop and send it to Telegram."""
-    return laptop_webcam()
-
-
-def get_laptop_battery() -> str:
-    """Get live battery percentage, charging state, and remaining runtime of laptop."""
-    return laptop_battery()
-
-
-def control_laptop_volume(action: str) -> str:
-    """Control laptop speaker volume: 'up', 'down', or 'mute'."""
-    act = action.lower()
-    if act in ("up", "increase", "+"):
-        return laptop_vol_up()
-    elif act in ("down", "decrease", "-"):
-        return laptop_vol_down()
-    else:
-        return laptop_mute()
-
-
-def control_laptop_media(action: str = "play_pause") -> str:
-    """Play or pause active media/music player on laptop."""
-    return laptop_playpause()
-
-
-def lock_laptop_screen() -> str:
-    """Instantly lock the physical laptop display."""
-    return laptop_lock()
-
-
-def get_laptop_wifi() -> str:
-    """Get connected Wi-Fi network name, signal strength, and local IP."""
-    return laptop_wifi()
-
-
-def get_laptop_apps() -> str:
-    """List the top running applications and processes on the laptop."""
-    return laptop_apps()
-
-
 # Tool Registry & Schemas
 TOOLS_MAP: Dict[str, Callable] = {
     "execute_bash": execute_bash,
     "execute_on_laptop": execute_on_laptop,
+    "execute_cloud_bash": execute_cloud_bash,
     "smart_execute": smart_execute,
     "capture_laptop_screenshot": capture_laptop_screenshot,
     "capture_laptop_webcam": capture_laptop_webcam,
+    "capture_laptop_video": capture_laptop_video,
+    "record_laptop_mic": record_laptop_mic,
+    "toggle_laptop_cctv": toggle_laptop_cctv,
+    "trigger_laptop_alarm": trigger_laptop_alarm,
+    "stop_laptop_alarm": stop_laptop_alarm,
+    "find_laptop_location": find_laptop_location,
+    "ghost_mode_screen_off": ghost_mode_screen_off,
+    "screen_on": screen_on,
     "get_laptop_battery": get_laptop_battery,
     "control_laptop_volume": control_laptop_volume,
     "control_laptop_media": control_laptop_media,
     "lock_laptop_screen": lock_laptop_screen,
     "get_laptop_wifi": get_laptop_wifi,
     "get_laptop_apps": get_laptop_apps,
+    "open_url_on_laptop": open_url_on_laptop,
+    "play_music_on_laptop": play_music_on_laptop,
+    "stop_music_on_laptop": stop_music_on_laptop,
+    "speak_on_laptop": speak_on_laptop,
+    "send_laptop_key": send_laptop_key,
     "read_file": read_file,
     "write_file": write_file,
     "list_directory": list_directory,
@@ -261,13 +407,13 @@ TOOLS_MAP: Dict[str, Callable] = {
 GEMINI_FUNCTION_DECLARATIONS = [
     {
         "name": "execute_bash",
-        "description": "Execute any Linux bash shell command (e.g. git, python, curl, grep, apt, ls, docker, system utilities) in the workspace.",
+        "description": "Execute any Linux bash shell command (e.g. system info, files, processes, network, scripts). Automatically runs directly on user's physical laptop when online, or cloud server if laptop is offline.",
         "parameters": {
             "type": "object",
             "properties": {
                 "command": {
                     "type": "string",
-                    "description": "The exact shell command line string to run.",
+                    "description": "The shell command line string to run.",
                 }
             },
             "required": ["command"],
@@ -275,7 +421,7 @@ GEMINI_FUNCTION_DECLARATIONS = [
     },
     {
         "name": "execute_on_laptop",
-        "description": "Execute a bash shell command directly on the user's physical laptop (when user asks to run on laptop, or when local laptop files/diagnostics are needed).",
+        "description": "Execute a bash shell command strictly on the user's physical laptop.",
         "parameters": {
             "type": "object",
             "properties": {
@@ -288,18 +434,28 @@ GEMINI_FUNCTION_DECLARATIONS = [
         },
     },
     {
+        "name": "execute_cloud_bash",
+        "description": "Execute a bash shell command strictly inside the 24/7 cloud server container.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "command": {
+                    "type": "string",
+                    "description": "The shell command to run on cloud server.",
+                }
+            },
+            "required": ["command"],
+        },
+    },
+    {
         "name": "smart_execute",
-        "description": "Execute any Linux bash shell command with automatic targeting: runs on physical laptop if connected; if laptop is offline/closed, automatically executes on 24/7 cloud server.",
+        "description": "Execute shell command on physical laptop if online, with automatic fallback to cloud server.",
         "parameters": {
             "type": "object",
             "properties": {
                 "command": {
                     "type": "string",
                     "description": "The shell command to execute.",
-                },
-                "prefer_laptop": {
-                    "type": "boolean",
-                    "description": "Whether to prefer running on physical laptop if connected (default True).",
                 }
             },
             "required": ["command"],
@@ -307,7 +463,7 @@ GEMINI_FUNCTION_DECLARATIONS = [
     },
     {
         "name": "capture_laptop_screenshot",
-        "description": "Capture a live high-resolution screenshot of the physical laptop desktop screen and send it as a photo to Telegram.",
+        "description": "Capture a live high-resolution screenshot of the physical laptop desktop and send it as a photo to Telegram.",
         "parameters": {"type": "object", "properties": {}},
     },
     {
@@ -316,13 +472,61 @@ GEMINI_FUNCTION_DECLARATIONS = [
         "parameters": {"type": "object", "properties": {}},
     },
     {
+        "name": "capture_laptop_video",
+        "description": "Record a 10-second live webcam video clip with audio from the user's laptop and send it to Telegram.",
+        "parameters": {"type": "object", "properties": {}},
+    },
+    {
+        "name": "record_laptop_mic",
+        "description": "Record audio from the laptop room microphone and send it as a voice note to Telegram.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "seconds": {
+                    "type": "integer",
+                    "description": "Duration in seconds to record (default 10).",
+                }
+            },
+        },
+    },
+    {
+        "name": "toggle_laptop_cctv",
+        "description": "Turn ON or OFF CCTV motion alert mode on the physical laptop webcam.",
+        "parameters": {"type": "object", "properties": {}},
+    },
+    {
+        "name": "trigger_laptop_alarm",
+        "description": "Sound a loud siren alarm on the physical laptop at 100% volume.",
+        "parameters": {"type": "object", "properties": {}},
+    },
+    {
+        "name": "stop_laptop_alarm",
+        "description": "Stop the siren alarm on the laptop.",
+        "parameters": {"type": "object", "properties": {}},
+    },
+    {
+        "name": "find_laptop_location",
+        "description": "Get the physical laptop's live location, public IP, city, ISP, and Google Maps pin.",
+        "parameters": {"type": "object", "properties": {}},
+    },
+    {
+        "name": "ghost_mode_screen_off",
+        "description": "Turn OFF the laptop screen (blank display) stealthily while keeping background processes, downloads, AI, and scripts active.",
+        "parameters": {"type": "object", "properties": {}},
+    },
+    {
+        "name": "screen_on",
+        "description": "Turn the physical laptop screen back ON.",
+        "parameters": {"type": "object", "properties": {}},
+    },
+    {
         "name": "get_laptop_battery",
-        "description": "Check live laptop battery level, charging/discharging state, and estimated runtime.",
+        "description": "Check live laptop battery level, charging state, and estimated runtime.",
         "parameters": {"type": "object", "properties": {}},
     },
     {
         "name": "control_laptop_volume",
-        "description": "Adjust laptop speaker volume or toggle mute.",
+        "description": "Adjust laptop speaker volume ('up', 'down') or toggle mute ('mute').",
         "parameters": {
             "type": "object",
             "properties": {
@@ -360,12 +564,74 @@ GEMINI_FUNCTION_DECLARATIONS = [
     },
     {
         "name": "get_laptop_apps",
-        "description": "Get a list of currently running applications and high CPU/RAM processes on the laptop.",
+        "description": "Get a list of currently running applications and processes on the laptop.",
         "parameters": {"type": "object", "properties": {}},
     },
     {
+        "name": "open_url_on_laptop",
+        "description": "Open a website URL in the default browser on the physical laptop (e.g. YouTube, Google, GitHub).",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "url": {
+                    "type": "string",
+                    "description": "The website URL to open.",
+                }
+            },
+            "required": ["url"],
+        },
+    },
+    {
+        "name": "play_music_on_laptop",
+        "description": "Search and play a song or music in the background on laptop speakers via mpv/YouTube.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "query": {
+                    "type": "string",
+                    "description": "Song name or YouTube search query.",
+                }
+            },
+            "required": ["query"],
+        },
+    },
+    {
+        "name": "stop_music_on_laptop",
+        "description": "Stop any background music or audio playback on the laptop.",
+        "parameters": {"type": "object", "properties": {}},
+    },
+    {
+        "name": "speak_on_laptop",
+        "description": "Speak text out loud on the laptop speakers using text-to-speech.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "text": {
+                    "type": "string",
+                    "description": "The text to speak out loud.",
+                }
+            },
+            "required": ["text"],
+        },
+    },
+    {
+        "name": "send_laptop_key",
+        "description": "Send simulated keystrokes to active laptop window: 'enter' (approve prompt), 'y', 'n', or 'ctrl+c'.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "key": {
+                    "type": "string",
+                    "enum": ["enter", "y", "n", "ctrl+c"],
+                    "description": "The key to send.",
+                }
+            },
+            "required": ["key"],
+        },
+    },
+    {
         "name": "read_file",
-        "description": "Read the contents of a local file.",
+        "description": "Read the contents of a local file in workspace.",
         "parameters": {
             "type": "object",
             "properties": {

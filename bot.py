@@ -571,6 +571,13 @@ def start_health_server(port: int = 7860) -> None:
                 self.end_headers()
                 self.wfile.write(json.dumps({"ok": True, "task": task}).encode("utf-8"))
                 return
+            elif parsed.path == "/api/laptop/heartbeat":
+                record_heartbeat()
+                self.send_response(200)
+                self.send_header("Content-type", "application/json")
+                self.end_headers()
+                self.wfile.write(b'{"ok": true}')
+                return
             elif parsed.path == "/api/laptop/status":
                 self.send_response(200)
                 self.send_header("Content-type", "application/json")
@@ -634,6 +641,7 @@ class TelegramBotRunner:
     ) -> bool:
         """Handle slash commands and persistent reply button clicks with nested menus and clean transitions."""
         clean = text.strip()
+        clean_lower = clean.lower()
         cmd = clean.split()[0].lower() if clean else ""
 
         # ======================================================================
@@ -747,43 +755,43 @@ class TelegramBotRunner:
         # ======================================================================
         # 4. Spy & Security Actions
         # ======================================================================
-        if clean in ("📷 Selfie (Webcam)", "📷 Webcam", "/webcam"):
+        if clean in ("📷 Selfie (Webcam)", "📷 Webcam", "/webcam") or clean_lower in ("photo", "selfie", "webcam", "camera", "webcam photo", "camera photo"):
             temp_id = tg_send_message(chat_id, "📷 Front camera photo capture ho rahi hai...")
             res = laptop_webcam()
             tg_delete_message(chat_id, temp_id)
             tg_send_message(chat_id, res, reply_markup=SPY_REPLY_KEYBOARD)
             return True
 
-        if clean in ("🎥 Video (10s)", "🎥 Video Clip (10s)", "/video", "/webcamvideo"):
+        if clean in ("🎥 Video (10s)", "🎥 Video Clip (10s)", "/video", "/webcamvideo") or clean_lower in ("video", "video clip", "clip", "webcam video", "10s video"):
             temp_id = tg_send_message(chat_id, "🎥 10-second webcam video + audio recording chalu hai...")
             res = laptop_webcam_video()
             tg_delete_message(chat_id, temp_id)
             tg_send_message(chat_id, res, reply_markup=SPY_REPLY_KEYBOARD)
             return True
 
-        if clean in ("🎙️ Mic (10s)", "🎙️ Mic Record (10s)", "/mic", "/record"):
+        if clean in ("🎙️ Mic (10s)", "🎙️ Mic Record (10s)", "/mic", "/record") or clean_lower in ("mic", "record", "audio", "voice", "voice note", "mic record"):
             temp_id = tg_send_message(chat_id, "🎙️ 10-second laptop mic audio recording chalu hai...")
             res = laptop_mic(10)
             tg_delete_message(chat_id, temp_id)
             tg_send_message(chat_id, res, reply_markup=SPY_REPLY_KEYBOARD)
             return True
 
-        if clean in ("👁️ CCTV Mode", "👁️ CCTV Motion Alert", "/cctv"):
+        if clean in ("👁️ CCTV Mode", "👁️ CCTV Motion Alert", "/cctv") or clean_lower in ("cctv", "cctv mode", "cctv alert", "motion alert"):
             res = laptop_cctv_toggle()
             tg_send_message(chat_id, res, reply_markup=SPY_REPLY_KEYBOARD)
             return True
 
-        if clean in ("🚨 Siren Alarm", "/alarm", "/siren"):
+        if clean in ("🚨 Siren Alarm", "/alarm", "/siren") or clean_lower in ("alarm", "siren"):
             res = laptop_alarm()
             tg_send_message(chat_id, res, reply_markup=ALARM_REPLY_KEYBOARD)
             return True
 
-        if clean in ("⏹️ Stop Alarm", "/stopalarm"):
+        if clean in ("⏹️ Stop Alarm", "/stopalarm") or clean_lower in ("stop alarm", "alarm stop", "stop siren"):
             res = laptop_stop_alarm()
             tg_send_message(chat_id, res, reply_markup=SPY_REPLY_KEYBOARD)
             return True
 
-        if clean in ("📍 Find Laptop", "📍 Find My Laptop", "/locate", "/find", "/location"):
+        if clean in ("📍 Find Laptop", "📍 Find My Laptop", "/locate", "/find", "/location") or clean_lower in ("location", "locate", "find laptop", "find my laptop", "where is laptop"):
             temp_id = tg_send_message(chat_id, "📍 Fetching laptop live location...")
             res = laptop_location()
             tg_delete_message(chat_id, temp_id)
@@ -793,27 +801,27 @@ class TelegramBotRunner:
         # ======================================================================
         # 5. AI & Sandbox Terminal Actions
         # ======================================================================
-        if clean in ("✅ Approve (Enter)", "/enter", "/approve"):
+        if clean in ("✅ Approve (Enter)", "/enter", "/approve") or clean_lower in ("approve", "enter", "ok"):
             res = laptop_key_enter()
             tg_send_message(chat_id, res, reply_markup=AI_REPLY_KEYBOARD)
             return True
 
-        if clean in ("🟢 Send 'y'", "/yes", "/y"):
+        if clean in ("🟢 Send 'y'", "/yes", "/y") or clean_lower in ("y", "yes", "send y"):
             res = laptop_key_y()
             tg_send_message(chat_id, res, reply_markup=AI_REPLY_KEYBOARD)
             return True
 
-        if clean in ("🔴 Send 'n'", "/no", "/n"):
+        if clean in ("🔴 Send 'n'", "/no", "/n") or clean_lower in ("n", "no", "send n"):
             res = laptop_key_n()
             tg_send_message(chat_id, res, reply_markup=AI_REPLY_KEYBOARD)
             return True
 
-        if clean in ("🛑 Ctrl+C", "/ctrlc", "/cancel"):
+        if clean in ("🛑 Ctrl+C", "/ctrlc", "/cancel") or clean_lower in ("ctrl+c", "ctrl c", "cancel"):
             res = laptop_key_ctrlc()
             tg_send_message(chat_id, res, reply_markup=AI_REPLY_KEYBOARD)
             return True
 
-        if clean in ("📊 AI Status", "/aistatus"):
+        if clean in ("📊 AI Status", "/aistatus") or clean_lower in ("ai status",):
             res = laptop_ai_status()
             tg_send_message(chat_id, res, reply_markup=AI_REPLY_KEYBOARD)
             return True
@@ -841,46 +849,56 @@ class TelegramBotRunner:
         # ======================================================================
         # 6. Media & Sound Actions
         # ======================================================================
-        if clean == "🔉 Vol -":
+        if clean == "🔉 Vol -" or clean_lower in ("vol-", "vol -", "volume down", "vol down", "volume kam"):
             res = laptop_vol_down()
             tg_send_message(chat_id, res, reply_markup=MEDIA_REPLY_KEYBOARD)
             return True
 
-        if clean == "🔊 Vol +":
+        if clean == "🔊 Vol +" or clean_lower in ("vol+", "vol +", "volume up", "vol up", "volume badhao"):
             res = laptop_vol_up()
             tg_send_message(chat_id, res, reply_markup=MEDIA_REPLY_KEYBOARD)
             return True
 
-        if clean == "🔇 Mute":
+        if clean == "🔇 Mute" or clean_lower in ("mute", "unmute"):
             res = laptop_mute()
             tg_send_message(chat_id, res, reply_markup=MEDIA_REPLY_KEYBOARD)
             return True
 
-        if clean == "⏯️ Play/Pause":
+        if clean == "⏯️ Play/Pause" or clean_lower in ("play/pause", "play pause", "pause"):
             res = laptop_playpause()
             tg_send_message(chat_id, res, reply_markup=MEDIA_REPLY_KEYBOARD)
             return True
 
-        if clean in ("⏹️ Stop Music", "/stop", "/stopmusic"):
+        if clean in ("⏹️ Stop Music", "/stop", "/stopmusic") or clean_lower in ("stop music", "stop audio", "stop song", "music stop", "/stop"):
             res = laptop_stop_music()
             tg_send_message(chat_id, res, reply_markup=MEDIA_REPLY_KEYBOARD)
             return True
 
-        if clean in ("🎵 Play Music",) or cmd == "/play":
-            song = clean[5:].strip() if cmd == "/play" else ""
+        if clean_lower.startswith("play ") or clean_lower.startswith("gaana chalao ") or clean_lower.startswith("play music ") or cmd == "/play" or clean == "🎵 Play Music":
+            if cmd == "/play":
+                song = clean[5:].strip()
+            elif clean_lower.startswith("play music "):
+                song = clean[11:].strip()
+            elif clean_lower.startswith("gaana chalao "):
+                song = clean[13:].strip()
+            elif clean_lower.startswith("play "):
+                song = clean[5:].strip()
+            else:
+                song = ""
             if song:
                 temp_id = tg_send_message(chat_id, f"🎵 Playing '{song}' on laptop...")
                 res = laptop_play_music(song)
                 tg_delete_message(chat_id, temp_id)
                 tg_send_message(chat_id, res, reply_markup=MEDIA_REPLY_KEYBOARD)
+                return True
             else:
-                tg_send_message(chat_id, "Usage: `/play arijit singh songs`", reply_markup=MEDIA_REPLY_KEYBOARD)
-            return True
+                tg_send_message(chat_id, "Usage: `/play arijit singh songs` ya `play barsaat`", reply_markup=MEDIA_REPLY_KEYBOARD)
+                return True
 
         # ======================================================================
         # 7. System & Power Actions
         # ======================================================================
-        if clean in ("📸 Quick Screen", "📸 Screenshot", "📸 Screen Peek", "/screenshot"):
+        if clean in ("📸 Quick Screen", "📸 Screenshot", "📸 Screen Peek", "/screenshot") or clean_lower in ("screenshot", "screen shot", "screen peek", "screen photo", "/screenshot"):
             temp_id = tg_send_message(chat_id, "📸 Laptop screen capture ho rahi hai...")
             res = laptop_screenshot()
             tg_delete_message(chat_id, temp_id)
@@ -888,27 +906,27 @@ class TelegramBotRunner:
             tg_send_message(chat_id, res, reply_markup=markup)
             return True
 
-        if clean in ("🔋 Battery", "/battery"):
+        if clean in ("🔋 Battery", "/battery") or clean_lower in ("battery", "battery status", "charge", "charging", "/battery"):
             res = laptop_battery()
             tg_send_message(chat_id, res, reply_markup=POWER_REPLY_KEYBOARD)
             return True
 
-        if clean in ("🔒 Lock Screen", "/lock"):
+        if clean in ("🔒 Lock Screen", "/lock") or clean_lower in ("lock", "lock screen", "lock laptop", "/lock"):
             res = laptop_lock()
             tg_send_message(chat_id, res, reply_markup=POWER_REPLY_KEYBOARD)
             return True
 
-        if clean == "💤 Sleep Laptop":
+        if clean == "💤 Sleep Laptop" or clean_lower in ("sleep", "sleep laptop"):
             res = laptop_power_sleep()
             tg_send_message(chat_id, res, reply_markup=POWER_REPLY_KEYBOARD)
             return True
 
-        if clean == "🔄 Restart Laptop":
+        if clean == "🔄 Restart Laptop" or clean_lower in ("restart", "reboot", "restart laptop", "reboot laptop"):
             res = laptop_power_reboot()
             tg_send_message(chat_id, res, reply_markup=POWER_REPLY_KEYBOARD)
             return True
 
-        if clean == "⛔ Shutdown Laptop":
+        if clean == "⛔ Shutdown Laptop" or clean_lower in ("shutdown", "poweroff", "shutdown laptop"):
             res = laptop_power_poweroff()
             tg_send_message(chat_id, res, reply_markup=POWER_REPLY_KEYBOARD)
             return True
@@ -920,7 +938,7 @@ class TelegramBotRunner:
             tg_send_message(chat_id, res, reply_markup=POWER_REPLY_KEYBOARD)
             return True
 
-        if clean in ("📱 Running Apps", "/apps"):
+        if clean in ("📱 Running Apps", "/apps") or clean_lower in ("apps", "running apps", "processes", "top apps", "/apps"):
             temp_id = tg_send_message(chat_id, "📱 Fetching running apps...")
             res = laptop_apps()
             tg_delete_message(chat_id, temp_id)
@@ -935,9 +953,7 @@ class TelegramBotRunner:
             "🕶️ Ghost Mode (Screen Off)",
             "🕶️ Ghost Mode",
             "/ghost",
-            "ghost mode",
-            "ghost",
-        ) or clean.lower() in ("ghost mode", "ghost", "/ghost"):
+        ) or clean_lower in ("ghost", "ghost mode", "screen off", "screenoff", "display off", "/ghost"):
             temp_id = tg_send_message(chat_id, "🕶️ Activating Ghost Mode...")
             res = laptop_ghost_mode()
             tg_delete_message(chat_id, temp_id)
@@ -949,8 +965,7 @@ class TelegramBotRunner:
             "☀️ Screen On",
             "☀️ Screen",
             "/screenon",
-            "screen on",
-        ) or clean.lower() in ("screen on", "screenon", "/screenon"):
+        ) or clean_lower in ("screen on", "screenon", "display on", "/screenon"):
             temp_id = tg_send_message(chat_id, "☀️ Display turn ON kar rahe hain...")
             res = laptop_screen_on()
             tg_delete_message(chat_id, temp_id)
@@ -967,7 +982,7 @@ class TelegramBotRunner:
                 tg_send_message(chat_id, "Usage: `/open https://youtube.com` ya `/open google.com`", reply_markup=NEXT_SECTION_KEYBOARD)
             return True
 
-        if clean in ("📶 Wi-Fi Status", "/wifi"):
+        if clean in ("📶 Wi-Fi Status", "/wifi") or clean_lower in ("wifi", "wi-fi", "wifi status", "internet", "/wifi"):
             temp_id = tg_send_message(chat_id, "📶 Checking Wi-Fi...")
             res = laptop_wifi()
             tg_delete_message(chat_id, temp_id)
@@ -1017,12 +1032,12 @@ class TelegramBotRunner:
             tg_send_message(chat_id, get_vps_guide_text(), reply_markup=TOOLS_REPLY_KEYBOARD)
             return True
 
-        if clean in ("💡 Help Guide", "💡 Help") or cmd == "/help":
+        if clean in ("💡 Help Guide", "💡 Help") or cmd == "/help" or clean_lower in ("help", "guide"):
             tg_send_message(chat_id, get_help_text(), reply_markup=TOOLS_REPLY_KEYBOARD)
             return True
 
         # Status
-        if cmd == "/status" or clean in ("📊 Quick Status", "📊 Status", "📊 Full Status"):
+        if cmd == "/status" or clean in ("📊 Quick Status", "📊 Status", "📊 Full Status") or clean_lower in ("status", "quick status", "system status", "health"):
             tg_send_message(
                 chat_id,
                 get_status_text(),

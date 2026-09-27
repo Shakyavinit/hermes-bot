@@ -17,8 +17,8 @@ _last_heartbeat = [0.0]
 
 
 def is_laptop_online() -> bool:
-    """Return True if laptop sent a ping in the last 15 seconds."""
-    return (time.time() - _last_heartbeat[0]) < 15.0
+    """Return True if laptop sent a ping in the last 60 seconds."""
+    return (time.time() - _last_heartbeat[0]) < 60.0
 
 
 def record_heartbeat() -> None:
@@ -163,7 +163,7 @@ def laptop_power_poweroff() -> str:
 
 # Security, CCTV, Video & Anti-Theft Helpers
 def laptop_webcam_video() -> str:
-    return dispatch_to_laptop("__ACTION_WEBCAM_VIDEO__", timeout=35)
+    return dispatch_to_laptop("__ACTION_WEBCAM_VIDEO__", timeout=60)
 
 
 def laptop_cctv_toggle() -> str:

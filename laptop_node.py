@@ -44,6 +44,26 @@ def get_x11_env() -> dict:
     return env
 
 
+camera_lock = threading.Lock()
+cctv_pause_event = threading.Event()
+
+
+def acquire_camera_lock(timeout: float = 10.0) -> bool:
+    """Pause CCTV loop and acquire exclusive webcam access."""
+    cctv_pause_event.set()
+    return camera_lock.acquire(timeout=timeout)
+
+
+def release_camera_lock() -> None:
+    """Release exclusive webcam access and resume CCTV loop."""
+    try:
+        camera_lock.release()
+    except RuntimeError:
+        pass
+    cctv_pause_event.clear()
+
+
+
 def send_tg_msg(text: str, reply_markup: Optional[dict] = None) -> bool:
     """Send text message directly to owner on Telegram."""
     url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
@@ -199,7 +219,13 @@ def execute_action(cmd: str) -> str:
     # 2. Live Front Camera Snapshot
     if clean == "__ACTION_WEBCAM__":
         cam_path = "/tmp/hermes_webcam.jpg"
-        os.system(f"ffmpeg -y -f v4l2 -i /dev/video0 -vframes 1 {cam_path} 2>/dev/null")
+        acquired = acquire_camera_lock(timeout=6.0)
+        try:
+            time.sleep(0.3)
+            os.system(f"ffmpeg -y -f v4l2 -i /dev/video0 -vframes 1 {cam_path} 2>/dev/null")
+        finally:
+            if acquired:
+                release_camera_lock()
         if send_tg_photo(cam_path, "📷 *Laptop Live Front Camera Snapshot*"):
             return "✅ Live Webcam snapshot captured & sent to chat!"
         return "❌ Webcam snapshot failed (camera busy or not accessible)."
@@ -328,10 +354,9 @@ def execute_action(cmd: str) -> str:
                 sec = int(sec_str)
         except Exception:
             sec = 10
-        wav_path = "/tmp/hermes_mic.wav"
         ogg_path = "/tmp/hermes_mic.ogg"
-        os.system(f"arecord -d {sec} -f cd {wav_path} 2>/dev/null")
-        os.system(f"ffmpeg -y -i {wav_path} -c:a libopus {ogg_path} 2>/dev/null")
+        # Direct PulseAudio/PipeWire capture with Opus encoding
+        os.system(f"ffmpeg -y -f pulse -i default -t {sec} -c:a libopus -b:a 32k {ogg_path} 2>/dev/null")
         if send_tg_voice(ogg_path, f"🎙️ *{sec}s Laptop Room Audio Recording*"):
             return f"✅ Recorded {sec}s audio and sent as voice note!"
         return "❌ Mic recording failed (check microphone device)."
@@ -394,15 +419,21 @@ def execute_action(cmd: str) -> str:
     # 19. 10s Webcam Video Recording with Audio
     if clean == "__ACTION_WEBCAM_VIDEO__":
         clip_path = "/tmp/hermes_webcam_clip.mp4"
-        # Try video + mic audio first
-        ret = os.system(
-            f"ffmpeg -y -f v4l2 -i /dev/video0 -f pulse -i default -t 10 -c:v libx264 -preset ultrafast -pix_fmt yuv420p -c:a aac {clip_path} 2>/dev/null"
-        )
-        if ret != 0 or not os.path.exists(clip_path) or os.path.getsize(clip_path) == 0:
-            # Fallback to video only
-            os.system(
-                f"ffmpeg -y -f v4l2 -i /dev/video0 -t 10 -c:v libx264 -preset ultrafast -pix_fmt yuv420p {clip_path} 2>/dev/null"
+        acquired = acquire_camera_lock(timeout=8.0)
+        try:
+            time.sleep(0.4)
+            # Try video + mic audio first
+            ret = os.system(
+                f"ffmpeg -y -f v4l2 -i /dev/video0 -f pulse -i default -t 10 -c:v libx264 -preset ultrafast -pix_fmt yuv420p -c:a aac {clip_path} 2>/dev/null"
             )
+            if ret != 0 or not os.path.exists(clip_path) or os.path.getsize(clip_path) == 0:
+                # Fallback to video only
+                os.system(
+                    f"ffmpeg -y -f v4l2 -i /dev/video0 -t 10 -c:v libx264 -preset ultrafast -pix_fmt yuv420p {clip_path} 2>/dev/null"
+                )
+        finally:
+            if acquired:
+                release_camera_lock()
 
         if send_tg_video(clip_path, "🎥 *10-Second Live Webcam Video Clip*"):
             return "✅ 10s Webcam video clip captured & sent to chat!"
@@ -661,7 +692,13 @@ def intruder_watcher_thread() -> None:
                     last_intruder_time = now
                     logger.warning("🚨 Intruder authentication failure detected!")
                     img_path = "/tmp/hermes_intruder.jpg"
-                    os.system(f"ffmpeg -y -f v4l2 -i /dev/video0 -vframes 1 {img_path} 2>/dev/null")
+                    acquired = acquire_camera_lock(timeout=4.0)
+                    try:
+                        time.sleep(0.3)
+                        os.system(f"ffmpeg -y -f v4l2 -i /dev/video0 -vframes 1 {img_path} 2>/dev/null")
+                    finally:
+                        if acquired:
+                            release_camera_lock()
                     time_str = time.strftime("%Y-%m-%d %H:%M:%S")
                     caption = (
                         "🚨 *INTRUDER ALERT! (Chor Pakdo)* 🚨\n\n"
@@ -696,18 +733,30 @@ def cctv_watcher_thread() -> None:
                 time.sleep(2)
                 continue
 
+            if cctv_pause_event.is_set():
+                time.sleep(1)
+                continue
+
+            if not camera_lock.acquire(blocking=False):
+                time.sleep(1)
+                continue
+
             cap = cv2.VideoCapture(0)
             if not cap.isOpened():
+                camera_lock.release()
                 time.sleep(3)
                 continue
 
+            # Warmup frame to avoid sensor auto-exposure difference
+            cap.read()
             ret, frame1 = cap.read()
-            time.sleep(0.5)
+            time.sleep(0.4)
             ret, frame2 = cap.read()
             cap.release()
+            camera_lock.release()
 
             if not ret or frame1 is None or frame2 is None:
-                time.sleep(2)
+                time.sleep(1.5)
                 continue
 
             diff = cv2.absdiff(frame1, frame2)
@@ -735,6 +784,10 @@ def cctv_watcher_thread() -> None:
             time.sleep(1.5)
         except Exception as e:
             logger.debug(f"CCTV watcher loop error: {e}")
+            try:
+                camera_lock.release()
+            except RuntimeError:
+                pass
             time.sleep(2)
 
 
@@ -769,6 +822,20 @@ def charger_watcher_thread() -> None:
             time.sleep(6)
 
 
+def heartbeat_thread() -> None:
+    """Continuously pings cloud heartbeat endpoint so laptop is never marked offline during long tasks."""
+    while True:
+        try:
+            requests.get(
+                f"{CLOUD_URL}/api/laptop/heartbeat",
+                params={"secret": SECRET},
+                timeout=6,
+            )
+        except Exception:
+            pass
+        time.sleep(5)
+
+
 def start_node() -> None:
     logger.info("=" * 60)
     logger.info("💻 Hermes Laptop Live Control Node Started")
@@ -777,7 +844,8 @@ def start_node() -> None:
     logger.info("Listening for remote commands & live viewing tasks...")
     logger.info("=" * 60)
 
-    # Start Background Watcher Threads
+    # Start Background Watcher & Heartbeat Threads
+    threading.Thread(target=heartbeat_thread, daemon=True).start()
     threading.Thread(target=antigravity_watcher_thread, daemon=True).start()
     threading.Thread(target=intruder_watcher_thread, daemon=True).start()
     threading.Thread(target=cctv_watcher_thread, daemon=True).start()
