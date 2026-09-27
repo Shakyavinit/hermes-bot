@@ -16,6 +16,7 @@ import math
 import os
 import random
 import re
+import shutil
 import subprocess
 import time
 from typing import Any, Dict, List, Optional, Tuple
@@ -286,7 +287,8 @@ def is_valid_screen_image(path: str) -> bool:
 def capture_desktop_image(path: str = "/tmp/hermes_screenshot.png") -> Optional[str]:
     """
     Capture a clean, full-color screenshot of the active desktop under GNOME Wayland & X11.
-    Uses flameshot as primary Wayland capture, then falls back to other tools.
+    100% silent and stealthy: NO screen flash, NO notification popup, NO shutter sound.
+    Uses flameshot raw stdout stream as primary capture, then falls back to stealth file save.
     Never returns a black image.
     """
     env = os.environ.copy()
@@ -300,13 +302,45 @@ def capture_desktop_image(path: str = "/tmp/hermes_screenshot.png") -> Optional[
     if mutter_auths:
         env["XAUTHORITY"] = mutter_auths[0]
 
+    # Force Flameshot to use our bundled stealth configuration (no notifications, 0 contrast opacity, no tray)
+    config_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config")
+    env["XDG_CONFIG_HOME"] = config_dir
+
+    # Ensure user home config is also synced with stealth settings if accessible
+    try:
+        user_cfg_dir = os.path.expanduser("~/.config/flameshot")
+        os.makedirs(user_cfg_dir, exist_ok=True)
+        user_cfg_file = os.path.join(user_cfg_dir, "flameshot.ini")
+        bundled_cfg = os.path.join(config_dir, "flameshot", "flameshot.ini")
+        if not os.path.exists(user_cfg_file) and os.path.exists(bundled_cfg):
+            shutil.copyfile(bundled_cfg, user_cfg_file)
+    except Exception:
+        pass
+
     if os.path.exists(path):
         try:
             os.remove(path)
         except Exception:
             pass
 
-    # 1. Primary: Flameshot full screen (GNOME Wayland native)
+    # 1. Primary: Flameshot full screen in raw stdout mode (100% stealth: no UI overlay, no notification, no flash)
+    try:
+        res = subprocess.run(
+            ["flameshot", "full", "-r"],
+            env=env,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            timeout=8,
+        )
+        if res.returncode == 0 and res.stdout and len(res.stdout) > 5000:
+            with open(path, "wb") as f:
+                f.write(res.stdout)
+            if is_valid_screen_image(path):
+                return path
+    except Exception as e:
+        logger.debug(f"Flameshot raw full capture exception: {e}")
+
+    # 2. Secondary fallback: Flameshot full with path (stealth ini suppresses popups)
     try:
         subprocess.run(
             ["flameshot", "full", "-p", path],
@@ -320,7 +354,7 @@ def capture_desktop_image(path: str = "/tmp/hermes_screenshot.png") -> Optional[
     except Exception as e:
         logger.debug(f"Flameshot full capture exception: {e}")
 
-    # 2. Secondary: Flameshot screen
+    # 3. Tertiary fallback: Flameshot screen
     try:
         subprocess.run(
             ["flameshot", "screen", "-p", path],
@@ -334,7 +368,7 @@ def capture_desktop_image(path: str = "/tmp/hermes_screenshot.png") -> Optional[
     except Exception as e:
         logger.debug(f"Flameshot screen capture exception: {e}")
 
-    # 3. Tertiary fallback: ImageMagick import
+    # 4. Quaternary fallback: ImageMagick import
     try:
         subprocess.run(["import", "-window", "root", path], env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=5)
         if is_valid_screen_image(path):
@@ -342,7 +376,7 @@ def capture_desktop_image(path: str = "/tmp/hermes_screenshot.png") -> Optional[
     except Exception:
         pass
 
-    # 4. Quaternary fallback: Scrot (only if not black!)
+    # 5. Quinary fallback: Scrot (only if not black!)
     try:
         subprocess.run(["scrot", "-z", "-o", path], env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=5)
         if is_valid_screen_image(path):

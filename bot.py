@@ -454,6 +454,11 @@ def tg_send_message(
         res_json = resp.json()
         if res_json.get("ok"):
             msg_id = res_json.get("result", {}).get("message_id")
+            if msg_id:
+                try:
+                    track_and_clean_messages(chat_id, bot_msg_id=msg_id)
+                except Exception:
+                    pass
             track_bot_msg(chat_id, msg_id)
             return msg_id
         else:
@@ -461,6 +466,11 @@ def tg_send_message(
             resp2 = requests.post(url, json=payload, timeout=20)
             if resp2.json().get("ok"):
                 msg_id = resp2.json().get("result", {}).get("message_id")
+                if msg_id:
+                    try:
+                        track_and_clean_messages(chat_id, bot_msg_id=msg_id)
+                    except Exception:
+                        pass
                 track_bot_msg(chat_id, msg_id)
                 return msg_id
             logger.error(f"Failed to send message: {resp.text}")
