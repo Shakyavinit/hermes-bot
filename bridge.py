@@ -144,6 +144,10 @@ def laptop_auto_status() -> str:
     return dispatch_to_laptop("__ACTION_AUTO_APPROVE_STATUS__")
 
 
+def laptop_clean_photos() -> str:
+    return dispatch_to_laptop("__ACTION_CLEAN_PHOTOS__")
+
+
 # Audio, Mic, Clipboard, and Power Helpers
 def laptop_mic(seconds: int = 10) -> str:
     return dispatch_to_laptop(f"__ACTION_MIC__{seconds}", timeout=45)

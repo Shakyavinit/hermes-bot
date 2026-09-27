@@ -35,6 +35,7 @@ from bridge import (
     laptop_auto_toggle,
     laptop_battery,
     laptop_cctv_toggle,
+    laptop_clean_photos,
     laptop_clipboard,
     laptop_ghost_mode,
     laptop_key_ctrlc,
@@ -889,16 +890,18 @@ class TelegramBotRunner:
         # ======================================================================
         # 3. Chat Clean-Up Command
         # ======================================================================
-        if clean in ("🗑️ Clean Messages", "/clean"):
+        if clean in ("🗑️ Clean Messages", "/clean", "/cleanchat") or clean_lower in ("clean", "cleanchat", "clean messages"):
             count = 0
             for mid in _recent_bot_msgs.get(chat_id, []):
                 if tg_delete_message(chat_id, mid):
                     count += 1
             _recent_bot_msgs[chat_id] = []
+            photo_clean_res = laptop_clean_photos()
             send_or_replace_nav(
                 chat_id,
-                f"🧹 *Chat Cleaned Up!*\n{count} purane bot messages delete ho gaye.",
-                reply_markup=CLOUD_DASHBOARD_KEYBOARD,
+                f"🧹 *Chat & Media Cleaned Up!*\n\n"
+                f"📋 *Short Summary:* {count} bot messages saf ho gaye aur {photo_clean_res.lower()}",
+                reply_markup=ROOT_CHOICE_KEYBOARD,
             )
             return True
 
@@ -908,22 +911,40 @@ class TelegramBotRunner:
         if clean in ("📷 Selfie (Webcam)", "📷 Webcam", "/webcam") or clean_lower in ("photo", "selfie", "webcam", "camera", "webcam photo", "camera photo"):
             temp_id = tg_send_message(chat_id, "📷 Front camera photo capture ho rahi hai...")
             res = laptop_webcam()
-            tg_delete_message(chat_id, temp_id)
-            tg_send_message(chat_id, res, reply_markup=SPY_REPLY_KEYBOARD)
+            if temp_id:
+                tg_delete_message(chat_id, temp_id)
+            tg_send_message(
+                chat_id,
+                "📷 *Webcam Snapshot Completed!*\n\n"
+                "📋 *Short Summary:* Front camera photo send ho gayi hai (purani images auto-clean ho gayi).",
+                reply_markup=SPY_REPLY_KEYBOARD,
+            )
             return True
 
         if clean in ("🎥 Video (10s)", "🎥 Video Clip (10s)", "/video", "/webcamvideo") or clean_lower in ("video", "video clip", "clip", "webcam video", "10s video"):
             temp_id = tg_send_message(chat_id, "🎥 10-second webcam video + audio recording chalu hai...")
             res = laptop_webcam_video()
-            tg_delete_message(chat_id, temp_id)
-            tg_send_message(chat_id, res, reply_markup=SPY_REPLY_KEYBOARD)
+            if temp_id:
+                tg_delete_message(chat_id, temp_id)
+            tg_send_message(
+                chat_id,
+                "🎥 *Webcam Video Completed!*\n\n"
+                "📋 *Short Summary:* 10s video clip send ho gayi hai.",
+                reply_markup=SPY_REPLY_KEYBOARD,
+            )
             return True
 
         if clean in ("🎙️ Mic (10s)", "🎙️ Mic Record (10s)", "/mic", "/record") or clean_lower in ("mic", "record", "audio", "voice", "voice note", "mic record"):
             temp_id = tg_send_message(chat_id, "🎙️ 10-second laptop mic audio recording chalu hai...")
             res = laptop_mic(10)
-            tg_delete_message(chat_id, temp_id)
-            tg_send_message(chat_id, res, reply_markup=SPY_REPLY_KEYBOARD)
+            if temp_id:
+                tg_delete_message(chat_id, temp_id)
+            tg_send_message(
+                chat_id,
+                "🎙️ *Audio Recording Completed!*\n\n"
+                "📋 *Short Summary:* 10s voice note send ho gaya hai.",
+                reply_markup=SPY_REPLY_KEYBOARD,
+            )
             return True
 
         if clean in ("👁️ CCTV Mode", "👁️ CCTV Motion Alert", "/cctv") or clean_lower in ("cctv", "cctv mode", "cctv alert", "motion alert"):
@@ -1099,9 +1120,15 @@ class TelegramBotRunner:
         if clean in ("📸 Quick Screen", "📸 Screenshot", "📸 Screen Peek", "/screenshot") or clean_lower in ("screenshot", "screen shot", "screen peek", "screen photo", "/screenshot"):
             temp_id = tg_send_message(chat_id, "📸 Laptop screen capture ho rahi hai...")
             res = laptop_screenshot()
-            tg_delete_message(chat_id, temp_id)
+            if temp_id:
+                tg_delete_message(chat_id, temp_id)
             markup = AI_REPLY_KEYBOARD if clean == "📸 Screen Peek" else (LAPTOP_DASHBOARD_KEYBOARD if clean == "📸 Quick Screen" else POWER_REPLY_KEYBOARD)
-            tg_send_message(chat_id, res, reply_markup=markup)
+            tg_send_message(
+                chat_id,
+                "📸 *Screenshot Completed!*\n\n"
+                "📋 *Short Summary:* Nayi desktop screen photo bhej di gayi hai (purani images auto-delete ho gayi).",
+                reply_markup=markup,
+            )
             return True
 
         if clean in ("🔋 Battery", "/battery") or clean_lower in ("battery", "battery status", "charge", "charging", "/battery"):
@@ -1385,37 +1412,83 @@ class TelegramBotRunner:
         tg_answer_callback_query(cq_id)
 
         if data == "lap_screenshot":
-            tg_send_message(chat_id, "📸 Laptop screen capture ho rahi hai...")
+            temp_id = tg_send_message(chat_id, "📸 Laptop screen capture ho rahi hai...")
             res = laptop_screenshot()
-            tg_send_message(chat_id, res, reply_markup=get_laptop_control_keyboard())
+            if temp_id:
+                tg_delete_message(chat_id, temp_id)
+            tg_send_message(
+                chat_id,
+                "📸 *Screenshot Completed!*\n\n"
+                "📋 *Short Summary:* Nayi desktop screen photo bhej di gayi hai (purani images chat se auto-delete ho gayi).",
+                reply_markup=get_laptop_control_keyboard(),
+            )
         elif data == "lap_webcam":
-            tg_send_message(chat_id, "📷 Front camera photo capture ho rahi hai...")
+            temp_id = tg_send_message(chat_id, "📷 Front camera photo capture ho rahi hai...")
             res = laptop_webcam()
-            tg_send_message(chat_id, res, reply_markup=get_laptop_control_keyboard())
+            if temp_id:
+                tg_delete_message(chat_id, temp_id)
+            tg_send_message(
+                chat_id,
+                "📷 *Webcam Snapshot Completed!*\n\n"
+                "📋 *Short Summary:* Front camera snapshot bhej diya gaya hai (purani images chat se auto-delete ho gayi).",
+                reply_markup=get_laptop_control_keyboard(),
+            )
         elif data == "lap_battery":
             res = laptop_battery()
-            tg_send_message(chat_id, res, reply_markup=get_laptop_control_keyboard())
+            tg_send_message(
+                chat_id,
+                f"🔋 *Battery Status Completed!*\n\n📋 *Short Summary:*\n{res}",
+                reply_markup=get_laptop_control_keyboard(),
+            )
         elif data == "lap_vol_up":
             res = laptop_vol_up()
-            tg_send_message(chat_id, res, reply_markup=get_laptop_control_keyboard())
+            tg_send_message(
+                chat_id,
+                f"🔊 *Volume Up Completed!*\n\n📋 *Short Summary:* {res}",
+                reply_markup=get_laptop_control_keyboard(),
+            )
         elif data == "lap_vol_down":
             res = laptop_vol_down()
-            tg_send_message(chat_id, res, reply_markup=get_laptop_control_keyboard())
+            tg_send_message(
+                chat_id,
+                f"🔉 *Volume Down Completed!*\n\n📋 *Short Summary:* {res}",
+                reply_markup=get_laptop_control_keyboard(),
+            )
         elif data == "lap_mute":
             res = laptop_mute()
-            tg_send_message(chat_id, res, reply_markup=get_laptop_control_keyboard())
+            tg_send_message(
+                chat_id,
+                f"🔇 *Mute Toggle Completed!*\n\n📋 *Short Summary:* {res}",
+                reply_markup=get_laptop_control_keyboard(),
+            )
         elif data == "lap_playpause":
             res = laptop_playpause()
-            tg_send_message(chat_id, res, reply_markup=get_laptop_control_keyboard())
+            tg_send_message(
+                chat_id,
+                f"⏯️ *Play/Pause Completed!*\n\n📋 *Short Summary:* {res}",
+                reply_markup=get_laptop_control_keyboard(),
+            )
         elif data == "lap_apps":
             res = laptop_apps()
-            tg_send_message(chat_id, res, reply_markup=get_laptop_control_keyboard())
+            tg_send_message(
+                chat_id,
+                f"📱 *Running Apps Completed!*\n\n📋 *Short Summary:*\n{res}",
+                reply_markup=get_laptop_control_keyboard(),
+            )
         elif data == "lap_lock":
             res = laptop_lock()
-            tg_send_message(chat_id, res, reply_markup=get_laptop_control_keyboard())
+            tg_send_message(
+                chat_id,
+                f"🔒 *Screen Lock Completed!*\n\n📋 *Short Summary:* {res}",
+                reply_markup=get_laptop_control_keyboard(),
+            )
         elif data == "lap_wifi":
             res = laptop_wifi()
-            tg_send_message(chat_id, res, reply_markup=get_laptop_control_keyboard())
+            tg_send_message(
+                chat_id,
+                f"📶 *Wi-Fi Status Completed!*\n\n📋 *Short Summary:*\n{res}",
+                reply_markup=get_laptop_control_keyboard(),
+            )
         elif data == "lap_controls":
             tg_send_message(
                 chat_id,
@@ -1521,12 +1594,23 @@ class TelegramBotRunner:
             res = laptop_ai_status()
             tg_send_message(chat_id, res, reply_markup=get_coder_keyboard())
         elif data == "lap_mic":
-            tg_send_message(chat_id, "🎙️ 10-second laptop mic audio recording chalu hai...")
+            temp_id = tg_send_message(chat_id, "🎙️ 10-second laptop mic audio recording chalu hai...")
             res = laptop_mic(10)
-            tg_send_message(chat_id, res, reply_markup=get_laptop_control_keyboard())
+            if temp_id:
+                tg_delete_message(chat_id, temp_id)
+            tg_send_message(
+                chat_id,
+                "🎙️ *Audio Recording Completed!*\n\n"
+                "📋 *Short Summary:* 10s voice note send ho gaya hai.",
+                reply_markup=get_laptop_control_keyboard(),
+            )
         elif data == "lap_stop_music":
             res = laptop_stop_music()
-            tg_send_message(chat_id, res, reply_markup=get_laptop_control_keyboard())
+            tg_send_message(
+                chat_id,
+                f"⏹️ *Music Stopped!*\n\n📋 *Short Summary:* {res}",
+                reply_markup=get_laptop_control_keyboard(),
+            )
         elif data == "lap_clipboard":
             res = laptop_clipboard()
             tg_send_message(chat_id, res, reply_markup=get_laptop_control_keyboard())

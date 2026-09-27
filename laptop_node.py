@@ -151,8 +151,30 @@ def clear_active_prompt() -> None:
         _active_prompt_msg_id = None
 
 
-def send_tg_photo(file_path: str, caption: str, reply_markup: Optional[dict] = None, auto_delete: bool = True) -> Optional[int]:
-    """Send photo directly to the owner on Telegram and return message_id."""
+_sent_photo_msg_ids: List[int] = []
+
+
+def clear_old_photos() -> int:
+    """Delete all previously sent photo messages from Telegram chat to prevent image accumulation."""
+    global _sent_photo_msg_ids
+    count = 0
+    if _sent_photo_msg_ids:
+        for mid in list(_sent_photo_msg_ids):
+            if delete_tg_msg(mid):
+                count += 1
+        _sent_photo_msg_ids.clear()
+    return count
+
+
+def send_tg_photo(
+    file_path: str,
+    caption: str,
+    reply_markup: Optional[dict] = None,
+    auto_delete: bool = True,
+    delete_previous: bool = True,
+) -> Optional[int]:
+    """Send photo directly to the owner on Telegram, auto-deleting previous photos, and return message_id."""
+    global _sent_photo_msg_ids
     if not os.path.exists(file_path) or os.path.getsize(file_path) < 10000:
         logger.warning(f"send_tg_photo: Rejecting {file_path} - missing or size < 10KB (black/corrupt prevention).")
         if os.path.exists(file_path):
@@ -161,6 +183,13 @@ def send_tg_photo(file_path: str, caption: str, reply_markup: Optional[dict] = N
             except Exception:
                 pass
         return None
+
+    # Auto-delete previous photos from Telegram so images don't pile up
+    if delete_previous and _sent_photo_msg_ids:
+        for mid in list(_sent_photo_msg_ids):
+            delete_tg_msg(mid)
+        _sent_photo_msg_ids.clear()
+
     url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendPhoto"
     data = {"chat_id": OWNER_CHAT_ID, "caption": caption, "parse_mode": "Markdown"}
     if reply_markup:
@@ -176,6 +205,8 @@ def send_tg_photo(file_path: str, caption: str, reply_markup: Optional[dict] = N
             )
             if resp.status_code == 200 and resp.json().get("ok"):
                 msg_id = resp.json().get("result", {}).get("message_id")
+                if msg_id:
+                    _sent_photo_msg_ids.append(msg_id)
             return msg_id
     except Exception as e:
         logger.error(f"Error sending photo to Telegram: {e}")
@@ -460,6 +491,12 @@ def execute_action(cmd: str) -> str:
         state = get_auto_approve_state()
         status_str = "ON 🟢" if state else "OFF 🔴"
         return f"⚡ Auto-Approve Mode: {status_str}"
+
+    # 12c. Clean Stale Photos from Telegram Chat
+    if clean == "__ACTION_CLEAN_PHOTOS__":
+        c = clear_old_photos()
+        clear_active_prompt()
+        return f"🧹 Chat se {c} purani images saf kar di gayi hain."
 
     # 13. Audio / Mic Recording
     if clean.startswith("__ACTION_MIC__"):
@@ -1112,14 +1149,14 @@ def media_janitor_thread() -> None:
         for pat in patterns:
           for fpath in glob.glob(pat):
             try:
-              if now - os.path.getmtime(fpath) > 90:
+              if now - os.path.getmtime(fpath) > 45:
                 os.remove(fpath)
                 logger.debug(f"Janitor removed stale temp file: {fpath}")
             except Exception:
               pass
       except Exception as e:
         logger.debug(f"Janitor error: {e}")
-      time.sleep(180)
+      time.sleep(45)
 
 
 def start_node() -> None:
