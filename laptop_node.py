@@ -78,33 +78,68 @@ def release_camera_lock() -> None:
 AUTO_APPROVE_FILE = os.path.join(WORKSPACE_DIR, "auto_approve_state.json")
 
 
-def get_auto_approve_state() -> bool:
-    """Check if automatic sandbox approval is enabled."""
+def get_auto_approve_info() -> dict:
+    """Read auto approve info dict."""
     try:
         if os.path.exists(AUTO_APPROVE_FILE):
             with open(AUTO_APPROVE_FILE, "r") as f:
-                data = json.load(f)
-                return bool(data.get("auto_approve", False))
+                return json.load(f)
     except Exception:
         pass
-    return False
+    return {"auto_approve": False, "scope": "task", "auto_steps": 0}
 
 
-def set_auto_approve_state(enabled: bool) -> bool:
-    """Save automatic sandbox approval state."""
+def get_auto_approve_state() -> bool:
+    """Check if automatic sandbox approval is enabled."""
+    return bool(get_auto_approve_info().get("auto_approve", False))
+
+
+def get_auto_approve_scope() -> str:
+    """Get scope: 'task' (until process completes) or 'always'."""
+    return get_auto_approve_info().get("scope", "task")
+
+
+def set_auto_approve_state(enabled: bool, scope: str = "task") -> bool:
+    """Save automatic sandbox approval state and scope."""
     try:
+        prev = get_auto_approve_info()
+        steps = prev.get("auto_steps", 0) if enabled else 0
+        data = {
+            "auto_approve": enabled,
+            "scope": scope,
+            "auto_steps": steps,
+            "updated_at": time.time(),
+        }
         with open(AUTO_APPROVE_FILE, "w") as f:
-            json.dump({"auto_approve": enabled, "updated_at": time.time()}, f)
+            json.dump(data, f)
         return True
     except Exception as e:
         logger.error(f"Error saving auto approve state: {e}")
         return False
 
 
-def toggle_auto_approve_state() -> bool:
+def increment_auto_steps() -> int:
+    """Increment the count of auto-approved steps in this process."""
+    try:
+        info = get_auto_approve_info()
+        steps = info.get("auto_steps", 0) + 1
+        info["auto_steps"] = steps
+        with open(AUTO_APPROVE_FILE, "w") as f:
+            json.dump(info, f)
+        return steps
+    except Exception:
+        return 1
+
+
+def get_auto_steps() -> int:
+    """Get the count of auto-approved steps in current process."""
+    return int(get_auto_approve_info().get("auto_steps", 0))
+
+
+def toggle_auto_approve_state(scope: str = "task") -> bool:
     """Toggle auto approve state."""
     new_state = not get_auto_approve_state()
-    set_auto_approve_state(new_state)
+    set_auto_approve_state(new_state, scope=scope)
     return new_state
 
 
@@ -471,26 +506,33 @@ def execute_action(cmd: str) -> str:
 
     # 12b. Auto-Approve Mode Actions
     if clean == "__ACTION_AUTO_APPROVE_TOGGLE__":
-        state = toggle_auto_approve_state()
+        state = toggle_auto_approve_state(scope="task")
         if state:
-            return "⚡ Auto-Approve Mode: ON 🟢\nAb sandbox approvals aur best options automatically approve honge!"
-        return "⚡ Auto-Approve Mode: OFF 🔴\nManual approval mode active hai."
+            return "⚡ Auto Mode: ON 🟢\nYe is process ke complete hone tak chalu rahega aur end me summary aayegi."
+        return "⚡ Auto Mode: OFF 🔴\nManual approval mode active hai."
 
     if clean == "__ACTION_AUTO_APPROVE_ON__":
-        set_auto_approve_state(True)
+        set_auto_approve_state(True, scope="task")
         clear_active_prompt()
+        increment_auto_steps()
         env = get_x11_env()
         subprocess.run(["xdotool", "key", "--clearmodifiers", "Return"], env=env)
-        return "⚡ Auto-Approve Mode: ON 🟢\nCurrent prompt approve kar diya gaya hai aur ab aage ke approvals automatic honge!"
+        return "⚡ Auto Mode: ON 🟢\nCurrent prompt approve kar diya gaya hai. Ye process complete hone tak chalu rahega aur end me final summary aayegi!"
+
+    if clean == "__ACTION_AUTO_APPROVE_ALWAYS__":
+        set_auto_approve_state(True, scope="always")
+        return "⚡ Auto Mode: ALWAYS ON 🟢\nHamesha ke liye Auto Mode active hai jab tak aap /auto off na karein."
 
     if clean == "__ACTION_AUTO_APPROVE_OFF__":
         set_auto_approve_state(False)
-        return "⚡ Auto-Approve Mode: OFF 🔴\nManual approval mode active hai."
+        return "⚡ Auto Mode: OFF 🔴\nManual approval mode active hai."
 
     if clean == "__ACTION_AUTO_APPROVE_STATUS__":
         state = get_auto_approve_state()
-        status_str = "ON 🟢" if state else "OFF 🔴"
-        return f"⚡ Auto-Approve Mode: {status_str}"
+        scope = get_auto_approve_scope()
+        steps = get_auto_steps()
+        status_str = f"ON 🟢 ({scope.upper()})" if state else "OFF 🔴"
+        return f"⚡ Auto Mode: {status_str} | Current process auto steps: {steps}"
 
     # 12c. Clean Stale Photos from Telegram Chat
     if clean == "__ACTION_CLEAN_PHOTOS__":
@@ -847,18 +889,16 @@ def antigravity_watcher_thread():
                 for line in new_lines:
                     line_lower = line.lower()
 
-                    if ("bypasssandbox" in line_lower or "sandbox" in line_lower) and (now - last_alert_time > 15):
+                    if ("bypasssandbox" in line_lower or "sandbox" in line_lower) and (now - last_alert_time > 8):
                         last_alert_time = now
                         clear_active_prompt()
 
                         # Check if Auto-Approve is enabled
                         if get_auto_approve_state():
+                            steps = increment_auto_steps()
                             env = get_x11_env()
                             subprocess.run(["xdotool", "key", "--clearmodifiers", "Return"], env=env)
-                            send_tg_msg(
-                                "⚡ *Auto-Approved (Auto Mode ON)*\n\n"
-                                "📋 *Short Summary:* Sandbox approval automatically execute kar diya gaya hai (Enter sent). Task bina ruke chal raha hai."
-                            )
+                            logger.info(f"Auto-approved sandbox prompt #{steps} (silent until task completion)")
                             break
 
                         img_path = "/tmp/hermes_prompt_screen.png"
@@ -883,7 +923,7 @@ def antigravity_watcher_thread():
                                 if tc.get("name") == "ask_question":
                                     args = tc.get("args", {})
                                     questions = args.get("questions", [])
-                                    if questions and (now - last_alert_time > 10):
+                                    if questions and (now - last_alert_time > 8):
                                         last_alert_time = now
                                         clear_active_prompt()
                                         q_obj = questions[0]
@@ -897,13 +937,10 @@ def antigravity_watcher_thread():
                                                 break
 
                                         if get_auto_approve_state():
+                                            steps = increment_auto_steps()
                                             env = get_x11_env()
                                             subprocess.run(["xdotool", "key", "--clearmodifiers", "Return"], env=env)
-                                            send_tg_msg(
-                                                "⭐ *Auto-Selected Best Option (Auto Mode ON)*\n\n"
-                                                f"📌 *Choice:* {best_title}\n"
-                                                "📋 *Short Summary:* Recommended option automatically select karke task continue kar diya gaya hai."
-                                            )
+                                            logger.info(f"Auto-selected question #{steps}: {best_title} (silent until task completion)")
                                             break
 
                                         opt_keyboard = []
@@ -926,22 +963,33 @@ def antigravity_watcher_thread():
 
                             # 2. Check for task completion
                             content = d.get("content")
-                            if content and not tool_calls and (now - last_alert_time > 15):
+                            if content and not tool_calls and (now - last_alert_time > 8):
                                 last_alert_time = now
                                 clear_active_prompt()
                                 clean_lines = [
                                     l.strip() for l in content.split("\n")
                                     if l.strip() and not l.strip().startswith("```") and not l.strip().startswith("#")
                                 ]
-                                summary_text = " ".join(clean_lines[:2])
-                                if len(summary_text) > 180:
-                                    summary_text = summary_text[:177] + "..."
+                                summary_text = " ".join(clean_lines[:3])
+                                if len(summary_text) > 220:
+                                    summary_text = summary_text[:217] + "..."
                                 if not summary_text:
                                     summary_text = "Task execution completed successfully."
 
+                                auto_count = get_auto_steps()
+                                auto_info = ""
+                                if auto_count > 0:
+                                    auto_info = f"\n\n⚡ *Auto Mode Execution:* {auto_count} approvals/questions bina ruke automatically execute kar diye gaye."
+
+                                scope = get_auto_approve_scope()
+                                if scope == "task" and get_auto_approve_state():
+                                    set_auto_approve_state(False, scope="task")
+                                    auto_info += "\nℹ️ *Auto Mode:* Chat process complete hone par Auto Mode standby par chala gaya hai."
+
                                 done_msg = (
-                                    "🚀 *Antigravity: Update Completed!*\n\n"
-                                    f"📋 *Short Summary:* {summary_text}\n\n"
+                                    "🚀 *Process Completed Successfully!*\n\n"
+                                    f"📋 *Final Summary:* {summary_text}"
+                                    f"{auto_info}\n\n"
                                     "Agla option select karein:"
                                 )
                                 send_tg_msg(done_msg, reply_markup=done_keyboard)

@@ -29,6 +29,7 @@ from bridge import (
     laptop_ai_status,
     laptop_alarm,
     laptop_apps,
+    laptop_auto_always,
     laptop_auto_off,
     laptop_auto_on,
     laptop_auto_status,
@@ -982,7 +983,7 @@ class TelegramBotRunner:
             )
             return True
 
-        if clean in ("⚡ Auto Mode (Toggle)", "/auto", "/autotoggle") or clean_lower in ("auto", "auto mode", "auto approve", "autotoggle"):
+        if clean in ("⚡ Auto Mode (Toggle)", "/auto", "/autotoggle", "/auto task") or clean_lower in ("auto", "auto mode", "auto approve", "autotoggle", "auto task"):
             res = laptop_auto_toggle()
             tg_send_message(
                 chat_id,
@@ -995,8 +996,18 @@ class TelegramBotRunner:
             res = laptop_auto_on()
             tg_send_message(
                 chat_id,
-                "⚡ *Auto-Approve Activated!*\n\n"
-                "📋 *Short Summary:* Ab sandbox approvals aur questions agent khud execute karega.",
+                "⚡ *Auto Mode Activated (Task Scope)*\n\n"
+                "📋 *Short Summary:* Auto Mode is chat process ke complete hone tak chalu rahega, beech me bina roke automatic approve karega, aur process complete hone par final summary dega.",
+                reply_markup=AI_REPLY_KEYBOARD,
+            )
+            return True
+
+        if clean in ("/auto always", "/auto permanent") or clean_lower in ("auto always", "auto permanent"):
+            res = laptop_auto_always()
+            tg_send_message(
+                chat_id,
+                "⚡ *Auto Mode Activated (Always ON)*\n\n"
+                "📋 *Short Summary:* Auto Mode hamesha active rahega jab tak aap manually `/auto off` na karein.",
                 reply_markup=AI_REPLY_KEYBOARD,
             )
             return True
@@ -1006,7 +1017,7 @@ class TelegramBotRunner:
             tg_send_message(
                 chat_id,
                 "🛑 *Auto-Approve Deactivated!*\n\n"
-                "📋 *Short Summary:* Auto mode OFF ho gaya hai. Ab har approval aapse poocha jayega.",
+                "📋 *Short Summary:* Auto mode OFF ho gaya hai. Ab har approval aur question aapse poocha jayega.",
                 reply_markup=AI_REPLY_KEYBOARD,
             )
             return True
@@ -1507,8 +1518,8 @@ class TelegramBotRunner:
             res = laptop_auto_on()
             tg_send_message(
                 chat_id,
-                "⚡ *Auto-Approve Activated!*\n\n"
-                "📋 *Short Summary:* Auto Mode ON ho gaya hai. Ab sandbox approvals aur questions agent khud automatically execute karega.",
+                "⚡ *Auto Mode Activated!*\n\n"
+                "📋 *Short Summary:* Auto Mode chalu kar diya gaya hai. Ye is poori process ke complete hone tak active rahega aur process end hone par final summary dega.",
                 reply_markup=ROOT_CHOICE_KEYBOARD,
             )
         elif data == "lap_auto_off":

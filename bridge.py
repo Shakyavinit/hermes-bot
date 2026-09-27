@@ -136,6 +136,10 @@ def laptop_auto_on() -> str:
     return dispatch_to_laptop("__ACTION_AUTO_APPROVE_ON__")
 
 
+def laptop_auto_always() -> str:
+    return dispatch_to_laptop("__ACTION_AUTO_APPROVE_ALWAYS__")
+
+
 def laptop_auto_off() -> str:
     return dispatch_to_laptop("__ACTION_AUTO_APPROVE_OFF__")
 
