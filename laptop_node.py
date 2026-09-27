@@ -75,6 +75,47 @@ def release_camera_lock() -> None:
 
 
 
+REMOTE_ACCESS_FILE = os.path.join(WORKSPACE_DIR, "remote_access_state.json")
+
+
+def get_remote_access_info() -> dict:
+    """Read remote access state dict."""
+    try:
+        if os.path.exists(REMOTE_ACCESS_FILE):
+            with open(REMOTE_ACCESS_FILE, "r") as f:
+                return json.load(f)
+    except Exception:
+        pass
+    return {"remote_enabled": True, "updated_at": 0.0}
+
+
+def is_remote_access_enabled() -> bool:
+    """Check if remote control, Antigravity watcher, and screenshots are enabled."""
+    return bool(get_remote_access_info().get("remote_enabled", True))
+
+
+def set_remote_access_enabled(enabled: bool) -> bool:
+    """Set remote access mode (True: Remote Mode, False: Self-Use Mode)."""
+    try:
+        data = {
+            "remote_enabled": enabled,
+            "updated_at": time.time(),
+        }
+        with open(REMOTE_ACCESS_FILE, "w") as f:
+            json.dump(data, f)
+        return True
+    except Exception as e:
+        logger.error(f"Error saving remote access state: {e}")
+        return False
+
+
+def toggle_remote_access() -> bool:
+    """Toggle between Remote Mode (True) and Self-Use Mode (False)."""
+    new_state = not is_remote_access_enabled()
+    set_remote_access_enabled(new_state)
+    return new_state
+
+
 AUTO_APPROVE_FILE = os.path.join(WORKSPACE_DIR, "auto_approve_state.json")
 
 
@@ -375,6 +416,45 @@ def execute_action(cmd: str) -> str:
     """Handle special live control actions or general shell commands."""
     clean = cmd.strip()
 
+    # 0. Remote Access Mode (Master Switch: Remote Mode vs Self-Use Mode)
+    if clean == "__ACTION_REMOTE_TOGGLE__":
+        state = toggle_remote_access()
+        clear_active_prompt()
+        if state:
+            return "🟢 *Remote Mode: ACTIVE*\n\nAntigravity watcher, stealth screenshots aur remote controls wapis chalu ho gaye hain!"
+        return "🔴 *Self-Use Mode: ACTIVE*\n\nRemote access aur Antigravity watcher PAUSE ho gaye hain. Aap bina kisi disturbance ke laptop use kar sakte hain!"
+
+    if clean == "__ACTION_REMOTE_ON__":
+        set_remote_access_enabled(True)
+        return "🟢 *Remote Mode: ACTIVE*\n\nAntigravity watcher, stealth screenshots aur remote controls wapis chalu ho gaye hain!"
+
+    if clean == "__ACTION_REMOTE_OFF__":
+        set_remote_access_enabled(False)
+        clear_active_prompt()
+        return "🔴 *Self-Use Mode: ACTIVE*\n\nRemote access aur Antigravity watcher PAUSE ho gaye hain. Aap bina kisi disturbance ke laptop use kar sakte hain!"
+
+    if clean == "__ACTION_REMOTE_STATUS__":
+        state = is_remote_access_enabled()
+        if state:
+            return "🟢 *Remote Mode:* ACTIVE (Full remote access & Antigravity watcher running)"
+        return "🔴 *Self-Use Mode:* ACTIVE (Remote access & Antigravity watcher paused)"
+
+    # If Self-Use Mode is active, block intrusive remote control actions
+    intrusive_actions = (
+        "__ACTION_SCREENSHOT__",
+        "__ACTION_MOUSE_CLICK__",
+        "__ACTION_HUMAN_MOVE__",
+        "__ACTION_HUMAN_TYPE__",
+        "__ACTION_APP_OPEN__",
+        "__ACTION_KEY_",
+    )
+    if not is_remote_access_enabled() and any(clean.startswith(prefix) for prefix in intrusive_actions):
+        return (
+            "⚠️ *Self-Use Mode Active (Remote Access Paused)*\n\n"
+            "Aap laptop khud use kar rahe hain, isliye screen capture aur remote controls blocked hain.\n"
+            "Wapis chalu karne ke liye '🟢 Remote Mode' button dabayein ya `/remote on` karein."
+        )
+
     # 1. Live Desktop Screenshot
     if clean == "__ACTION_SCREENSHOT__":
         img_path = "/tmp/hermes_screenshot.png"
@@ -425,17 +505,51 @@ def execute_action(cmd: str) -> str:
     # 6. Mute Toggle
     if clean == "__ACTION_MUTE__":
         os.system("pactl set-sink-mute @DEFAULT_SINK@ toggle 2>/dev/null")
-        return "🔇 Mute toggle kar diya."
+        try:
+            out = subprocess.check_output("pactl get-sink-mute @DEFAULT_SINK@ 2>/dev/null", shell=True, text=True)
+            if "yes" in out.lower():
+                return "🔇 *Audio MUTED!*\nLaptop sound mute kar diya gaya."
+            else:
+                return "🔊 *Audio UNMUTED!*\nLaptop sound un-mute kar diya gaya."
+        except Exception:
+            return "🔇 Sound mute/unmute toggle kar diya gaya."
 
     # 7. Media Play/Pause
     if clean == "__ACTION_PLAYPAUSE__":
         os.system("playerctl play-pause 2>/dev/null")
         return "⏯️ Media Play/Pause command sent."
 
-    # 8. Lock Laptop Screen
+    # 8. Lock / Unlock Laptop Screen Toggle
     if clean == "__ACTION_LOCK__":
-        os.system("xdg-screensaver lock 2>/dev/null || loginctl lock-session 2>/dev/null")
-        return "🔒 Laptop screen lock kar di gayi!"
+        os.system("loginctl lock-session 4 2>/dev/null || loginctl lock-session 2>/dev/null || xdg-screensaver lock 2>/dev/null")
+        return "🔒 *Screen LOCKED!*\nLaptop screen lock kar di gayi hai."
+
+    if clean == "__ACTION_UNLOCK__":
+        os.system("loginctl unlock-session 4 2>/dev/null || loginctl unlock-sessions 2>/dev/null")
+        env = get_x11_env()
+        subprocess.run(["xdotool", "key", "--clearmodifiers", "Escape"], env=env)
+        return "🔓 *Screen UNLOCKED!*\nLaptop screen unlock kar di gayi hai."
+
+    if clean == "__ACTION_LOCK_TOGGLE__":
+        try:
+            out = subprocess.check_output(
+                "gdbus call --session --dest org.gnome.ScreenSaver --object-path /org/gnome/ScreenSaver --method org.gnome.ScreenSaver.GetActive 2>/dev/null",
+                shell=True,
+                text=True,
+                timeout=3,
+            )
+            is_locked = "true" in out.lower()
+        except Exception:
+            is_locked = False
+
+        if is_locked:
+            os.system("loginctl unlock-session 4 2>/dev/null || loginctl unlock-sessions 2>/dev/null")
+            env = get_x11_env()
+            subprocess.run(["xdotool", "key", "--clearmodifiers", "Escape"], env=env)
+            return "🔓 *Screen UNLOCKED!*\nLaptop screen unlock kar di gayi hai."
+        else:
+            os.system("loginctl lock-session 4 2>/dev/null || loginctl lock-session 2>/dev/null || xdg-screensaver lock 2>/dev/null")
+            return "🔒 *Screen LOCKED!*\nLaptop screen lock kar di gayi hai."
 
     # 9. Wi-Fi Status
     if clean == "__ACTION_WIFI__":
@@ -856,10 +970,11 @@ def antigravity_watcher_thread():
     done_keyboard = {
         "inline_keyboard": [
             [
+                {"text": "🔴 Self-Use Mode", "callback_data": "lap_toggle_remote"},
                 {"text": "📸 Screen Peek", "callback_data": "lap_screenshot"},
-                {"text": "🤖 AI Status", "callback_data": "lap_ai_status"},
             ],
             [
+                {"text": "🤖 AI Status", "callback_data": "lap_ai_status"},
                 {"text": "🎛️ Laptop Controls", "callback_data": "lap_controls"},
             ],
         ]
@@ -868,6 +983,10 @@ def antigravity_watcher_thread():
     while True:
         try:
             time.sleep(3)
+            # If user has activated Self-Use Mode, pause watching Antigravity transcript & approvals
+            if not is_remote_access_enabled():
+                continue
+
             current_path = get_latest_transcript_path()
             if not current_path or not os.path.exists(current_path):
                 continue

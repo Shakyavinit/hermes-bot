@@ -46,6 +46,8 @@ from bridge import (
     laptop_key_y,
     laptop_location,
     laptop_lock,
+    laptop_lock_toggle,
+    laptop_unlock,
     laptop_mic,
     laptop_mute,
     laptop_open_url,
@@ -55,6 +57,10 @@ from bridge import (
     laptop_power_poweroff,
     laptop_power_reboot,
     laptop_power_sleep,
+    laptop_remote_off,
+    laptop_remote_on,
+    laptop_remote_status,
+    laptop_remote_toggle,
     laptop_screen_on,
     laptop_screenshot,
     laptop_speak,
@@ -234,17 +240,36 @@ ALARM_REPLY_KEYBOARD = {
 }
 
 
+_is_remote_active = True
+_is_locked = False
+_is_muted = False
+_is_auto_approve_active = False
+_is_cctv_active = False
+
+
 def get_laptop_control_keyboard() -> dict:
-    """Full remote control keypad for physical laptop."""
+    """Full remote control keypad for physical laptop with dynamic dual-state toggle buttons."""
+    global _is_remote_active, _is_locked, _is_muted, _is_auto_approve_active, _is_cctv_active
+
+    remote_btn = "🔴 Self-Use Mode (Pause)" if _is_remote_active else "🟢 Remote Mode (Activate)"
+    auto_btn = "⚡ Auto: ON 🟢" if _is_auto_approve_active else "⚡ Auto: OFF 🔴"
+    lock_btn = "🔓 Unlock Screen" if _is_locked else "🔒 Lock Screen"
+    mute_btn = "🔊 Unmute" if _is_muted else "🔇 Mute"
+    cctv_btn = "🛑 Stop CCTV" if _is_cctv_active else "👁️ CCTV Motion"
+
     return {
         "inline_keyboard": [
+            [
+                {"text": remote_btn, "callback_data": "lap_toggle_remote"},
+                {"text": auto_btn, "callback_data": "lap_auto_toggle"},
+            ],
             [
                 {"text": "📸 Live Screenshot", "callback_data": "lap_screenshot"},
                 {"text": "📷 Front Webcam", "callback_data": "lap_webcam"},
             ],
             [
                 {"text": "🎥 Video Clip (10s)", "callback_data": "lap_video"},
-                {"text": "👁️ CCTV Motion Alert", "callback_data": "lap_cctv"},
+                {"text": cctv_btn, "callback_data": "lap_cctv"},
             ],
             [
                 {"text": "🚨 Siren Alarm", "callback_data": "lap_alarm"},
@@ -252,7 +277,7 @@ def get_laptop_control_keyboard() -> dict:
             ],
             [
                 {"text": "🤖 AI & Sandbox Keys", "callback_data": "lap_coder_menu"},
-                {"text": "⚡ Auto Mode", "callback_data": "lap_auto_toggle"},
+                {"text": "🧹 Clean Photos", "callback_data": "lap_clean_photos"},
             ],
             [
                 {"text": "🎙️ Record Mic (10s)", "callback_data": "lap_mic"},
@@ -265,7 +290,7 @@ def get_laptop_control_keyboard() -> dict:
             [
                 {"text": "🔉 Vol -", "callback_data": "lap_vol_down"},
                 {"text": "🔊 Vol +", "callback_data": "lap_vol_up"},
-                {"text": "🔇 Mute", "callback_data": "lap_mute"},
+                {"text": mute_btn, "callback_data": "lap_mute"},
                 {"text": "⏯️ Play/Pause", "callback_data": "lap_playpause"},
             ],
             [
@@ -274,7 +299,7 @@ def get_laptop_control_keyboard() -> dict:
             ],
             [
                 {"text": "📱 Running Apps", "callback_data": "lap_apps"},
-                {"text": "🔒 Lock Screen", "callback_data": "lap_lock"},
+                {"text": lock_btn, "callback_data": "lap_lock_toggle"},
             ],
             [
                 {"text": "🔙 Back to Main Menu", "callback_data": "btn_status"},
@@ -338,10 +363,16 @@ def get_power_keyboard() -> dict:
     }
 
 
-def get_main_inline_keyboard() -> dict:
-    """Inline Keyboard with interactive buttons."""
+def get_main_inline_keyboard(remote_active: Optional[bool] = None) -> dict:
+    """Inline Keyboard with interactive buttons, including Master Remote Mode Switch."""
+    global _is_remote_active
+    active = _is_remote_active if remote_active is None else remote_active
+    btn_text = "🔴 Self-Use Mode (Pause Remote)" if active else "🟢 Remote Mode (Activate Remote)"
     return {
         "inline_keyboard": [
+            [
+                {"text": btn_text, "callback_data": "lap_toggle_remote"},
+            ],
             [
                 {"text": "🎛️ Live Laptop Controls", "callback_data": "lap_controls"},
                 {"text": "📸 Live Screenshot", "callback_data": "lap_screenshot"},
@@ -499,6 +530,26 @@ def tg_edit_message(
         return resp.status_code == 200 and resp.json().get("ok", False)
     except Exception as e:
         logger.debug(f"Could not edit message: {e}")
+        return False
+
+
+def tg_edit_reply_markup(
+    chat_id: int,
+    message_id: int,
+    reply_markup: dict,
+) -> bool:
+    """Edit only the inline keyboard of an existing message in-place without touching text."""
+    url = f"{API_BASE}/editMessageReplyMarkup"
+    payload = {
+        "chat_id": chat_id,
+        "message_id": message_id,
+        "reply_markup": reply_markup,
+    }
+    try:
+        resp = requests.post(url, json=payload, timeout=10)
+        return resp.status_code == 200 and resp.json().get("ok", False)
+    except Exception as e:
+        logger.debug(f"Could not edit reply markup: {e}")
         return False
 
 
@@ -740,6 +791,7 @@ class TelegramBotRunner:
         self, chat_id: int, user_id: int, text: str
     ) -> bool:
         """Handle slash commands and persistent reply button clicks with nested menus and clean transitions."""
+        global _is_remote_active
         clean = text.strip()
         clean_lower = clean.lower()
         cmd = clean.split()[0].lower() if clean else ""
@@ -981,6 +1033,35 @@ class TelegramBotRunner:
             return True
 
         # ======================================================================
+        # 4b. Master Remote Access Switch (Self-Use Mode vs Remote Mode)
+        # ======================================================================
+        if clean in ("🔴 Self-Use Mode", "🟢 Remote Mode", "/remote", "/selfuse", "/mode") or clean_lower in ("self use", "selfuse", "remote mode", "remotemode", "toggle remote", "remote"):
+            res = laptop_remote_toggle()
+            if "Self-Use Mode: ACTIVE" in res:
+                _is_remote_active = False
+            elif "Remote Mode: ACTIVE" in res:
+                _is_remote_active = True
+            tg_send_message(chat_id, res, reply_markup=get_main_inline_keyboard())
+            return True
+
+        if clean in ("/remote on", "/remoteon") or clean_lower in ("remote on", "remoteon"):
+            res = laptop_remote_on()
+            _is_remote_active = True
+            tg_send_message(chat_id, res, reply_markup=get_main_inline_keyboard())
+            return True
+
+        if clean in ("/remote off", "/remoteoff") or clean_lower in ("remote off", "remoteoff"):
+            res = laptop_remote_off()
+            _is_remote_active = False
+            tg_send_message(chat_id, res, reply_markup=get_main_inline_keyboard())
+            return True
+
+        if clean in ("/remote status",) or clean_lower in ("remote status",):
+            res = laptop_remote_status()
+            tg_send_message(chat_id, res, reply_markup=get_main_inline_keyboard())
+            return True
+
+        # ======================================================================
         # 5. AI & Sandbox Terminal Actions
         # ======================================================================
         if clean in ("⭐ Best Option", "/best", "/recommended") or clean_lower in ("best", "best option"):
@@ -1157,9 +1238,15 @@ class TelegramBotRunner:
             tg_send_message(chat_id, res, reply_markup=POWER_REPLY_KEYBOARD)
             return True
 
-        if clean in ("🔒 Lock Screen", "/lock") or clean_lower in ("lock", "lock screen", "lock laptop", "/lock"):
-            res = laptop_lock()
-            tg_send_message(chat_id, res, reply_markup=POWER_REPLY_KEYBOARD)
+        if clean in ("🔒 Lock Screen", "🔓 Unlock Screen", "/lock", "/unlock") or clean_lower in ("lock", "lock screen", "lock laptop", "/lock", "unlock", "unlock screen"):
+            res = laptop_lock_toggle()
+            if "LOCKED" in res:
+                _is_locked = True
+            elif "UNLOCKED" in res:
+                _is_locked = False
+            else:
+                _is_locked = not _is_locked
+            tg_send_message(chat_id, res, reply_markup=get_laptop_control_keyboard())
             return True
 
         if clean == "💤 Sleep Laptop" or clean_lower in ("sleep", "sleep laptop"):
@@ -1422,6 +1509,7 @@ class TelegramBotRunner:
         cq_msg_id = message.get("message_id")
         chat_id = message.get("chat", {}).get("id")
         data = cq.get("data", "")
+        global _is_remote_active, _is_locked, _is_muted, _is_auto_approve_active, _is_cctv_active
 
         if not is_user_allowed(user_id, username=username):
             logger.warning(f"Unauthorized callback query from {user_id} (@{username})")
@@ -1477,6 +1565,14 @@ class TelegramBotRunner:
             )
         elif data == "lap_mute":
             res = laptop_mute()
+            if "MUTED" in res:
+                _is_muted = True
+            elif "UNMUTED" in res:
+                _is_muted = False
+            else:
+                _is_muted = not _is_muted
+            if cq_msg_id:
+                tg_edit_reply_markup(chat_id, cq_msg_id, get_laptop_control_keyboard())
             tg_send_message(
                 chat_id,
                 f"🔇 *Mute Toggle Completed!*\n\n📋 *Short Summary:* {res}",
@@ -1496,11 +1592,19 @@ class TelegramBotRunner:
                 f"📱 *Running Apps Completed!*\n\n📋 *Short Summary:*\n{res}",
                 reply_markup=get_laptop_control_keyboard(),
             )
-        elif data == "lap_lock":
-            res = laptop_lock()
+        elif data in ("lap_lock", "lap_lock_toggle"):
+            res = laptop_lock_toggle()
+            if "LOCKED" in res:
+                _is_locked = True
+            elif "UNLOCKED" in res:
+                _is_locked = False
+            else:
+                _is_locked = not _is_locked
+            if cq_msg_id:
+                tg_edit_reply_markup(chat_id, cq_msg_id, get_laptop_control_keyboard())
             tg_send_message(
                 chat_id,
-                f"🔒 *Screen Lock Completed!*\n\n📋 *Short Summary:* {res}",
+                f"🔒 *Screen Lock Toggle:*\n\n{res}",
                 reply_markup=get_laptop_control_keyboard(),
             )
         elif data == "lap_wifi":
@@ -1516,6 +1620,21 @@ class TelegramBotRunner:
                 "🎛️ *Laptop Live Control Panel:*\nButtons se direct laptop control karein:",
                 reply_markup=get_laptop_control_keyboard(),
             )
+        elif data == "lap_toggle_remote":
+            res = laptop_remote_toggle()
+            if "Self-Use Mode: ACTIVE" in res:
+                _is_remote_active = False
+            elif "Remote Mode: ACTIVE" in res:
+                _is_remote_active = True
+            else:
+                _is_remote_active = not _is_remote_active
+            if cq_msg_id:
+                tg_edit_reply_markup(chat_id, cq_msg_id, get_laptop_control_keyboard())
+            tg_send_message(
+                chat_id,
+                res,
+                reply_markup=get_main_inline_keyboard(),
+            )
         elif data == "lap_coder_menu":
             tg_send_message(
                 chat_id,
@@ -1526,6 +1645,7 @@ class TelegramBotRunner:
             if cq_msg_id:
                 tg_delete_message(chat_id, cq_msg_id)
             res = laptop_auto_on()
+            _is_auto_approve_active = True
             tg_send_message(
                 chat_id,
                 "⚡ *Auto Mode Activated!*\n\n"
@@ -1536,6 +1656,7 @@ class TelegramBotRunner:
             if cq_msg_id:
                 tg_delete_message(chat_id, cq_msg_id)
             res = laptop_auto_off()
+            _is_auto_approve_active = False
             tg_send_message(
                 chat_id,
                 "🛑 *Auto-Approve Deactivated!*\n\n"
@@ -1544,6 +1665,14 @@ class TelegramBotRunner:
             )
         elif data == "lap_auto_toggle":
             res = laptop_auto_toggle()
+            if "ON 🟢" in res:
+                _is_auto_approve_active = True
+            elif "OFF 🔴" in res:
+                _is_auto_approve_active = False
+            else:
+                _is_auto_approve_active = not _is_auto_approve_active
+            if cq_msg_id:
+                tg_edit_reply_markup(chat_id, cq_msg_id, get_laptop_control_keyboard())
             tg_send_message(
                 chat_id,
                 f"🔄 *Auto Mode Toggled!*\n\n📋 *Short Summary:* {res}",
@@ -1662,6 +1791,14 @@ class TelegramBotRunner:
             tg_send_message(chat_id, res, reply_markup=get_laptop_control_keyboard())
         elif data == "lap_cctv":
             res = laptop_cctv_toggle()
+            if "ACTIVATED" in res:
+                _is_cctv_active = True
+            elif "DEACTIVATED" in res:
+                _is_cctv_active = False
+            else:
+                _is_cctv_active = not _is_cctv_active
+            if cq_msg_id:
+                tg_edit_reply_markup(chat_id, cq_msg_id, get_laptop_control_keyboard())
             tg_send_message(chat_id, res, reply_markup=get_laptop_control_keyboard())
         elif data == "lap_alarm":
             res = laptop_alarm()

@@ -91,6 +91,14 @@ def laptop_lock() -> str:
     return dispatch_to_laptop("__ACTION_LOCK__")
 
 
+def laptop_unlock() -> str:
+    return dispatch_to_laptop("__ACTION_UNLOCK__")
+
+
+def laptop_lock_toggle() -> str:
+    return dispatch_to_laptop("__ACTION_LOCK_TOGGLE__")
+
+
 def laptop_wifi() -> str:
     return dispatch_to_laptop("__ACTION_WIFI__")
 
@@ -126,6 +134,22 @@ def laptop_type(text: str) -> str:
 
 def laptop_ai_status() -> str:
     return dispatch_to_laptop("__ACTION_AI_STATUS__")
+
+
+def laptop_remote_toggle() -> str:
+    return dispatch_to_laptop("__ACTION_REMOTE_TOGGLE__")
+
+
+def laptop_remote_on() -> str:
+    return dispatch_to_laptop("__ACTION_REMOTE_ON__")
+
+
+def laptop_remote_off() -> str:
+    return dispatch_to_laptop("__ACTION_REMOTE_OFF__")
+
+
+def laptop_remote_status() -> str:
+    return dispatch_to_laptop("__ACTION_REMOTE_STATUS__")
 
 
 def laptop_auto_toggle() -> str:
