@@ -93,98 +93,113 @@ UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
 # Multi-Level Nested Bottom Reply Keyboards (Clean, Categorized & Extendable)
 # ==============================================================================
 
-# 1. Main Dashboard (Top-level Category Switcher)
-MAIN_DASHBOARD_KEYBOARD = {
+# ==============================================================================
+# Multi-Level Nested Bottom Reply Keyboards (Clean, Categorized & Extendable)
+# ==============================================================================
+
+# 1. Main Root Switcher (ONLY 2 Options when Bot Starts: Laptop & Cloud)
+ROOT_CHOICE_KEYBOARD = {
     "keyboard": [
-        [{"text": "🛡️ Spy & Security"}, {"text": "🤖 Sandbox & AI"}],
-        [{"text": "⚡ Power & Ghost Mode"}, {"text": "🎵 Media & Sound"}],
-        [{"text": "📁 Files & Tools"}, {"text": "🌟 Next Section ➡️"}],
-        [{"text": "📸 Quick Screen"}, {"text": "📊 Quick Status"}],
+        [{"text": "💻 Laptop Mode"}, {"text": "☁️ Cloud Server"}],
     ],
     "resize_keyboard": True,
     "is_persistent": True,
 }
-REPLY_KEYBOARD = MAIN_DASHBOARD_KEYBOARD
+REPLY_KEYBOARD = ROOT_CHOICE_KEYBOARD
 
-# 2. Spy & Security Sub-menu
-SPY_REPLY_KEYBOARD = {
+# 2. Laptop Dashboard (Categories for Physical Laptop)
+LAPTOP_DASHBOARD_KEYBOARD = {
     "keyboard": [
-        [{"text": "📷 Selfie (Webcam)"}, {"text": "🎥 Video (10s)"}, {"text": "🎙️ Mic (10s)"}],
-        [{"text": "👁️ CCTV Mode"}, {"text": "🚨 Siren Alarm"}, {"text": "📍 Find Laptop"}],
+        [{"text": "🛡️ Spy & Security"}, {"text": "🤖 Sandbox & AI"}],
+        [{"text": "⚡ Power & Ghost Mode"}, {"text": "🎵 Media & Sound"}],
+        [{"text": "🌟 Extra Tools ➡️"}, {"text": "📊 Laptop Status"}],
+        [{"text": "📸 Quick Screen"}, {"text": "🔙 Main Menu"}],
+    ],
+    "resize_keyboard": True,
+    "is_persistent": True,
+}
+MAIN_DASHBOARD_KEYBOARD = ROOT_CHOICE_KEYBOARD
+
+# 3. Cloud Server Dashboard (Render 24/7 Cloud Controls)
+CLOUD_DASHBOARD_KEYBOARD = {
+    "keyboard": [
+        [{"text": "📊 Cloud Status"}, {"text": "📁 Cloud Files"}],
+        [{"text": "⚡ Cloud Quick Test"}, {"text": "🧹 Reset AI Memory"}],
+        [{"text": "🌐 24/7 Hosting Guide"}, {"text": "🗑️ Clean Messages"}],
         [{"text": "🔙 Main Menu"}],
     ],
     "resize_keyboard": True,
     "is_persistent": True,
 }
 
-# 3. AI & Sandbox Terminal Sub-menu (Send Box Approvals & Actions)
+# 4. Spy & Security Sub-menu
+SPY_REPLY_KEYBOARD = {
+    "keyboard": [
+        [{"text": "📷 Selfie (Webcam)"}, {"text": "🎥 Video (10s)"}, {"text": "🎙️ Mic (10s)"}],
+        [{"text": "👁️ CCTV Mode"}, {"text": "🚨 Siren Alarm"}, {"text": "📍 Find Laptop"}],
+        [{"text": "🔙 Laptop Menu"}, {"text": "🔙 Main Menu"}],
+    ],
+    "resize_keyboard": True,
+    "is_persistent": True,
+}
+
+# 5. AI & Sandbox Terminal Sub-menu (Send Box Approvals & Actions)
 AI_REPLY_KEYBOARD = {
     "keyboard": [
         [{"text": "✅ Approve (Enter)"}, {"text": "🟢 Send 'y'"}, {"text": "🔴 Send 'n'"}],
         [{"text": "🛑 Ctrl+C"}, {"text": "📊 AI Status"}, {"text": "📸 Screen Peek"}],
         [{"text": "⌨️ Type Text"}, {"text": "💻 Run Bash Cmd"}],
-        [{"text": "🔙 Main Menu"}],
+        [{"text": "🔙 Laptop Menu"}, {"text": "🔙 Main Menu"}],
     ],
     "resize_keyboard": True,
     "is_persistent": True,
 }
 
-# 4. Media & Sound Sub-menu
+# 6. Media & Sound Sub-menu
 MEDIA_REPLY_KEYBOARD = {
     "keyboard": [
         [{"text": "🔉 Vol -"}, {"text": "🔊 Vol +"}, {"text": "🔇 Mute"}],
         [{"text": "⏯️ Play/Pause"}, {"text": "⏹️ Stop Music"}],
         [{"text": "🗣️ Speak Text"}, {"text": "🎵 Play Music"}],
-        [{"text": "🔙 Main Menu"}],
+        [{"text": "🔙 Laptop Menu"}, {"text": "🔙 Main Menu"}],
     ],
     "resize_keyboard": True,
     "is_persistent": True,
 }
 VOLUME_REPLY_KEYBOARD = MEDIA_REPLY_KEYBOARD
 
-# 5. System & Power Sub-menu (With Ghost Mode Screen OFF and Screen ON)
+# 7. System & Power Sub-menu (With Ghost Mode Screen OFF and Screen ON)
 POWER_REPLY_KEYBOARD = {
     "keyboard": [
         [{"text": "🕶️ Ghost Mode (Screen OFF)"}, {"text": "☀️ Screen ON"}],
         [{"text": "📸 Screenshot"}, {"text": "🔋 Battery"}, {"text": "🔒 Lock Screen"}],
         [{"text": "💤 Sleep Laptop"}, {"text": "🔄 Restart Laptop"}, {"text": "⛔ Shutdown Laptop"}],
         [{"text": "📋 Clipboard"}, {"text": "📱 Running Apps"}],
-        [{"text": "🔙 Main Menu"}],
+        [{"text": "🔙 Laptop Menu"}, {"text": "🔙 Main Menu"}],
     ],
     "resize_keyboard": True,
     "is_persistent": True,
 }
 
-# 6. Files & Diagnostic Tools Sub-menu
-TOOLS_REPLY_KEYBOARD = {
+# 8. Extra Laptop Tools Sub-menu
+LAPTOP_EXTRA_KEYBOARD = {
     "keyboard": [
-        [{"text": "📁 Workspace Files"}, {"text": "⚡ Quick Test"}],
-        [{"text": "🧹 Reset Memory"}, {"text": "🌐 24/7 Hosting Guide"}],
-        [{"text": "💡 Help Guide"}, {"text": "🗑️ Clean Messages"}],
-        [{"text": "🔙 Main Menu"}],
-    ],
-    "resize_keyboard": True,
-    "is_persistent": True,
-}
-
-# 7. Next Section / Uncategorized & New Features (Extendable Page 2)
-NEXT_SECTION_KEYBOARD = {
-    "keyboard": [
-        [{"text": "🕶️ Ghost Mode (Screen OFF)"}, {"text": "☀️ Screen ON"}],
         [{"text": "🌐 Open URL"}, {"text": "💬 Screen Popup"}],
         [{"text": "📶 Wi-Fi Status"}, {"text": "📱 Running Apps"}],
-        [{"text": "⬅️ Previous Section"}, {"text": "🔙 Main Menu"}],
+        [{"text": "🔙 Laptop Menu"}, {"text": "🔙 Main Menu"}],
     ],
     "resize_keyboard": True,
     "is_persistent": True,
 }
+NEXT_SECTION_KEYBOARD = LAPTOP_EXTRA_KEYBOARD
+TOOLS_REPLY_KEYBOARD = CLOUD_DASHBOARD_KEYBOARD
 
-# 8. Alarm Mode Sub-menu
+# 9. Alarm Mode Sub-menu
 ALARM_REPLY_KEYBOARD = {
     "keyboard": [
         [{"text": "⏹️ Stop Alarm"}],
         [{"text": "🔒 Lock Screen"}, {"text": "🎥 Video (10s)"}],
-        [{"text": "🔙 Main Menu"}],
+        [{"text": "🔙 Laptop Menu"}, {"text": "🔙 Main Menu"}],
     ],
     "resize_keyboard": True,
     "is_persistent": True,
@@ -520,10 +535,49 @@ def get_status_text() -> str:
         f"```\n{sys_stat}\n```\n"
         f"• **Owner:** @{cfg.get('owner_username', 'kissbilla2')} (`{cfg.get('owner_user_id')}`)\n"
         f"• **💻 Laptop Node:** {laptop_status}\n"
+        f"• **☁️ Cloud Host:** Render Cloud (ONLINE 24/7 🟢)\n"
         f"• **AI Model:** Google Gemini (`gemini-flash-lite-latest`)\n"
-        f"• **Multimodal:** Vision / Screenshots & Document processing enabled\n"
         f"• **Saved Memory Facts:** {len(facts)}"
     )
+
+
+def get_cloud_status_text() -> str:
+    sys_stat = system_status()
+    cfg = get_runtime_config()
+    facts = get_all_facts()
+    return (
+        "☁️ *Hermes 24/7 Cloud Server Status:*\n\n"
+        f"```\n{sys_stat}\n```\n"
+        f"• **Cloud Platform:** Render Cloud Container (24/7 Live)\n"
+        f"• **Owner:** @{cfg.get('owner_username', 'kissbilla2')} (`{cfg.get('owner_user_id')}`)\n"
+        f"• **AI Engine:** Google Gemini Flash Lite\n"
+        f"• **Saved Memory Facts:** {len(facts)}\n"
+        "• **Cloud Services:** All systems operational 🟢"
+    )
+
+
+def get_laptop_status_text() -> str:
+    online = is_laptop_online()
+    status_emoji = "ONLINE 🟢" if online else "OFFLINE 🔴"
+    if online:
+        bat = laptop_battery()
+        return (
+            f"💻 *Physical Laptop Status ({status_emoji}):*\n\n"
+            f"• **Connection:** Connected via Secure Bridge 🟢\n"
+            f"• **OS:** Kali Linux (GNOME Wayland)\n"
+            f"• **Battery:** {bat}\n"
+            f"• **Webcam & Mic:** Ready\n"
+            f"• **Antigravity Watcher:** Active & Monitoring\n"
+            f"• **CCTV & Intruder Trap:** Standby"
+        )
+    else:
+        return (
+            f"💻 *Physical Laptop Status ({status_emoji}):*\n\n"
+            "Laptop abhi offline hai ya bridge service stop hai.\n\n"
+            "Chalu karne ke liye laptop par chalaein:\n"
+            "`systemctl --user start hermes-laptop.service`\n"
+            "ya `./start_laptop_node.sh`"
+        )
 
 
 def get_files_text() -> str:
@@ -645,13 +699,13 @@ class TelegramBotRunner:
         cmd = clean.split()[0].lower() if clean else ""
 
         # ======================================================================
-        # 1. Main Dashboard & Navigation Root
+        # 1. Main Root Switcher (/start, /menu, "🔙 Main Menu")
+        # ONLY TWO OPTIONS: [💻 Laptop Mode] [☁️ Cloud Server]
         # ======================================================================
         if cmd in ("/start", "/menu") or clean in (
             "📱 Menu",
             "🔙 Main Menu",
             "🔙 Back to Main Menu",
-            "⬅️ Previous Section",
         ):
             cfg = get_runtime_config()
             is_new_owner = False
@@ -659,23 +713,70 @@ class TelegramBotRunner:
                 set_owner(user_id)
                 is_new_owner = True
 
+            laptop_status = "ONLINE 🟢" if is_laptop_online() else "OFFLINE 🔴"
+
             welcome = (
                 "👑 *Hermes Autonomous Agent Panel*\n\n"
                 f"{'✅ Registered as Primary Owner.' if is_new_owner else '⚡ System Ready & Active.'}\n"
-                "Niche diye categorized menus se direct laptop aur AI features control karein:"
+                f"• 💻 **Laptop Node:** {laptop_status}\n"
+                "• ☁️ **Cloud Host:** ONLINE 24/7 🟢\n\n"
+                "Chuniye aap kise control karna chahte hain:"
             )
             send_or_replace_nav(
                 chat_id,
                 welcome,
-                reply_markup=MAIN_DASHBOARD_KEYBOARD,
+                reply_markup=ROOT_CHOICE_KEYBOARD,
             )
             return True
 
         # ======================================================================
-        # 2. Category Switchers (Nested Sub-Menus)
+        # 2. Dual-Mode Switchers: Laptop Mode vs Cloud Server
+        # ======================================================================
+        if clean in (
+            "💻 Laptop Mode",
+            "💻 Laptop Exec",
+            "💻 Laptop",
+            "🔙 Laptop Menu",
+            "🔙 Back to Laptop",
+            "/laptop",
+        ) or clean_lower in ("laptop", "laptop mode", "laptop exec", "laptop panel", "/laptop"):
+            laptop_status = "ONLINE 🟢 (Connected)" if is_laptop_online() else "OFFLINE 🔴 (Not connected)"
+            text = (
+                f"💻 *Laptop Control Panel* ({laptop_status})\n\n"
+                "Aapka physical Kali Linux laptop yahan se operate hoga.\n"
+                "Niche diye categories me se select karein:"
+            )
+            send_or_replace_nav(
+                chat_id,
+                text,
+                reply_markup=LAPTOP_DASHBOARD_KEYBOARD,
+            )
+            return True
+
+        if clean in (
+            "☁️ Cloud Server",
+            "☁️ Cloud Mode",
+            "☁️ Cloud",
+            "/cloud",
+        ) or clean_lower in ("cloud", "clode", "cloud server", "cloud mode", "cloud bot", "/cloud"):
+            text = (
+                "☁️ *Cloud Server Panel (Render 24/7)*\n\n"
+                "Bot Render Cloud container par 24/7 live hai.\n"
+                "Laptop band hone par bhi bot yahan se active rehta hai.\n\n"
+                "Niche diye options se Cloud manage karein:"
+            )
+            send_or_replace_nav(
+                chat_id,
+                text,
+                reply_markup=CLOUD_DASHBOARD_KEYBOARD,
+            )
+            return True
+
+        # ======================================================================
+        # 3. Category Switchers (Nested Sub-Menus inside Laptop & Cloud)
         # ======================================================================
 
-        # Category 1: Spy & Security
+        # Category 1: Spy & Security (Laptop)
         if clean in ("🛡️ Spy & Security", "/spy", "/security"):
             send_or_replace_nav(
                 chat_id,
@@ -684,7 +785,7 @@ class TelegramBotRunner:
             )
             return True
 
-        # Category 2: Sandbox & AI Terminal
+        # Category 2: Sandbox & AI Terminal (Laptop)
         if clean in (
             "🤖 Sandbox & AI",
             "🤖 AI & Terminal",
@@ -700,7 +801,7 @@ class TelegramBotRunner:
             )
             return True
 
-        # Category 3: Media & Sound
+        # Category 3: Media & Sound (Laptop)
         if clean in ("🎵 Media & Sound", "🔊 Volume & Media", "/volume"):
             send_or_replace_nav(
                 chat_id,
@@ -709,7 +810,7 @@ class TelegramBotRunner:
             )
             return True
 
-        # Category 4: System & Power & Ghost Mode
+        # Category 4: System & Power & Ghost Mode (Laptop)
         if clean in ("⚡ Power & Ghost Mode", "⚡ System & Power", "⚡ Power & Lock", "/power"):
             send_or_replace_nav(
                 chat_id,
@@ -718,21 +819,21 @@ class TelegramBotRunner:
             )
             return True
 
-        # Category 5: Files & Diagnostics Tools
+        # Category 5: Extra Tools (Laptop)
+        if clean in ("🌟 Extra Tools ➡️", "🌟 Next Section ➡️", "/next", "/more", "⬅️ Previous Section"):
+            send_or_replace_nav(
+                chat_id,
+                "🌟 *Extra Laptop Tools:*\nRemote URL launcher, Wi-Fi info, screen popup aur running apps yahan hain:",
+                reply_markup=LAPTOP_EXTRA_KEYBOARD,
+            )
+            return True
+
+        # Category 6: Files & Diagnostics (Cloud)
         if clean in ("📁 Files & Tools", "/tools"):
             send_or_replace_nav(
                 chat_id,
                 "📁 *Files & Diagnostics Tools:*\nWorkspace files, test diagnostics aur chat cleaner niche se access karein:",
-                reply_markup=TOOLS_REPLY_KEYBOARD,
-            )
-            return True
-
-        # Category 6: Next Section (New & Uncategorized Features)
-        if clean in ("🌟 Next Section ➡️", "/next", "/more"):
-            send_or_replace_nav(
-                chat_id,
-                "🌟 *Next Section (New & Extra Features):*\nGhost Mode (screen off), remote URL launcher, Wi-Fi info aur extra tools yahan hain:",
-                reply_markup=NEXT_SECTION_KEYBOARD,
+                reply_markup=CLOUD_DASHBOARD_KEYBOARD,
             )
             return True
 
@@ -747,8 +848,8 @@ class TelegramBotRunner:
             _recent_bot_msgs[chat_id] = []
             send_or_replace_nav(
                 chat_id,
-                f"🧹 *Chat Cleaned Up!*\nPurane bot messages delete ho gaye.",
-                reply_markup=MAIN_DASHBOARD_KEYBOARD,
+                f"🧹 *Chat Cleaned Up!*\n{count} purane bot messages delete ho gaye.",
+                reply_markup=CLOUD_DASHBOARD_KEYBOARD,
             )
             return True
 
@@ -902,7 +1003,7 @@ class TelegramBotRunner:
             temp_id = tg_send_message(chat_id, "📸 Laptop screen capture ho rahi hai...")
             res = laptop_screenshot()
             tg_delete_message(chat_id, temp_id)
-            markup = AI_REPLY_KEYBOARD if clean == "📸 Screen Peek" else (MAIN_DASHBOARD_KEYBOARD if clean == "📸 Quick Screen" else POWER_REPLY_KEYBOARD)
+            markup = AI_REPLY_KEYBOARD if clean == "📸 Screen Peek" else (LAPTOP_DASHBOARD_KEYBOARD if clean == "📸 Quick Screen" else POWER_REPLY_KEYBOARD)
             tg_send_message(chat_id, res, reply_markup=markup)
             return True
 
@@ -1010,38 +1111,59 @@ class TelegramBotRunner:
         # ======================================================================
         # 9. Files & Diagnostic Tools Actions
         # ======================================================================
-        if clean in ("📁 Workspace Files", "📁 Files") or cmd == "/files":
-            tg_send_message(chat_id, get_files_text(), reply_markup=TOOLS_REPLY_KEYBOARD)
+        # Cloud Status
+        if clean in ("📊 Cloud Status",) or clean_lower in ("cloud status", "render status"):
+            tg_send_message(
+                chat_id,
+                get_cloud_status_text(),
+                reply_markup=CLOUD_DASHBOARD_KEYBOARD,
+            )
             return True
 
-        if clean in ("⚡ Quick Test",) or cmd == "/test":
-            tg_send_message(chat_id, get_quick_test_text(), reply_markup=TOOLS_REPLY_KEYBOARD)
+        # Laptop Status
+        if clean in ("📊 Laptop Status",) or clean_lower in ("laptop status",):
+            tg_send_message(
+                chat_id,
+                get_laptop_status_text(),
+                reply_markup=LAPTOP_DASHBOARD_KEYBOARD,
+            )
             return True
 
-        if clean in ("🧹 Reset Memory", "🧹 Reset") or cmd == "/reset":
+        # Cloud Files / Workspace Files
+        if clean in ("📁 Cloud Files", "📁 Workspace Files", "📁 Files") or cmd == "/files":
+            tg_send_message(chat_id, get_files_text(), reply_markup=CLOUD_DASHBOARD_KEYBOARD)
+            return True
+
+        # Cloud Quick Test
+        if clean in ("⚡ Cloud Quick Test", "⚡ Quick Test") or cmd == "/test":
+            tg_send_message(chat_id, get_quick_test_text(), reply_markup=CLOUD_DASHBOARD_KEYBOARD)
+            return True
+
+        # Reset AI Memory
+        if clean in ("🧹 Reset AI Memory", "🧹 Reset Memory", "🧹 Reset") or cmd == "/reset":
             session_id = f"tg_{chat_id}"
             clear_history(session_id)
             tg_send_message(
                 chat_id,
                 "🧹 Context clear ho gaya! Naya conversation shuru hai.",
-                reply_markup=TOOLS_REPLY_KEYBOARD,
+                reply_markup=CLOUD_DASHBOARD_KEYBOARD,
             )
             return True
 
         if clean in ("🌐 24/7 Hosting Guide", "🌐 24/7 Hosting") or cmd == "/vps":
-            tg_send_message(chat_id, get_vps_guide_text(), reply_markup=TOOLS_REPLY_KEYBOARD)
+            tg_send_message(chat_id, get_vps_guide_text(), reply_markup=CLOUD_DASHBOARD_KEYBOARD)
             return True
 
         if clean in ("💡 Help Guide", "💡 Help") or cmd == "/help" or clean_lower in ("help", "guide"):
-            tg_send_message(chat_id, get_help_text(), reply_markup=TOOLS_REPLY_KEYBOARD)
+            tg_send_message(chat_id, get_help_text(), reply_markup=CLOUD_DASHBOARD_KEYBOARD)
             return True
 
-        # Status
+        # Overall Status
         if cmd == "/status" or clean in ("📊 Quick Status", "📊 Status", "📊 Full Status") or clean_lower in ("status", "quick status", "system status", "health"):
             tg_send_message(
                 chat_id,
                 get_status_text(),
-                reply_markup=MAIN_DASHBOARD_KEYBOARD,
+                reply_markup=ROOT_CHOICE_KEYBOARD,
             )
             return True
 
@@ -1065,7 +1187,7 @@ class TelegramBotRunner:
                     tg_send_message(
                         chat_id,
                         f"⏰ Reminder set! Mai aapko `{time_str}` baad yaad dilaunga:\n_{reminder_msg}_",
-                        reply_markup=MAIN_DASHBOARD_KEYBOARD,
+                        reply_markup=ROOT_CHOICE_KEYBOARD,
                     )
                     return True
             tg_send_message(
