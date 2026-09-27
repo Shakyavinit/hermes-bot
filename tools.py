@@ -79,6 +79,13 @@ from bridge import (
     laptop_webcam,
     laptop_webcam_video,
     laptop_wifi,
+    laptop_human_open_app,
+    laptop_human_click,
+    laptop_human_move,
+    laptop_human_type,
+    laptop_human_scroll,
+    laptop_screen_inspect,
+    laptop_screen_vision_click,
 )
 
 
@@ -269,6 +276,63 @@ def send_laptop_key(key: str) -> str:
     elif "ctrl" in k or "cancel" in k:
         return laptop_key_ctrlc()
     return laptop_key_enter()
+
+
+# Human-Like Screen & Mouse GUI Tools
+def human_open_app(app_name: str) -> str:
+    """
+    Open an application on the user's laptop screen like a real human.
+    Presses the Super key, types the app name with natural typing speed, and presses Return.
+    """
+    return laptop_human_open_app(app_name)
+
+
+def human_mouse_click(
+    x: Optional[int] = None,
+    y: Optional[int] = None,
+    button: str = "left",
+    clicks: int = 1,
+) -> str:
+    """
+    Smoothly move mouse cursor to (x, y) like a human with natural Bezier curve, hesitate, and click.
+    button: 'left', 'right', or 'middle'. clicks: 1 for single click, 2 for double click.
+    """
+    return laptop_human_click(x, y, button, clicks)
+
+
+def human_mouse_move(x: int, y: int) -> str:
+    """
+    Glide the mouse cursor smoothly to coordinates (x, y) on the laptop screen.
+    """
+    return laptop_human_move(x, y)
+
+
+def human_type_text(text: str, press_enter: bool = False) -> str:
+    """
+    Type text into the active window on the laptop with realistic human typing intervals.
+    """
+    return laptop_human_type(text, press_enter)
+
+
+def human_mouse_scroll(direction: str = "down", amount: int = 5) -> str:
+    """
+    Scroll mouse wheel up or down like a human.
+    """
+    return laptop_human_scroll(direction, amount)
+
+
+def inspect_screen_vision(instruction: str = "Describe what is currently visible on screen") -> str:
+    """
+    Capture live laptop desktop screenshot and analyze it using Gemini Vision to explain what is displayed.
+    """
+    return laptop_screen_inspect(instruction)
+
+
+def screen_vision_interact(target_element: str, instruction: str = "") -> str:
+    """
+    Inspect the screen using Gemini Vision to find target_element, extract coordinates, glide mouse like a human, and click it.
+    """
+    return laptop_screen_vision_click(target_element, instruction)
 
 
 # File System & Standard Diagnostic Tools
@@ -492,6 +556,13 @@ TOOLS_MAP: Dict[str, Callable] = {
     "fetch_url": fetch_url,
     "query_public_api": query_public_api,
     "call_api": call_api,
+    "human_open_app": human_open_app,
+    "human_mouse_click": human_mouse_click,
+    "human_mouse_move": human_mouse_move,
+    "human_type_text": human_type_text,
+    "human_mouse_scroll": human_mouse_scroll,
+    "inspect_screen_vision": inspect_screen_vision,
+    "screen_vision_interact": screen_vision_interact,
 }
 
 GEMINI_FUNCTION_DECLARATIONS = [
@@ -825,6 +896,125 @@ GEMINI_FUNCTION_DECLARATIONS = [
                 },
             },
             "required": ["url"],
+        },
+    },
+    {
+        "name": "human_open_app",
+        "description": "Open any application on the user's physical laptop screen like a real human: presses Super key, types app name with natural human cadence, waits, and presses Enter.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "app_name": {
+                    "type": "string",
+                    "description": "Name of the application to open, e.g. 'Chrome', 'VS Code', 'Firefox', 'Telegram', 'Terminal', 'Settings', 'Calculator'.",
+                }
+            },
+            "required": ["app_name"],
+        },
+    },
+    {
+        "name": "human_mouse_click",
+        "description": "Move the mouse cursor smoothly across the physical screen like a real human hand (using natural Bezier curve and deceleration) and click an element.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "x": {
+                    "type": "integer",
+                    "description": "Target X pixel coordinate on screen (optional, if omitted clicks at current cursor position).",
+                },
+                "y": {
+                    "type": "integer",
+                    "description": "Target Y pixel coordinate on screen (optional).",
+                },
+                "button": {
+                    "type": "string",
+                    "enum": ["left", "right", "middle"],
+                    "description": "Mouse button to click: 'left', 'right', or 'middle'. Default is 'left'.",
+                },
+                "clicks": {
+                    "type": "integer",
+                    "description": "Number of clicks: 1 for single click, 2 for double-click. Default is 1.",
+                },
+            },
+        },
+    },
+    {
+        "name": "human_mouse_move",
+        "description": "Glide the mouse cursor smoothly from current position to (x, y) coordinates with natural human easing.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "x": {"type": "integer", "description": "Target X pixel coordinate."},
+                "y": {"type": "integer", "description": "Target Y pixel coordinate."},
+            },
+            "required": ["x", "y"],
+        },
+    },
+    {
+        "name": "human_type_text",
+        "description": "Type text into the active window on the physical laptop with realistic human typing speed (variable delays per keystroke).",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "text": {
+                    "type": "string",
+                    "description": "The text string to type into the active window.",
+                },
+                "press_enter": {
+                    "type": "boolean",
+                    "description": "Whether to press Enter / Return after typing. Default is false.",
+                },
+            },
+            "required": ["text"],
+        },
+    },
+    {
+        "name": "human_mouse_scroll",
+        "description": "Scroll the mouse wheel smoothly like a human hand.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "direction": {
+                    "type": "string",
+                    "enum": ["up", "down"],
+                    "description": "Scroll direction: 'up' or 'down'. Default is 'down'.",
+                },
+                "amount": {
+                    "type": "integer",
+                    "description": "Number of scroll notches/steps. Default is 5.",
+                },
+            },
+        },
+    },
+    {
+        "name": "inspect_screen_vision",
+        "description": "Look at the laptop screen using Gemini Multimodal Vision to understand and explain what is currently displayed (active windows, buttons, websites, search bars, and dialogs).",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "instruction": {
+                    "type": "string",
+                    "description": "What specific question or element to check on screen (e.g. 'What is open?', 'Is Chrome open?').",
+                }
+            },
+        },
+    },
+    {
+        "name": "screen_vision_interact",
+        "description": "Autonomous Computer Use: Uses AI Vision to inspect the laptop screen, detect the exact pixel coordinates of target_element, glide the mouse cursor like a human, click it, and send a confirmation photo.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "target_element": {
+                    "type": "string",
+                    "description": "The visual element to locate and click, e.g. 'YouTube search bar', 'Play button', 'Settings Wi-Fi icon', 'Close button', 'Chrome tab'.",
+                },
+                "instruction": {
+                    "type": "string",
+                    "description": "Optional context or what action to accomplish.",
+                },
+            },
+            "required": ["target_element"],
         },
     },
 ]

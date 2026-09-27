@@ -23,6 +23,16 @@ logging.basicConfig(
 )
 logger = logging.getLogger("LaptopNode")
 
+from human_gui import (
+    human_open_app,
+    human_mouse_click,
+    human_mouse_move,
+    human_mouse_scroll,
+    human_type_text,
+    inspect_screen_vision,
+    analyze_screen_and_click,
+)
+
 CLOUD_URL = os.getenv("HERMES_CLOUD_URL", "https://hermes-bot-kqv8.onrender.com").rstrip("/")
 SECRET = os.getenv("LAPTOP_BRIDGE_SECRET", "hermes_secret_8616271645")
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "8954487031:AAEv9-RzsecVcnJyVfd3pfEOYYfiBGh9Fzg")
@@ -523,6 +533,76 @@ def execute_action(cmd: str) -> str:
         env = get_x11_env()
         subprocess.Popen(["xdg-open", url], env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         return f"🌐 *Opened in Laptop Browser:*\n`{url}`"
+
+    # 25. Human-Like App Opening
+    if clean.startswith("__ACTION_HUMAN_OPEN_APP__"):
+        app_name = clean[len("__ACTION_HUMAN_OPEN_APP__"):].strip()
+        res = human_open_app(app_name)
+        if os.path.exists("/tmp/hermes_app_opened.png"):
+            send_tg_photo("/tmp/hermes_app_opened.png", f"🖥️ *Opened '{app_name}' like a human!*")
+        return res
+
+    # 26. Human-Like Mouse Click
+    if clean.startswith("__ACTION_HUMAN_CLICK__"):
+        payload = clean[len("__ACTION_HUMAN_CLICK__"):].strip()
+        parts = payload.split("|")
+        x = int(parts[0]) if len(parts) > 0 and parts[0].isdigit() else None
+        y = int(parts[1]) if len(parts) > 1 and parts[1].isdigit() else None
+        btn = parts[2] if len(parts) > 2 else "left"
+        clicks = int(parts[3]) if len(parts) > 3 and parts[3].isdigit() else 1
+        res = human_mouse_click(x, y, button=btn, clicks=clicks)
+        img_path = "/tmp/hermes_mouse_click.png"
+        env = get_x11_env()
+        subprocess.run(["scrot", "-z", "-o", img_path], env=env)
+        if os.path.exists(img_path):
+            send_tg_photo(img_path, f"🖱️ {res}")
+        return res
+
+    # 27. Human-Like Mouse Move
+    if clean.startswith("__ACTION_HUMAN_MOVE__"):
+        payload = clean[len("__ACTION_HUMAN_MOVE__"):].strip()
+        parts = payload.split("|")
+        x = int(parts[0]) if len(parts) > 0 and parts[0].isdigit() else 500
+        y = int(parts[1]) if len(parts) > 1 and parts[1].isdigit() else 500
+        human_mouse_move(x, y)
+        return f"🖱️ Mouse cursor smoothly glided to ({x}, {y})!"
+
+    # 28. Human-Like Typing
+    if clean.startswith("__ACTION_HUMAN_TYPE__"):
+        payload = clean[len("__ACTION_HUMAN_TYPE__"):].strip()
+        parts = payload.split("|||", 1)
+        text_str = parts[0]
+        press_enter = (parts[1].lower() == "true") if len(parts) > 1 else False
+        return human_type_text(text_str, press_enter=press_enter)
+
+    # 29. Human-Like Mouse Scroll
+    if clean.startswith("__ACTION_HUMAN_SCROLL__"):
+        payload = clean[len("__ACTION_HUMAN_SCROLL__"):].strip()
+        parts = payload.split("|")
+        direction = parts[0] if len(parts) > 0 else "down"
+        amount = int(parts[1]) if len(parts) > 1 and parts[1].isdigit() else 5
+        return human_mouse_scroll(direction=direction, amount=amount)
+
+    # 30. Visual Screen Inspection (AI Vision)
+    if clean.startswith("__ACTION_SCREEN_INSPECT__"):
+        query = clean[len("__ACTION_SCREEN_INSPECT__"):].strip()
+        if not query:
+            query = "Describe what is currently visible on screen"
+        res = inspect_screen_vision(query)
+        if os.path.exists("/tmp/hermes_screenshot.png"):
+            send_tg_photo("/tmp/hermes_screenshot.png", "👁️ *Screen Vision Analysis:*")
+        return res
+
+    # 31. Visual Screen Interact (Find Element & Click)
+    if clean.startswith("__ACTION_SCREEN_VISION_CLICK__"):
+        payload = clean[len("__ACTION_SCREEN_VISION_CLICK__"):].strip()
+        parts = payload.split("|||", 1)
+        target = parts[0]
+        instr = parts[1] if len(parts) > 1 else ""
+        res = analyze_screen_and_click(target, instruction=instr)
+        if os.path.exists("/tmp/hermes_clicked_state.png"):
+            send_tg_photo("/tmp/hermes_clicked_state.png", f"🎯 *Clicked '{target}' like a human!*")
+        return res
 
     # General Shell Command
     try:

@@ -193,3 +193,34 @@ def laptop_open_url(url: str) -> str:
 def laptop_screen_on() -> str:
     return dispatch_to_laptop("__ACTION_SCREEN_ON__")
 
+
+# Human GUI & Vision Remote Helpers
+def laptop_human_open_app(app_name: str) -> str:
+    return dispatch_to_laptop(f"__ACTION_HUMAN_OPEN_APP__{app_name}", timeout=45)
+
+
+def laptop_human_click(x: Optional[int] = None, y: Optional[int] = None, button: str = "left", clicks: int = 1) -> str:
+    x_str = str(x) if x is not None else ""
+    y_str = str(y) if y is not None else ""
+    return dispatch_to_laptop(f"__ACTION_HUMAN_CLICK__{x_str}|{y_str}|{button}|{clicks}", timeout=35)
+
+
+def laptop_human_move(x: int, y: int) -> str:
+    return dispatch_to_laptop(f"__ACTION_HUMAN_MOVE__{x}|{y}", timeout=25)
+
+
+def laptop_human_type(text: str, press_enter: bool = False) -> str:
+    return dispatch_to_laptop(f"__ACTION_HUMAN_TYPE__{text}|||{press_enter}", timeout=35)
+
+
+def laptop_human_scroll(direction: str = "down", amount: int = 5) -> str:
+    return dispatch_to_laptop(f"__ACTION_HUMAN_SCROLL__{direction}|{amount}", timeout=25)
+
+
+def laptop_screen_inspect(query: str = "") -> str:
+    return dispatch_to_laptop(f"__ACTION_SCREEN_INSPECT__{query}", timeout=45)
+
+
+def laptop_screen_vision_click(target: str, instruction: str = "") -> str:
+    return dispatch_to_laptop(f"__ACTION_SCREEN_VISION_CLICK__{target}|||{instruction}", timeout=50)
+

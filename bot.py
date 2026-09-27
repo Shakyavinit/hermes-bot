@@ -59,6 +59,13 @@ from bridge import (
     laptop_webcam,
     laptop_webcam_video,
     laptop_wifi,
+    laptop_human_open_app,
+    laptop_human_click,
+    laptop_human_move,
+    laptop_human_type,
+    laptop_human_scroll,
+    laptop_screen_inspect,
+    laptop_screen_vision_click,
     record_heartbeat,
     store_task_result,
 )
@@ -112,8 +119,8 @@ LAPTOP_DASHBOARD_KEYBOARD = {
     "keyboard": [
         [{"text": "🛡️ Spy & Security"}, {"text": "🤖 Sandbox & AI"}],
         [{"text": "⚡ Power & Ghost Mode"}, {"text": "🎵 Media & Sound"}],
-        [{"text": "🌟 Extra Tools ➡️"}, {"text": "📊 Laptop Status"}],
-        [{"text": "📸 Quick Screen"}, {"text": "🔙 Main Menu"}],
+        [{"text": "🖱️ Human Screen & Mouse"}, {"text": "🌟 Extra Tools ➡️"}],
+        [{"text": "📊 Laptop Status"}, {"text": "🔙 Main Menu"}],
     ],
     "resize_keyboard": True,
     "is_persistent": True,
@@ -193,6 +200,18 @@ LAPTOP_EXTRA_KEYBOARD = {
 }
 NEXT_SECTION_KEYBOARD = LAPTOP_EXTRA_KEYBOARD
 TOOLS_REPLY_KEYBOARD = CLOUD_DASHBOARD_KEYBOARD
+
+# 8b. Human Screen & Mouse Sub-menu
+HUMAN_GUI_KEYBOARD = {
+    "keyboard": [
+        [{"text": "🚀 Open App (Human)"}, {"text": "👁️ Screen Vision"}],
+        [{"text": "🎯 Click Element"}, {"text": "⌨️ Human Typing"}],
+        [{"text": "📜 Scroll Down"}, {"text": "📸 Quick Screen"}],
+        [{"text": "🔙 Laptop Menu"}, {"text": "🔙 Main Menu"}],
+    ],
+    "resize_keyboard": True,
+    "is_persistent": True,
+}
 
 # 9. Alarm Mode Sub-menu
 ALARM_REPLY_KEYBOARD = {
@@ -828,6 +847,21 @@ class TelegramBotRunner:
             )
             return True
 
+        # Category: Human Screen & Mouse GUI (Laptop)
+        if clean in ("🖱️ Human Screen & Mouse", "🖱️ Human GUI", "/gui", "/mouse"):
+            send_or_replace_nav(
+                chat_id,
+                "🖱️ *Human Screen & Mouse Controls:*\n"
+                "Hermes screen par bilkul real human ki tarha mouse operate karta hai aur AI Vision se sab samajhta hai!\n\n"
+                "• 🚀 `Open App (Human)`: `/openapp <name>` (e.g. Chrome, VS Code, Settings)\n"
+                "• 👁️ `Screen Vision`: Screen par kya khula hai AI se dekhein\n"
+                "• 🎯 `Click Element`: `/click <element>` (AI dhundh kar mouse se click karega)\n"
+                "• ⌨️ `Human Typing`: `/htype <text>` (real human speed se type karega)\n"
+                "• 📜 `Scroll Down`: Mouse wheel scroll",
+                reply_markup=HUMAN_GUI_KEYBOARD,
+            )
+            return True
+
         # Category 6: Files & Diagnostics (Cloud)
         if clean in ("📁 Files & Tools", "/tools"):
             send_or_replace_nav(
@@ -1106,6 +1140,64 @@ class TelegramBotRunner:
                 tg_send_message(chat_id, res, reply_markup=NEXT_SECTION_KEYBOARD)
             else:
                 tg_send_message(chat_id, "Usage: `/speak Hello World`", reply_markup=NEXT_SECTION_KEYBOARD)
+            return True
+
+        # ======================================================================
+        # 8b. Human Screen & Mouse GUI Actions
+        # ======================================================================
+        if clean in ("🚀 Open App (Human)",) or cmd == "/openapp":
+            app_val = clean[8:].strip() if cmd == "/openapp" else ""
+            if app_val:
+                temp_id = tg_send_message(chat_id, f"🚀 *Opening '{app_val}' like a human...*")
+                res = laptop_human_open_app(app_val)
+                tg_delete_message(chat_id, temp_id)
+                tg_send_message(chat_id, res, reply_markup=HUMAN_GUI_KEYBOARD)
+            else:
+                tg_send_message(
+                    chat_id,
+                    "Usage: `/openapp Chrome` ya `/openapp VS Code` ya `/openapp Telegram`\n(Ya seedhe bot se bolein: *'Chrome open karo screen par'*).",
+                    reply_markup=HUMAN_GUI_KEYBOARD,
+                )
+            return True
+
+        if clean in ("👁️ Screen Vision", "👁️ Screen Vision Analysis") or cmd == "/vision":
+            temp_id = tg_send_message(chat_id, "👁️ *Screen analyze ho rahi hai...* (Gemini Multimodal Vision)")
+            res = laptop_screen_inspect("Describe what is currently visible on screen in detail")
+            tg_delete_message(chat_id, temp_id)
+            tg_send_message(chat_id, res, reply_markup=HUMAN_GUI_KEYBOARD)
+            return True
+
+        if clean in ("🎯 Click Element",) or cmd == "/click":
+            target_val = clean[6:].strip() if cmd == "/click" else ""
+            if target_val:
+                temp_id = tg_send_message(chat_id, f"🎯 *Searching & clicking '{target_val}' with mouse...*")
+                res = laptop_screen_vision_click(target_val)
+                tg_delete_message(chat_id, temp_id)
+                tg_send_message(chat_id, res, reply_markup=HUMAN_GUI_KEYBOARD)
+            else:
+                tg_send_message(
+                    chat_id,
+                    "Usage: `/click search bar` ya `/click play button`\n(Ya seedhe chat me bolein: *'Play button par click karo'*).",
+                    reply_markup=HUMAN_GUI_KEYBOARD,
+                )
+            return True
+
+        if clean in ("⌨️ Human Typing",) or cmd == "/htype":
+            type_val = clean[6:].strip() if cmd == "/htype" else ""
+            if type_val:
+                res = laptop_human_type(type_val, press_enter=False)
+                tg_send_message(chat_id, res, reply_markup=HUMAN_GUI_KEYBOARD)
+            else:
+                tg_send_message(
+                    chat_id,
+                    "Usage: `/htype text to type with human speed`",
+                    reply_markup=HUMAN_GUI_KEYBOARD,
+                )
+            return True
+
+        if clean in ("📜 Scroll Down",) or cmd == "/scroll":
+            res = laptop_human_scroll("down", 5)
+            tg_send_message(chat_id, res, reply_markup=HUMAN_GUI_KEYBOARD)
             return True
 
         # ======================================================================
