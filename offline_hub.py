@@ -813,6 +813,57 @@ def api_qr():
     return send_file(buf, mimetype="image/png")
 
 
+@app.route("/designer")
+@app.route("/buttons")
+def button_designer():
+    """Serve the interactive Keypad Studio and Button Designer HTML page."""
+    html_path = os.path.join(WORKSPACE_DIR, "templates", "button_designer.html")
+    if os.path.exists(html_path):
+        with open(html_path, "r", encoding="utf-8") as f:
+            return f.read(), 200, {"Content-Type": "text/html; charset=utf-8"}
+    return "Designer template not found", 404
+
+
+@app.route("/api/layout", methods=["GET"])
+def api_get_layout():
+    """Return the currently active keyboard layout."""
+    try:
+        from laptop_node import NODE_ROOT_REPLY_KEYBOARD
+        return jsonify({"ok": True, "keyboard": NODE_ROOT_REPLY_KEYBOARD.get("keyboard", [])})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@app.route("/api/save_layout", methods=["POST"])
+def api_save_layout():
+    """Apply updated layout from designer to Telegram and local storage."""
+    data = request.get_json(force=True, silent=True) or {}
+    new_kb = data.get("keyboard")
+    notes = data.get("notes", "")
+
+    if new_kb and isinstance(new_kb, list):
+        try:
+            from laptop_node import NODE_ROOT_REPLY_KEYBOARD, send_tg_msg
+            NODE_ROOT_REPLY_KEYBOARD["keyboard"] = new_kb
+            custom_path = os.path.join(WORKSPACE_DIR, "data", "custom_layout.json")
+            try:
+                with open(custom_path, "w", encoding="utf-8") as f:
+                    json.dump({"keyboard": new_kb, "notes": notes}, f, indent=2)
+            except Exception:
+                pass
+
+            msg = "🚀 *New Keypad Layout Applied from Web Studio!*\n\n"
+            if notes:
+                msg += f"📝 *User Notes:* {notes}\n\n"
+            msg += "👇 Niche naya customized keypad check karein:"
+            send_tg_msg(msg, reply_markup=NODE_ROOT_REPLY_KEYBOARD)
+            return jsonify({"ok": True, "message": "Keypad layout applied to Telegram!"})
+        except Exception as e:
+            return jsonify({"ok": False, "error": str(e)}), 500
+
+    return jsonify({"ok": False, "error": "Invalid keyboard structure"}), 400
+
+
 def run_offline_hub(port: int = 7777) -> None:
     """Start the offline mobile server."""
     ip = get_local_ip()
@@ -823,3 +874,4 @@ def run_offline_hub(port: int = 7777) -> None:
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
     run_offline_hub()
+

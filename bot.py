@@ -156,6 +156,17 @@ TOOLS_REPLY_KEYBOARD = ROOT_CHOICE_KEYBOARD
 HUMAN_GUI_KEYBOARD = ROOT_CHOICE_KEYBOARD
 ALARM_REPLY_KEYBOARD = ROOT_CHOICE_KEYBOARD
 
+# Load persistent custom layout if saved by user in Designer
+_custom_layout_file = BASE_DIR / "data" / "custom_layout.json"
+if _custom_layout_file.exists():
+    try:
+        with open(_custom_layout_file, "r", encoding="utf-8") as _f:
+            _d = json.load(_f)
+            if "keyboard" in _d and isinstance(_d["keyboard"], list) and len(_d["keyboard"]) > 0:
+                ROOT_CHOICE_KEYBOARD["keyboard"] = _d["keyboard"]
+    except Exception:
+        pass
+
 
 _is_remote_active = True
 _is_locked = False
@@ -707,7 +718,29 @@ def start_health_server(port: int = 7860) -> None:
                 _is_auto_approve_active = (val == "1")
                 update_dynamic_keyboards()
 
-            if parsed.path == "/api/laptop/poll":
+            if parsed.path == "/health":
+                self.send_response(200)
+                self.send_header("Content-type", "application/json")
+                self.end_headers()
+                self.wfile.write(b'{"ok": true}')
+                return
+            elif parsed.path in ("/", "/index.html", "/designer", "/buttons", "/keypad"):
+                html_path = os.path.join(os.path.dirname(__file__), "templates", "button_designer.html")
+                if os.path.exists(html_path):
+                    with open(html_path, "rb") as f:
+                        content = f.read()
+                    self.send_response(200)
+                    self.send_header("Content-type", "text/html; charset=utf-8")
+                    self.end_headers()
+                    self.wfile.write(content)
+                    return
+            elif parsed.path == "/api/layout":
+                self.send_response(200)
+                self.send_header("Content-type", "application/json")
+                self.end_headers()
+                self.wfile.write(json.dumps({"ok": True, "keyboard": ROOT_CHOICE_KEYBOARD.get("keyboard", [])}).encode("utf-8"))
+                return
+            elif parsed.path == "/api/laptop/poll":
                 record_heartbeat()
                 task = get_pending_task()
                 self.send_response(200)
@@ -736,7 +769,43 @@ def start_health_server(port: int = 7860) -> None:
 
         def do_POST(self):
             parsed = urllib.parse.urlparse(self.path)
-            if parsed.path == "/api/laptop/result":
+            if parsed.path == "/api/save_layout":
+                content_len = int(self.headers.get("Content-Length", 0))
+                body = self.rfile.read(content_len)
+                try:
+                    data = json.loads(body.decode("utf-8"))
+                    new_kb = data.get("keyboard")
+                    notes = data.get("notes", "")
+                    if new_kb and isinstance(new_kb, list):
+                        ROOT_CHOICE_KEYBOARD["keyboard"] = new_kb
+                        update_dynamic_keyboards()
+                        custom_path = os.path.join(os.path.dirname(__file__), "data", "custom_layout.json")
+                        try:
+                            with open(custom_path, "w", encoding="utf-8") as f:
+                                json.dump({"keyboard": new_kb, "notes": notes}, f, indent=2)
+                        except Exception:
+                            pass
+
+                        msg = "🚀 *New Keypad Layout Applied from Web Studio!*\n\n"
+                        if notes:
+                            msg += f"📝 *User Notes:* {notes}\n\n"
+                        msg += "👇 Niche naya customized keypad check karein:"
+                        cfg = get_runtime_config()
+                        owner_id = cfg.get("owner_user_id", 8616271645)
+                        send_or_replace_nav(owner_id, msg, reply_markup=ROOT_CHOICE_KEYBOARD)
+
+                    self.send_response(200)
+                    self.send_header("Content-type", "application/json")
+                    self.end_headers()
+                    self.wfile.write(json.dumps({"ok": True}).encode("utf-8"))
+                    return
+                except Exception as e:
+                    self.send_response(500)
+                    self.send_header("Content-type", "application/json")
+                    self.end_headers()
+                    self.wfile.write(json.dumps({"ok": False, "error": str(e)}).encode("utf-8"))
+                    return
+            elif parsed.path == "/api/laptop/result":
                 content_len = int(self.headers.get("Content-Length", 0))
                 body = self.rfile.read(content_len)
                 try:

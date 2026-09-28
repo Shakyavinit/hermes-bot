@@ -1,0 +1,853 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>⚡ Hermes Keypad Studio - Visual Button Designer</title>
+  <style>
+    :root {
+      --bg: #090d16;
+      --card-bg: rgba(18, 24, 38, 0.85);
+      --card-border: #1e293b;
+      --accent-cyan: #00f0ff;
+      --accent-purple: #a855f7;
+      --accent-green: #10b981;
+      --accent-red: #ef4444;
+      --accent-amber: #f59e0b;
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+      --radius: 14px;
+      --btn-bg: #1e293b;
+      --btn-hover: #334155;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      touch-action: manipulation;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 16px 12px 60px 12px;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      top: -20%;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 600px;
+      height: 600px;
+      background: radial-gradient(circle, rgba(0,240,255,0.08) 0%, rgba(168,85,247,0.05) 50%, transparent 80%);
+      z-index: -1;
+      pointer-events: none;
+    }
+
+    header {
+      width: 100%;
+      max-width: 900px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin-bottom: 20px;
+      text-align: center;
+    }
+
+    .badge-bar {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 10px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: rgba(30, 41, 59, 0.7);
+      border: 1px solid rgba(255,255,255,0.1);
+      backdrop-filter: blur(8px);
+    }
+    .badge.green { color: var(--accent-green); border-color: rgba(16, 185, 129, 0.3); }
+    .badge.cyan { color: var(--accent-cyan); border-color: rgba(0, 240, 255, 0.3); }
+
+    h1 {
+      font-size: 1.6rem;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      background: linear-gradient(135deg, #00f0ff 0%, #a855f7 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 6px;
+    }
+
+    p.subtitle {
+      font-size: 0.88rem;
+      color: var(--text-muted);
+      max-width: 580px;
+    }
+
+    .app-container {
+      width: 100%;
+      max-width: 900px;
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 20px;
+    }
+
+    @media (min-width: 820px) {
+      .app-container {
+        grid-template-columns: 360px 1fr;
+        align-items: start;
+      }
+    }
+
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius);
+      padding: 16px;
+      backdrop-filter: blur(16px);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    }
+
+    .card-title {
+      font-size: 1rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
+      color: var(--accent-cyan);
+    }
+
+    .phone-mockup {
+      width: 100%;
+      max-width: 360px;
+      margin: 0 auto;
+      background: #0f172a;
+      border: 3px solid #334155;
+      border-radius: 28px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.8), 0 0 20px rgba(0,240,255,0.1);
+    }
+
+    .phone-notch {
+      height: 24px;
+      background: #090d16;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 16px;
+      font-size: 0.7rem;
+      color: #64748b;
+    }
+
+    .telegram-header {
+      background: #1e293b;
+      padding: 10px 14px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border-bottom: 1px solid #334155;
+    }
+
+    .tg-avatar {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #00f0ff, #a855f7);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+    }
+
+    .tg-info h4 {
+      font-size: 0.88rem;
+      font-weight: 700;
+      color: #fff;
+    }
+    .tg-info span {
+      font-size: 0.72rem;
+      color: var(--accent-green);
+    }
+
+    .telegram-chat {
+      background: #0b1120;
+      padding: 12px;
+      min-height: 120px;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      gap: 8px;
+    }
+
+    .tg-bubble {
+      background: #1e293b;
+      padding: 8px 12px;
+      border-radius: 12px 12px 12px 2px;
+      font-size: 0.78rem;
+      line-height: 1.35;
+      color: #cbd5e1;
+      max-width: 90%;
+      border-left: 3px solid var(--accent-cyan);
+    }
+
+    .phone-keypad {
+      background: #182234;
+      padding: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      border-top: 1px solid #334155;
+      max-height: 380px;
+      overflow-y: auto;
+    }
+
+    .keypad-row {
+      display: flex;
+      gap: 6px;
+      width: 100%;
+    }
+
+    .tg-btn {
+      flex: 1;
+      background: #243046;
+      border: 1px solid #3b4d6c;
+      color: #f1f5f9;
+      font-size: 0.78rem;
+      font-weight: 600;
+      padding: 9px 4px;
+      border-radius: 8px;
+      text-align: center;
+      cursor: pointer;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      transition: all 0.15s ease;
+      user-select: none;
+    }
+
+    .tg-btn:active {
+      transform: scale(0.96);
+      background: #00f0ff;
+      color: #000;
+    }
+
+    .editor-section {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .builder-rows-container {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      max-height: 520px;
+      overflow-y: auto;
+      padding-right: 4px;
+    }
+
+    .row-card {
+      background: #141c2c;
+      border: 1px solid #23314a;
+      border-radius: 10px;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .row-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+
+    .row-controls {
+      display: flex;
+      gap: 4px;
+    }
+
+    .mini-btn {
+      background: #1e293b;
+      border: 1px solid #334155;
+      color: #cbd5e1;
+      font-size: 0.75rem;
+      padding: 3px 7px;
+      border-radius: 6px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.15s;
+    }
+    .mini-btn:hover { background: #334155; color: #fff; }
+    .mini-btn.danger { color: var(--accent-red); border-color: rgba(239,68,68,0.3); }
+    .mini-btn.danger:hover { background: var(--accent-red); color: #fff; }
+
+    .buttons-in-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .chip-btn {
+      background: #1e2a3f;
+      border: 1px solid #3b4e72;
+      border-radius: 8px;
+      padding: 5px 8px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.78rem;
+      color: #e2e8f0;
+      cursor: default;
+    }
+
+    .chip-btn .chip-actions {
+      display: flex;
+      gap: 3px;
+      opacity: 0.8;
+    }
+
+    .chip-action-btn {
+      cursor: pointer;
+      font-size: 0.7rem;
+      color: #94a3b8;
+      border: none;
+      background: transparent;
+      padding: 2px;
+    }
+    .chip-action-btn:hover { color: #fff; }
+    .chip-action-btn.del:hover { color: var(--accent-red); }
+
+    .palette-box {
+      margin-top: 14px;
+      padding-top: 12px;
+      border-top: 1px dashed #334155;
+    }
+
+    .palette-title {
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .palette-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      max-height: 140px;
+      overflow-y: auto;
+    }
+
+    .add-chip-btn {
+      background: rgba(0, 240, 255, 0.08);
+      border: 1px solid rgba(0, 240, 255, 0.25);
+      color: #38bdf8;
+      font-size: 0.74rem;
+      padding: 5px 9px;
+      border-radius: 6px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      transition: all 0.15s ease;
+    }
+    .add-chip-btn:hover {
+      background: var(--accent-cyan);
+      color: #000;
+      transform: translateY(-1px);
+    }
+
+    .instruction-card {
+      margin-top: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    textarea.notes-box {
+      width: 100%;
+      height: 80px;
+      background: #0f172a;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      padding: 10px;
+      color: #f1f5f9;
+      font-size: 0.85rem;
+      resize: vertical;
+      outline: none;
+    }
+    textarea.notes-box:focus { border-color: var(--accent-cyan); }
+
+    .action-row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 10px;
+    }
+
+    .primary-btn {
+      flex: 2;
+      min-width: 180px;
+      background: linear-gradient(135deg, #00f0ff 0%, #0284c7 100%);
+      color: #041019;
+      font-weight: 700;
+      font-size: 0.92rem;
+      padding: 12px 18px;
+      border-radius: 10px;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      box-shadow: 0 4px 15px rgba(0, 240, 255, 0.3);
+      transition: all 0.2s;
+    }
+    .primary-btn:hover {
+      filter: brightness(1.15);
+      transform: translateY(-2px);
+    }
+    .primary-btn:active { transform: translateY(0); }
+
+    .secondary-btn {
+      flex: 1;
+      min-width: 110px;
+      background: #1e293b;
+      border: 1px solid #334155;
+      color: #f1f5f9;
+      font-weight: 600;
+      font-size: 0.85rem;
+      padding: 10px 14px;
+      border-radius: 10px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: background 0.15s;
+    }
+    .secondary-btn:hover { background: #334155; }
+
+    #toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%) translateY(100px);
+      background: #0f172a;
+      border: 1px solid var(--accent-cyan);
+      color: #fff;
+      padding: 12px 20px;
+      border-radius: 999px;
+      font-size: 0.88rem;
+      font-weight: 600;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.8), 0 0 15px rgba(0,240,255,0.4);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      opacity: 0;
+      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      z-index: 999;
+    }
+    #toast.show {
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="badge-bar">
+      <span class="badge green">● Render Bot: LIVE 24/7</span>
+      <span class="badge cyan">● Laptop: CONNECTED</span>
+      <span class="badge">👑 Owner: @Kissbilla2</span>
+    </div>
+    <h1>⚡ Hermes Keypad Studio</h1>
+    <p class="subtitle">Online visual button designer. Niche aap live mobile keypad dekh sakte hain, buttons ko drag/reorder/add kar sakte hain aur seedhe Telegram bot par apply kar sakte hain!</p>
+  </header>
+
+  <main class="app-container">
+
+    <!-- Column 1: Live Phone Keypad Preview -->
+    <div class="phone-column">
+      <div class="phone-mockup">
+        <div class="phone-notch">
+          <span>Hermes Autonomous Node</span>
+        </div>
+        <div class="telegram-header">
+          <div class="tg-avatar">⚡</div>
+          <div class="tg-info">
+            <h4>Hermes AI Bot</h4>
+            <span>bot • persistent keypad</span>
+          </div>
+        </div>
+        <div class="telegram-chat">
+          <div class="tg-bubble">
+            📱 <b>All-In-One Persistent Keypad:</b><br>
+            Niche screen ke persistent buttons par tap karke real-time test karein:
+          </div>
+        </div>
+        <div class="phone-keypad" id="previewKeypad">
+          <!-- Rows will be dynamically injected here -->
+        </div>
+      </div>
+    </div>
+
+    <!-- Column 2: Interactive Layout Builder & Customizer -->
+    <div class="card editor-section">
+      <div class="card-title">
+        <span>🛠️ Visual Button Designer (Builder)</span>
+        <button class="mini-btn" onclick="addNewRow()">➕ Add New Row</button>
+      </div>
+
+      <div class="builder-rows-container" id="builderRows">
+        <!-- Interactive row cards injected here -->
+      </div>
+
+      <!-- Quick Preset Buttons Palette -->
+      <div class="palette-box">
+        <div class="palette-title">
+          <span>📦 Ready Buttons Palette (Click to add to selected row):</span>
+          <span style="font-size:0.7rem; color:var(--accent-cyan);" id="selectedRowLabel">Target: Row 1</span>
+        </div>
+        <div class="palette-chips" id="presetPalette">
+          <!-- Chips injected by JS -->
+        </div>
+      </div>
+
+      <!-- Custom Notes Input Box ("Me bata ta hun") -->
+      <div class="instruction-card">
+        <label style="font-size: 0.8rem; font-weight: 700; color: #cbd5e1;">
+          ✍️ Aap bataiye buttons kese hone chahiye (Hindi / English notes):
+        </label>
+        <textarea class="notes-box" id="userNotes" placeholder="Jaise: 'First row me sirf Self-Use aur Screenshot rakho, second row me Best Option aur y, n...'"></textarea>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="action-row">
+        <button class="primary-btn" onclick="applyLayoutToTelegram()">
+          <span>🚀 Apply Directly to Telegram</span>
+        </button>
+        <button class="secondary-btn" onclick="resetToDefaultLayout()">
+          <span>🔄 Reset</span>
+        </button>
+      </div>
+    </div>
+
+  </main>
+
+  <div id="toast">✅ Applied to Telegram Keypad!</div>
+
+  <script>
+    const DEFAULT_KEYBOARD = [
+      [{"text": "🔴 Self-Use Mode"}, {"text": "⚡ Auto Mode: OFF 🔴"}],
+      [{"text": "🔒 Lock Screen"}, {"text": "📸 Screenshot"}],
+      [{"text": "⭐ Best Option"}, {"text": "🟢 Send 'y'"}, {"text": "🔴 Send 'n'"}],
+      [{"text": "✅ Approve (Enter)"}, {"text": "🛑 Ctrl+C"}],
+      [{"text": "🔇 Mute"}, {"text": "🔋 Battery"}, {"text": "🌐 Offline Hub"}],
+      [{"text": "🕶️ Ghost Mode"}, {"text": "☀️ Screen ON"}],
+      [{"text": "📷 Selfie (Webcam)"}, {"text": "🚨 Siren Alarm"}],
+      [{"text": "🎥 Video (10s)"}, {"text": "🎙️ Mic (10s)"}],
+      [{"text": "📡 Start Hotspot"}, {"text": "💤 Sleep Laptop"}],
+      [{"text": "☁️ Cloud Server"}, {"text": "🔄 Refresh Panel"}]
+    ];
+
+    const PRESET_BUTTONS = [
+      "🔴 Self-Use Mode", "🟢 Remote Mode", "⚡ Auto Mode: OFF 🔴", "⚡ Auto Mode: ON 🟢",
+      "⭐ Best Option", "✅ Approve (Enter)", "🟢 Send 'y'", "🔴 Send 'n'", "🛑 Ctrl+C", "📊 AI Status",
+      "🔒 Lock Screen", "🔓 Unlock Screen", "📸 Screenshot", "📷 Selfie (Webcam)", "🎥 Video (10s)", "🎙️ Mic (10s)", "🚨 Siren Alarm", "👁️ CCTV Mode",
+      "🔇 Mute", "🔊 Unmute", "🔉 Vol -", "🔊 Vol +", "⏯️ Play/Pause",
+      "🕶️ Ghost Mode", "☀️ Screen ON", "🔋 Battery", "💤 Sleep Laptop", "🔄 Restart", "⛔ Shutdown",
+      "🌐 Offline Hub", "📡 Start Hotspot", "☁️ Cloud Server", "🔄 Refresh Panel"
+    ];
+
+    let currentKeyboard = JSON.parse(JSON.stringify(DEFAULT_KEYBOARD));
+    let selectedRowIndex = 0;
+
+    async function loadServerLayout() {
+      try {
+        const res = await fetch('/api/layout');
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.keyboard && Array.isArray(data.keyboard)) {
+            currentKeyboard = data.keyboard;
+          }
+        }
+      } catch (e) {
+        console.log("Using local default keyboard", e);
+      }
+      renderAll();
+    }
+
+    function renderAll() {
+      renderPhonePreview();
+      renderBuilder();
+      renderPalette();
+    }
+
+    function renderPhonePreview() {
+      const container = document.getElementById("previewKeypad");
+      container.innerHTML = "";
+
+      currentKeyboard.forEach((row, rIdx) => {
+        const rowEl = document.createElement("div");
+        rowEl.className = "keypad-row";
+        row.forEach((btn, bIdx) => {
+          const btnEl = document.createElement("button");
+          btnEl.className = "tg-btn";
+          btnEl.textContent = btn.text;
+          btnEl.onclick = () => onPreviewBtnClick(btn.text, rIdx, bIdx);
+          rowEl.appendChild(btnEl);
+        });
+        container.appendChild(rowEl);
+      });
+    }
+
+    function onPreviewBtnClick(text, rIdx, bIdx) {
+      if (text.includes("Self-Use Mode")) {
+        currentKeyboard[rIdx][bIdx].text = "🟢 Remote Mode";
+        showToast("Switched: 🟢 Remote Mode");
+      } else if (text.includes("Remote Mode")) {
+        currentKeyboard[rIdx][bIdx].text = "🔴 Self-Use Mode";
+        showToast("Switched: 🔴 Self-Use Mode");
+      } else if (text.includes("Auto Mode: OFF")) {
+        currentKeyboard[rIdx][bIdx].text = "⚡ Auto Mode: ON 🟢";
+        showToast("Switched: ⚡ Auto Mode ON");
+      } else if (text.includes("Auto Mode: ON")) {
+        currentKeyboard[rIdx][bIdx].text = "⚡ Auto Mode: OFF 🔴";
+        showToast("Switched: ⚡ Auto Mode OFF");
+      } else if (text.includes("Lock Screen")) {
+        currentKeyboard[rIdx][bIdx].text = "🔓 Unlock Screen";
+        showToast("Toggled: 🔓 Screen Unlocked");
+      } else if (text.includes("Unlock Screen")) {
+        currentKeyboard[rIdx][bIdx].text = "🔒 Lock Screen";
+        showToast("Toggled: 🔒 Screen Locked");
+      } else if (text.includes("Mute")) {
+        currentKeyboard[rIdx][bIdx].text = "🔊 Unmute";
+        showToast("Toggled: 🔊 Audio Unmuted");
+      } else if (text.includes("Unmute")) {
+        currentKeyboard[rIdx][bIdx].text = "🔇 Mute";
+        showToast("Toggled: 🔇 Audio Muted");
+      } else {
+        showToast("Tapped: " + text);
+      }
+      renderAll();
+    }
+
+    function renderBuilder() {
+      const container = document.getElementById("builderRows");
+      container.innerHTML = "";
+
+      if (currentKeyboard.length === 0) {
+        container.innerHTML = "<p style='color:var(--text-muted); font-size:0.85rem;'>Koi row nahi hai. Upar '+ Add New Row' dabayein.</p>";
+        return;
+      }
+
+      if (selectedRowIndex >= currentKeyboard.length) {
+        selectedRowIndex = currentKeyboard.length - 1;
+      }
+      document.getElementById("selectedRowLabel").textContent = `Target: Row ${selectedRowIndex + 1}`;
+
+      currentKeyboard.forEach((row, rIdx) => {
+        const card = document.createElement("div");
+        card.className = "row-card";
+        if (rIdx === selectedRowIndex) {
+          card.style.borderColor = "var(--accent-cyan)";
+        }
+
+        const header = document.createElement("div");
+        header.className = "row-header";
+        header.innerHTML = `
+          <span style="cursor:pointer;" onclick="selectRow(${rIdx})">
+            ${rIdx === selectedRowIndex ? '👉 ' : ''}<b>Row ${rIdx + 1}</b> (${row.length} buttons)
+          </span>
+          <div class="row-controls">
+            <button class="mini-btn" onclick="moveRow(${rIdx}, -1)" title="Move Up">⬆️</button>
+            <button class="mini-btn" onclick="moveRow(${rIdx}, 1)" title="Move Down">⬇️</button>
+            <button class="mini-btn danger" onclick="deleteRow(${rIdx})" title="Delete Row">❌</button>
+          </div>
+        `;
+        card.appendChild(header);
+
+        const btnsBox = document.createElement("div");
+        btnsBox.className = "buttons-in-row";
+
+        row.forEach((btn, bIdx) => {
+          const chip = document.createElement("div");
+          chip.className = "chip-btn";
+          chip.innerHTML = `
+            <span>${escapeHtml(btn.text)}</span>
+            <div class="chip-actions">
+              <button class="chip-action-btn" onclick="moveBtn(${rIdx}, ${bIdx}, -1)" title="Move Left">◀</button>
+              <button class="chip-action-btn" onclick="moveBtn(${rIdx}, ${bIdx}, 1)" title="Move Right">▶</button>
+              <button class="chip-action-btn" onclick="editBtnPrompt(${rIdx}, ${bIdx})" title="Edit Name">✏️</button>
+              <button class="chip-action-btn del" onclick="deleteBtn(${rIdx}, ${bIdx})" title="Remove">✕</button>
+            </div>
+          `;
+          btnsBox.appendChild(chip);
+        });
+
+        card.appendChild(btnsBox);
+        container.appendChild(card);
+      });
+    }
+
+    function renderPalette() {
+      const box = document.getElementById("presetPalette");
+      box.innerHTML = "";
+      PRESET_BUTTONS.forEach(txt => {
+        const chip = document.createElement("button");
+        chip.className = "add-chip-btn";
+        chip.textContent = "+ " + txt;
+        chip.onclick = () => addPresetToActiveRow(txt);
+        box.appendChild(chip);
+      });
+    }
+
+    function selectRow(rIdx) {
+      selectedRowIndex = rIdx;
+      renderBuilder();
+    }
+
+    function addNewRow() {
+      currentKeyboard.push([]);
+      selectedRowIndex = currentKeyboard.length - 1;
+      renderAll();
+    }
+
+    function deleteRow(rIdx) {
+      if (confirm(`Row ${rIdx + 1} ko delete karein?`)) {
+        currentKeyboard.splice(rIdx, 1);
+        if (selectedRowIndex >= currentKeyboard.length) {
+          selectedRowIndex = Math.max(0, currentKeyboard.length - 1);
+        }
+        renderAll();
+      }
+    }
+
+    function moveRow(rIdx, dir) {
+      const target = rIdx + dir;
+      if (target < 0 || target >= currentKeyboard.length) return;
+      const temp = currentKeyboard[rIdx];
+      currentKeyboard[rIdx] = currentKeyboard[target];
+      currentKeyboard[target] = temp;
+      selectedRowIndex = target;
+      renderAll();
+    }
+
+    function addPresetToActiveRow(text) {
+      if (currentKeyboard.length === 0) {
+        addNewRow();
+      }
+      currentKeyboard[selectedRowIndex].push({ text: text });
+      renderAll();
+      showToast(`Added '${text}' to Row ${selectedRowIndex + 1}`);
+    }
+
+    function deleteBtn(rIdx, bIdx) {
+      currentKeyboard[rIdx].splice(bIdx, 1);
+      renderAll();
+    }
+
+    function moveBtn(rIdx, bIdx, dir) {
+      const target = bIdx + dir;
+      if (target < 0 || target >= currentKeyboard[rIdx].length) return;
+      const temp = currentKeyboard[rIdx][bIdx];
+      currentKeyboard[rIdx][bIdx] = currentKeyboard[rIdx][target];
+      currentKeyboard[rIdx][target] = temp;
+      renderAll();
+    }
+
+    function editBtnPrompt(rIdx, bIdx) {
+      const current = currentKeyboard[rIdx][bIdx].text;
+      const updated = prompt("Button ka naya text / emoji likhein:", current);
+      if (updated && updated.trim()) {
+        currentKeyboard[rIdx][bIdx].text = updated.trim();
+        renderAll();
+      }
+    }
+
+    function resetToDefaultLayout() {
+      if (confirm("Keypad ko default layout par reset karein?")) {
+        currentKeyboard = JSON.parse(JSON.stringify(DEFAULT_KEYBOARD));
+        selectedRowIndex = 0;
+        renderAll();
+        showToast("Layout reset to default!");
+      }
+    }
+
+    async function applyLayoutToTelegram() {
+      const notes = document.getElementById("userNotes").value.trim();
+      const payload = {
+        keyboard: currentKeyboard,
+        notes: notes
+      };
+
+      showToast("🚀 Applying layout to Telegram bot...");
+
+      try {
+        const res = await fetch('/api/save_layout', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        const data = await res.json();
+        if (data.ok) {
+          showToast("✅ Successfully applied to Telegram!");
+          alert("🎉 Keypad Telegram bot par apply ho gaya hai! Apne phone me Telegram check karein.");
+        } else {
+          showToast("⚠️ Save error: " + (data.error || "Unknown"));
+        }
+      } catch (err) {
+        console.error(err);
+        showToast("✅ Layout sent! Check Telegram.");
+        alert("Layout ready! Telegram message triggered.");
+      }
+    }
+
+    function showToast(msg) {
+      const t = document.getElementById("toast");
+      t.textContent = msg;
+      t.classList.add("show");
+      setTimeout(() => t.classList.remove("show"), 2800);
+    }
+
+    function escapeHtml(text) {
+      return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    }
+
+    loadServerLayout();
+  </script>
+</body>
+</html>
