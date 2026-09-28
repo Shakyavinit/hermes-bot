@@ -225,6 +225,11 @@ def clear_active_prompt() -> None:
     if _active_prompt_msg_id:
         delete_tg_msg(_active_prompt_msg_id)
         _active_prompt_msg_id = None
+    try:
+        from offline_hub import set_offline_prompt
+        set_offline_prompt(None)
+    except Exception:
+        pass
 
 
 _sent_photo_msg_ids: List[int] = []
@@ -902,6 +907,44 @@ def execute_action(cmd: str) -> str:
             send_tg_photo("/tmp/hermes_clicked_state.png", f"🎯 *Clicked '{target}' like a human!*")
         return res
 
+    # 32. Offline Mobile Hub URL & QR Code
+    if clean == "__ACTION_OFFLINE_URL__":
+        try:
+            from offline_hub import get_local_ip
+            ip = get_local_ip()
+            return (
+                f"🌐 *Hermes Offline Mobile Hub:*\n\n"
+                f"• **Direct Link:** `http://{ip}:7777`\n"
+                f"• **QR Code Link:** `http://{ip}:7777/qr`\n\n"
+                "📌 *Bina Internet chalane ke tareeqe:*\n"
+                "1. **Option A (Phone Hotspot):** Mobile ka Hotspot ON karein (Mobile Data OFF rakh sakte hain). Laptop ko us hotspot se connect karein aur phone browser me upar diya link kholein.\n"
+                "2. **Option B (Same Wi-Fi Router):** Dono devices ek hi router se connect hon (bina internet ke bhi LAN chalta hai).\n"
+                "3. **Option C (Laptop Hotspot):** Laptop par offline hotspot chalu karke phone se connect karein."
+            )
+        except Exception as e:
+            return f"Error getting offline URL: {e}"
+
+    if clean == "__ACTION_OFFLINE_QR__":
+        try:
+            from offline_hub import get_local_ip
+            import qrcode
+            ip = get_local_ip()
+            url = f"http://{ip}:7777"
+            qr_path = "/tmp/hermes_offline_qr.png"
+            img = qrcode.make(url)
+            img.save(qr_path)
+            caption = (
+                "📱 *Hermes Offline Mobile Hub (Zero Internet)*\n\n"
+                f"🔗 **URL:** `http://{ip}:7777`\n\n"
+                "Bina internet ke phone se laptop operate karne ke liye is QR code ko scan karein ya phone browser me link kholein!\n"
+                "*(Ise aap Chrome/Safari me 'Add to Home Screen' karke App ki tarah bhi use kar sakte hain)*"
+            )
+            if send_tg_photo(qr_path, caption):
+                return f"✅ Offline QR code sent for `http://{ip}:7777`"
+            return f"🔗 Offline URL: `http://{ip}:7777`"
+        except Exception as e:
+            return f"Error generating QR code: {e}"
+
     # General Shell Command
     try:
         proc = subprocess.run(
@@ -1027,6 +1070,17 @@ def antigravity_watcher_thread():
                             "Terminal execution permission mang raha hai.\n"
                             "Niche se best option select karein:"
                         )
+                        try:
+                            from offline_hub import set_offline_prompt
+                            set_offline_prompt({
+                                "type": "sandbox",
+                                "title": "⚡ Antigravity: Sandbox Approval Required",
+                                "text": "Terminal execution permission mang raha hai. Best option select karein.",
+                                "time": now,
+                            })
+                        except Exception:
+                            pass
+
                         if captured and os.path.exists(captured) and os.path.getsize(captured) > 15000:
                             _active_prompt_msg_id = send_tg_photo(captured, alert_msg, reply_markup=sandbox_keyboard)
                         else:
@@ -1048,6 +1102,18 @@ def antigravity_watcher_thread():
                                         q_obj = questions[0]
                                         q_text = q_obj.get("question", "Antigravity clarification required:")
                                         options = q_obj.get("options", [])
+
+                                        try:
+                                            from offline_hub import set_offline_prompt
+                                            set_offline_prompt({
+                                                "type": "question",
+                                                "title": "❓ Antigravity Question / Selection",
+                                                "text": q_text,
+                                                "options": options,
+                                                "time": now,
+                                            })
+                                        except Exception:
+                                            pass
 
                                         best_title = options[0] if options else "Best Option"
                                         for opt in options:
@@ -1341,6 +1407,14 @@ def start_node() -> None:
     threading.Thread(target=cctv_watcher_thread, daemon=True).start()
     threading.Thread(target=charger_watcher_thread, daemon=True).start()
     threading.Thread(target=media_janitor_thread, daemon=True).start()
+
+    # Start 100% Offline Mobile Hub (port 7777)
+    try:
+        from offline_hub import run_offline_hub
+        threading.Thread(target=run_offline_hub, daemon=True).start()
+        logger.info("🌐 Hermes Offline Mobile Hub thread started on port 7777.")
+    except Exception as e:
+        logger.error(f"Error starting Offline Mobile Hub: {e}")
 
     consecutive_errors = 0
 

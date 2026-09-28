@@ -79,6 +79,8 @@ from bridge import (
     laptop_human_scroll,
     laptop_screen_inspect,
     laptop_screen_vision_click,
+    laptop_offline_url,
+    laptop_offline_qr,
     record_heartbeat,
     store_task_result,
 )
@@ -206,6 +208,7 @@ POWER_REPLY_KEYBOARD = {
 # 8. Extra Laptop Tools Sub-menu
 LAPTOP_EXTRA_KEYBOARD = {
     "keyboard": [
+        [{"text": "🌐 Offline Hub Link"}, {"text": "📱 Offline Hub QR"}],
         [{"text": "🌐 Open URL"}, {"text": "💬 Screen Popup"}],
         [{"text": "📶 Wi-Fi Status"}, {"text": "📱 Running Apps"}],
         [{"text": "🔙 Laptop Menu"}, {"text": "🔙 Main Menu"}],
@@ -262,6 +265,9 @@ def get_laptop_control_keyboard() -> dict:
             [
                 {"text": remote_btn, "callback_data": "lap_toggle_remote"},
                 {"text": auto_btn, "callback_data": "lap_auto_toggle"},
+            ],
+            [
+                {"text": "🌐 Offline Mobile Hub (Bina Net)", "callback_data": "lap_offline_hub"},
             ],
             [
                 {"text": "📸 Live Screenshot", "callback_data": "lap_screenshot"},
@@ -375,18 +381,21 @@ def get_main_inline_keyboard(remote_active: Optional[bool] = None) -> dict:
             ],
             [
                 {"text": "🎛️ Live Laptop Controls", "callback_data": "lap_controls"},
+                {"text": "🌐 Offline Mobile Hub", "callback_data": "lap_offline_hub"},
+            ],
+            [
                 {"text": "📸 Live Screenshot", "callback_data": "lap_screenshot"},
-            ],
-            [
                 {"text": "💻 Test Laptop", "callback_data": "btn_laptop"},
+            ],
+            [
                 {"text": "☁️ Test Cloud Server", "callback_data": "btn_cloud"},
-            ],
-            [
                 {"text": "📊 Full Status", "callback_data": "btn_status"},
-                {"text": "📁 Workspace Files", "callback_data": "btn_files"},
             ],
             [
+                {"text": "📁 Workspace Files", "callback_data": "btn_files"},
                 {"text": "⚡ Quick Diagnostics", "callback_data": "btn_test"},
+            ],
+            [
                 {"text": "🧹 Clear Memory", "callback_data": "btn_reset"},
             ],
         ]
@@ -1033,6 +1042,19 @@ class TelegramBotRunner:
             return True
 
         # ======================================================================
+        # 4a. Hermes Offline Mobile Hub (Zero Internet Control)
+        # ======================================================================
+        if clean in ("🌐 Offline Hub Link", "📱 Offline Hub QR", "/offline", "/hub", "/wifi_hub") or clean_lower in ("offline", "offline hub", "offline link", "bina net", "offline qr"):
+            qr_res = laptop_offline_qr()
+            url_res = laptop_offline_url()
+            tg_send_message(
+                chat_id,
+                f"{url_res}\n\n📱 *PWA App Tip:* Chrome/Safari me kholkar menu se **'Add to Home Screen'** karein, ye phone me bilkul native app ki tarah save ho jayega!",
+                reply_markup=LAPTOP_EXTRA_KEYBOARD,
+            )
+            return True
+
+        # ======================================================================
         # 4b. Master Remote Access Switch (Self-Use Mode vs Remote Mode)
         # ======================================================================
         if clean in ("🔴 Self-Use Mode", "🟢 Remote Mode", "/remote", "/selfuse", "/mode") or clean_lower in ("self use", "selfuse", "remote mode", "remotemode", "toggle remote", "remote"):
@@ -1618,6 +1640,14 @@ class TelegramBotRunner:
             tg_send_message(
                 chat_id,
                 "🎛️ *Laptop Live Control Panel:*\nButtons se direct laptop control karein:",
+                reply_markup=get_laptop_control_keyboard(),
+            )
+        elif data == "lap_offline_hub":
+            qr_res = laptop_offline_qr()
+            url_res = laptop_offline_url()
+            tg_send_message(
+                chat_id,
+                f"{url_res}\n\n📱 *PWA App Tip:* Chrome/Safari me kholkar menu se **'Add to Home Screen'** karein, ye phone me bilkul native app ki tarah save ho jayega!",
                 reply_markup=get_laptop_control_keyboard(),
             )
         elif data == "lap_toggle_remote":

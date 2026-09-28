@@ -276,3 +276,13 @@ def laptop_screen_inspect(query: str = "") -> str:
 def laptop_screen_vision_click(target: str, instruction: str = "") -> str:
     return dispatch_to_laptop(f"__ACTION_SCREEN_VISION_CLICK__{target}|||{instruction}", timeout=50)
 
+
+# Offline Mobile Hub (Zero Internet)
+def laptop_offline_url() -> str:
+    return dispatch_to_laptop("__ACTION_OFFLINE_URL__")
+
+
+def laptop_offline_qr() -> str:
+    return dispatch_to_laptop("__ACTION_OFFLINE_QR__")
+
+

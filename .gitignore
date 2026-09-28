@@ -4,3 +4,8 @@ data/
 __pycache__/
 *.py[cod]
 logs/
+*.mp3
+*.webm
+*.wav
+*.db
+auto_approve_state.json
