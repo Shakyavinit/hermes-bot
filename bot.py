@@ -126,7 +126,7 @@ UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
 ROOT_CHOICE_KEYBOARD = {
     "keyboard": [
         [{"text": "💻 Laptop Mode"}, {"text": "☁️ Cloud Server"}],
-        [{"text": "🖱️ Human Screen & Mouse"}, {"text": "👁️ Screen Vision"}],
+        [{"text": "🔴 Self-Use Mode"}, {"text": "🖱️ Human Screen & Mouse"}],
     ],
     "resize_keyboard": True,
     "is_persistent": True,
@@ -136,9 +136,9 @@ REPLY_KEYBOARD = ROOT_CHOICE_KEYBOARD
 # 2. Laptop Dashboard (Categories for Physical Laptop)
 LAPTOP_DASHBOARD_KEYBOARD = {
     "keyboard": [
-        [{"text": "🛡️ Spy & Security"}, {"text": "🤖 Sandbox & AI"}],
-        [{"text": "⚡ Power & Ghost Mode"}, {"text": "🎵 Media & Sound"}],
-        [{"text": "🖱️ Human Screen & Mouse"}, {"text": "🌟 Extra Tools ➡️"}],
+        [{"text": "🔴 Self-Use Mode"}, {"text": "🤖 Sandbox & AI"}],
+        [{"text": "🛡️ Spy & Security"}, {"text": "⚡ Power & Ghost Mode"}],
+        [{"text": "🎵 Media & Sound"}, {"text": "🌟 Extra Tools ➡️"}],
         [{"text": "📊 Laptop Status"}, {"text": "🔙 Main Menu"}],
     ],
     "resize_keyboard": True,
@@ -173,9 +173,9 @@ SPY_REPLY_KEYBOARD = {
 AI_REPLY_KEYBOARD = {
     "keyboard": [
         [{"text": "⭐ Best Option"}, {"text": "⚡ Auto Mode (Toggle)"}],
+        [{"text": "🔴 Self-Use Mode"}, {"text": "📸 Screen Peek"}],
         [{"text": "✅ Approve (Enter)"}, {"text": "🟢 Send 'y'"}, {"text": "🔴 Send 'n'"}],
-        [{"text": "🛑 Ctrl+C"}, {"text": "📊 AI Status"}, {"text": "📸 Screen Peek"}],
-        [{"text": "⌨️ Type Text"}, {"text": "💻 Run Bash Cmd"}],
+        [{"text": "🛑 Ctrl+C"}, {"text": "📊 AI Status"}],
         [{"text": "🔙 Laptop Menu"}, {"text": "🔙 Main Menu"}],
     ],
     "resize_keyboard": True,
@@ -1078,7 +1078,33 @@ class TelegramBotRunner:
         # ======================================================================
         # 4b. Master Remote Access Switch (Self-Use Mode vs Remote Mode)
         # ======================================================================
-        if clean in ("🔴 Self-Use Mode", "🟢 Remote Mode", "/remote", "/selfuse", "/mode") or clean_lower in ("self use", "selfuse", "remote mode", "remotemode", "toggle remote", "remote"):
+        # Explicit Turn ON Self-Use Mode (Remote OFF)
+        if (
+            clean in ("/self on", "/self_on", "/selfmode on", "/selfmode_on")
+            or clean_lower in ("self on", "self mode on", "selfmode on", "apna mode on", "turn on self mode", "enable self mode", "self use on", "self-use on")
+            or (clean in ("/remote off", "/remoteoff") or clean_lower in ("remote off", "turn off remote", "remote pause", "pause remote"))
+        ):
+            res = laptop_remote_off()
+            _is_remote_active = False
+            tg_send_message(chat_id, res, reply_markup=get_main_inline_keyboard())
+            return True
+
+        # Explicit Turn OFF Self-Use Mode (Remote ON)
+        if (
+            clean in ("/self off", "/self_off", "/selfmode off", "/selfmode_off")
+            or clean_lower in ("self off", "self mode off", "selfmode off", "apna mode off", "turn off self mode", "disable self mode", "self use off", "self-use off")
+            or (clean in ("/remote on", "/remoteon") or clean_lower in ("remote on", "turn on remote", "resume remote"))
+        ):
+            res = laptop_remote_on()
+            _is_remote_active = True
+            tg_send_message(chat_id, res, reply_markup=get_main_inline_keyboard())
+            return True
+
+        # Toggle or General Self/Remote triggers
+        if (
+            clean in ("🔴 Self-Use Mode", "🟢 Remote Mode", "/remote", "/selfuse", "/selfmode", "/self", "/mode")
+            or clean_lower in ("self mode", "selfmode", "self-mode", "self use", "selfuse", "self-use", "self", "apna mode", "apna use", "remote mode", "remotemode", "toggle remote", "remote")
+        ):
             res = laptop_remote_toggle()
             if "Self-Use Mode: ACTIVE" in res:
                 _is_remote_active = False
@@ -1087,19 +1113,7 @@ class TelegramBotRunner:
             tg_send_message(chat_id, res, reply_markup=get_main_inline_keyboard())
             return True
 
-        if clean in ("/remote on", "/remoteon") or clean_lower in ("remote on", "remoteon"):
-            res = laptop_remote_on()
-            _is_remote_active = True
-            tg_send_message(chat_id, res, reply_markup=get_main_inline_keyboard())
-            return True
-
-        if clean in ("/remote off", "/remoteoff") or clean_lower in ("remote off", "remoteoff"):
-            res = laptop_remote_off()
-            _is_remote_active = False
-            tg_send_message(chat_id, res, reply_markup=get_main_inline_keyboard())
-            return True
-
-        if clean in ("/remote status",) or clean_lower in ("remote status",):
+        if clean in ("/remote status", "/self status") or clean_lower in ("remote status", "self status", "self mode status"):
             res = laptop_remote_status()
             tg_send_message(chat_id, res, reply_markup=get_main_inline_keyboard())
             return True
@@ -1684,7 +1698,7 @@ class TelegramBotRunner:
             tg_send_message(
                 chat_id,
                 res,
-                reply_markup=get_main_inline_keyboard(),
+                reply_markup=get_laptop_control_keyboard(),
             )
         elif data == "lap_coder_menu":
             tg_send_message(

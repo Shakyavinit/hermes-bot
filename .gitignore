@@ -9,3 +9,4 @@ logs/
 *.wav
 *.db
 auto_approve_state.json
+remote_access_state.json

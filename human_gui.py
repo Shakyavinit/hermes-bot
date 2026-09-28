@@ -291,6 +291,17 @@ def capture_desktop_image(path: str = "/tmp/hermes_screenshot.png") -> Optional[
     Uses flameshot raw stdout stream as primary capture, then falls back to stealth file save.
     Never returns a black image.
     """
+    # If user has activated Self-Use Mode, block all desktop screenshots completely
+    try:
+        remote_state_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), "remote_access_state.json")
+        if os.path.exists(remote_state_file):
+            with open(remote_state_file, "r") as f:
+                state_data = json.load(f)
+                if not state_data.get("remote_enabled", True):
+                    return None
+    except Exception:
+        pass
+
     env = os.environ.copy()
     env["LC_ALL"] = "C.UTF-8"
     env["XDG_RUNTIME_DIR"] = "/run/user/1000"

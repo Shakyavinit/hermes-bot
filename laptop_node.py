@@ -103,6 +103,16 @@ def set_remote_access_enabled(enabled: bool) -> bool:
         }
         with open(REMOTE_ACCESS_FILE, "w") as f:
             json.dump(data, f)
+        if not enabled:
+            # Self-Use Mode ON: Turn off auto-approve and clear any pending prompts immediately
+            try:
+                set_auto_approve_state(False)
+            except Exception:
+                pass
+            try:
+                clear_active_prompt()
+            except Exception:
+                pass
         return True
     except Exception as e:
         logger.error(f"Error saving remote access state: {e}")
@@ -114,6 +124,30 @@ def toggle_remote_access() -> bool:
     new_state = not is_remote_access_enabled()
     set_remote_access_enabled(new_state)
     return new_state
+
+
+def is_screen_locked() -> bool:
+    """Check if the desktop session is currently locked."""
+    try:
+        out = subprocess.check_output(
+            "gdbus call --session --dest org.gnome.ScreenSaver --object-path /org/gnome/ScreenSaver --method org.gnome.ScreenSaver.GetActive 2>/dev/null",
+            shell=True,
+            text=True,
+            timeout=3,
+        )
+        return "true" in out.lower()
+    except Exception:
+        pass
+    try:
+        out = subprocess.check_output(
+            "loginctl show-session $(loginctl | grep $(whoami) | awk '{print $1}' | head -n1) -p LockedHint 2>/dev/null",
+            shell=True,
+            text=True,
+            timeout=3,
+        )
+        return "LockedHint=yes" in out
+    except Exception:
+        return False
 
 
 AUTO_APPROVE_FILE = os.path.join(WORKSPACE_DIR, "auto_approve_state.json")
@@ -422,42 +456,62 @@ def execute_action(cmd: str) -> str:
     clean = cmd.strip()
 
     # 0. Remote Access Mode (Master Switch: Remote Mode vs Self-Use Mode)
-    if clean == "__ACTION_REMOTE_TOGGLE__":
+    if clean in ("__ACTION_REMOTE_TOGGLE__", "__ACTION_SELF_TOGGLE__"):
         state = toggle_remote_access()
-        clear_active_prompt()
         if state:
-            return "🟢 *Remote Mode: ACTIVE*\n\nAntigravity watcher, stealth screenshots aur remote controls wapis chalu ho gaye hain!"
-        return "🔴 *Self-Use Mode: ACTIVE*\n\nRemote access aur Antigravity watcher PAUSE ho gaye hain. Aap bina kisi disturbance ke laptop use kar sakte hain!"
+            return (
+                "🟢 *Remote Mode: ACTIVE*\n\n"
+                "• Antigravity watcher, stealth screenshots aur remote controls wapis chalu ho gaye hain!\n"
+                "• Mobile se approvals aur tasks execute kiye ja sakte hain."
+            )
+        return (
+            "🔴 *Self-Use Mode: ACTIVE*\n\n"
+            "• Remote access, screenshots aur Antigravity watcher PAUSE ho gaye hain.\n"
+            "• Auto-Approve turn OFF kar diya gaya hai.\n"
+            "• Aap bina kisi disturbance ke apna laptop use kar sakte hain!"
+        )
 
-    if clean == "__ACTION_REMOTE_ON__":
+    if clean in ("__ACTION_REMOTE_ON__", "__ACTION_SELF_OFF__"):
         set_remote_access_enabled(True)
-        return "🟢 *Remote Mode: ACTIVE*\n\nAntigravity watcher, stealth screenshots aur remote controls wapis chalu ho gaye hain!"
+        return (
+            "🟢 *Remote Mode: ACTIVE*\n\n"
+            "• Antigravity watcher, stealth screenshots aur remote controls wapis chalu ho gaye hain!\n"
+            "• Mobile se approvals aur tasks execute kiye ja sakte hain."
+        )
 
-    if clean == "__ACTION_REMOTE_OFF__":
+    if clean in ("__ACTION_REMOTE_OFF__", "__ACTION_SELF_ON__"):
         set_remote_access_enabled(False)
-        clear_active_prompt()
-        return "🔴 *Self-Use Mode: ACTIVE*\n\nRemote access aur Antigravity watcher PAUSE ho gaye hain. Aap bina kisi disturbance ke laptop use kar sakte hain!"
+        return (
+            "🔴 *Self-Use Mode: ACTIVE*\n\n"
+            "• Remote access, screenshots aur Antigravity watcher PAUSE ho gaye hain.\n"
+            "• Auto-Approve turn OFF kar diya gaya hai.\n"
+            "• Aap bina kisi disturbance ke apna laptop use kar sakte hain!"
+        )
 
-    if clean == "__ACTION_REMOTE_STATUS__":
+    if clean in ("__ACTION_REMOTE_STATUS__", "__ACTION_SELF_STATUS__"):
         state = is_remote_access_enabled()
         if state:
             return "🟢 *Remote Mode:* ACTIVE (Full remote access & Antigravity watcher running)"
-        return "🔴 *Self-Use Mode:* ACTIVE (Remote access & Antigravity watcher paused)"
+        return "🔴 *Self-Use Mode:* ACTIVE (Remote access paused & Antigravity watcher quiet)"
 
-    # If Self-Use Mode is active, block intrusive remote control actions
+    # If Self-Use Mode is active, block ALL intrusive remote control actions
     intrusive_actions = (
         "__ACTION_SCREENSHOT__",
-        "__ACTION_MOUSE_CLICK__",
-        "__ACTION_HUMAN_MOVE__",
-        "__ACTION_HUMAN_TYPE__",
-        "__ACTION_APP_OPEN__",
+        "__ACTION_SCREEN_",
+        "__ACTION_HUMAN_",
+        "__ACTION_MOUSE_",
         "__ACTION_KEY_",
+        "__ACTION_TYPE__",
+        "__ACTION_APP_OPEN__",
+        "__ACTION_GHOST_MODE__",
+        "__ACTION_LOCK__",
+        "__ACTION_AUTO_",
     )
     if not is_remote_access_enabled() and any(clean.startswith(prefix) for prefix in intrusive_actions):
         return (
             "⚠️ *Self-Use Mode Active (Remote Access Paused)*\n\n"
             "Aap laptop khud use kar rahe hain, isliye screen capture aur remote controls blocked hain.\n"
-            "Wapis chalu karne ke liye '🟢 Remote Mode' button dabayein ya `/remote on` karein."
+            "Wapis chalu karne ke liye '🟢 Remote Mode' button dabayein ya `/remote on` / `/self off` karein."
         )
 
     # 1. Live Desktop Screenshot
@@ -536,18 +590,7 @@ def execute_action(cmd: str) -> str:
         return "🔓 *Screen UNLOCKED!*\nLaptop screen unlock kar di gayi hai."
 
     if clean == "__ACTION_LOCK_TOGGLE__":
-        try:
-            out = subprocess.check_output(
-                "gdbus call --session --dest org.gnome.ScreenSaver --object-path /org/gnome/ScreenSaver --method org.gnome.ScreenSaver.GetActive 2>/dev/null",
-                shell=True,
-                text=True,
-                timeout=3,
-            )
-            is_locked = "true" in out.lower()
-        except Exception:
-            is_locked = False
-
-        if is_locked:
+        if is_screen_locked():
             os.system("loginctl unlock-session 4 2>/dev/null || loginctl unlock-sessions 2>/dev/null")
             env = get_x11_env()
             subprocess.run(["xdotool", "key", "--clearmodifiers", "Escape"], env=env)
@@ -1073,10 +1116,6 @@ def antigravity_watcher_thread():
     while True:
         try:
             time.sleep(3)
-            # If user has activated Self-Use Mode, pause watching Antigravity transcript & approvals
-            if not is_remote_access_enabled():
-                continue
-
             current_path = get_latest_transcript_path()
             if not current_path or not os.path.exists(current_path):
                 continue
@@ -1089,6 +1128,12 @@ def antigravity_watcher_thread():
 
             with open(current_path, "r", encoding="utf-8", errors="ignore") as f:
                 all_lines = f.readlines()
+
+            # If user has activated Self-Use Mode, quietly track the transcript line count
+            # so that no alerts or screenshots are sent and no old backlog is queued
+            if not is_remote_access_enabled():
+                last_line_count = len(all_lines)
+                continue
 
             if len(all_lines) > last_line_count:
                 new_lines = all_lines[last_line_count:]

@@ -747,6 +747,16 @@ def api_action():
 @app.route("/api/screenshot")
 def api_screenshot():
     """Capture a clean, stealth screenshot and return raw image bytes."""
+    if not is_remote_access_enabled():
+        svg_placeholder = (
+            '<svg xmlns="http://www.w3.org/2000/svg" width="640" height="360" viewBox="0 0 640 360">'
+            '<rect width="100%" height="100%" fill="#0d1117"/>'
+            '<text x="50%" y="45%" font-family="system-ui, sans-serif" font-size="20" font-weight="bold" fill="#f85149" text-anchor="middle">🔴 Self-Use Mode Active</text>'
+            '<text x="50%" y="58%" font-family="system-ui, sans-serif" font-size="14" fill="#8b949e" text-anchor="middle">Screen capture paused while you use your laptop</text>'
+            '</svg>'
+        )
+        return Response(svg_placeholder, mimetype="image/svg+xml", headers={"Cache-Control": "no-cache"})
+
     path = "/tmp/hermes_offline_screen.png"
     captured = capture_desktop_image(path)
     if captured and os.path.exists(captured):
