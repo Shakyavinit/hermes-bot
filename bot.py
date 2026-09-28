@@ -161,8 +161,9 @@ CLOUD_DASHBOARD_KEYBOARD = {
 # 4. Spy & Security Sub-menu
 SPY_REPLY_KEYBOARD = {
     "keyboard": [
+        [{"text": "🔴 Self-Use Mode"}, {"text": "👁️ CCTV Mode"}],
         [{"text": "📷 Selfie (Webcam)"}, {"text": "🎥 Video (10s)"}, {"text": "🎙️ Mic (10s)"}],
-        [{"text": "👁️ CCTV Mode"}, {"text": "🚨 Siren Alarm"}, {"text": "📍 Find Laptop"}],
+        [{"text": "🚨 Siren Alarm"}, {"text": "📍 Find Laptop"}],
         [{"text": "🔙 Laptop Menu"}, {"text": "🔙 Main Menu"}],
     ],
     "resize_keyboard": True,
@@ -198,7 +199,7 @@ VOLUME_REPLY_KEYBOARD = MEDIA_REPLY_KEYBOARD
 # 7. System & Power Sub-menu (With Ghost Mode Screen OFF and Screen ON)
 POWER_REPLY_KEYBOARD = {
     "keyboard": [
-        [{"text": "🕶️ Ghost Mode (Screen OFF)"}, {"text": "☀️ Screen ON"}],
+        [{"text": "🔴 Self-Use Mode"}, {"text": "🕶️ Ghost Mode (Screen OFF)"}, {"text": "☀️ Screen ON"}],
         [{"text": "📸 Screenshot"}, {"text": "🔋 Battery"}, {"text": "🔒 Lock Screen"}],
         [{"text": "💤 Sleep Laptop"}, {"text": "🔄 Restart Laptop"}, {"text": "⛔ Shutdown Laptop"}],
         [{"text": "📋 Clipboard"}, {"text": "📱 Running Apps"}],
@@ -211,7 +212,7 @@ POWER_REPLY_KEYBOARD = {
 # 8. Extra Laptop Tools Sub-menu
 LAPTOP_EXTRA_KEYBOARD = {
     "keyboard": [
-        [{"text": "🌐 Offline Hub Link"}, {"text": "📱 Offline Hub QR"}],
+        [{"text": "🔴 Self-Use Mode"}, {"text": "🌐 Offline Hub Link"}],
         [{"text": "📡 Start Hotspot"}, {"text": "🛑 Stop Hotspot"}],
         [{"text": "🌐 Open URL"}, {"text": "💬 Screen Popup"}],
         [{"text": "📶 Wi-Fi Status"}, {"text": "📱 Running Apps"}],
@@ -226,9 +227,9 @@ TOOLS_REPLY_KEYBOARD = CLOUD_DASHBOARD_KEYBOARD
 # 8b. Human Screen & Mouse Sub-menu
 HUMAN_GUI_KEYBOARD = {
     "keyboard": [
-        [{"text": "🚀 Open App (Human)"}, {"text": "👁️ Screen Vision"}],
-        [{"text": "🎯 Click Element"}, {"text": "⌨️ Human Typing"}],
-        [{"text": "📜 Scroll Down"}, {"text": "📸 Quick Screen"}],
+        [{"text": "🔴 Self-Use Mode"}, {"text": "🚀 Open App (Human)"}],
+        [{"text": "👁️ Screen Vision"}, {"text": "🎯 Click Element"}],
+        [{"text": "⌨️ Human Typing"}, {"text": "📸 Quick Screen"}],
         [{"text": "🔙 Laptop Menu"}, {"text": "🔙 Main Menu"}],
     ],
     "resize_keyboard": True,
@@ -255,23 +256,32 @@ _is_cctv_active = False
 
 
 def update_dynamic_keyboards(remote_active: Optional[bool] = None) -> None:
-    """Synchronize persistent reply keyboard button labels dynamically."""
+    """Synchronize persistent reply keyboard button labels dynamically across all menus."""
     global _is_remote_active
     if remote_active is not None:
         _is_remote_active = remote_active
     btn_text = "🔴 Self-Use Mode" if _is_remote_active else "🟢 Remote Mode"
-    try:
-        ROOT_CHOICE_KEYBOARD["keyboard"][1][0]["text"] = btn_text
-    except Exception:
-        pass
-    try:
-        LAPTOP_DASHBOARD_KEYBOARD["keyboard"][0][0]["text"] = btn_text
-    except Exception:
-        pass
-    try:
-        AI_REPLY_KEYBOARD["keyboard"][1][0]["text"] = btn_text
-    except Exception:
-        pass
+    for kb in (
+        ROOT_CHOICE_KEYBOARD,
+        LAPTOP_DASHBOARD_KEYBOARD,
+        AI_REPLY_KEYBOARD,
+        POWER_REPLY_KEYBOARD,
+        HUMAN_GUI_KEYBOARD,
+        SPY_REPLY_KEYBOARD,
+        LAPTOP_EXTRA_KEYBOARD,
+    ):
+        try:
+            for row in kb.get("keyboard", []):
+                for btn in row:
+                    if btn.get("text") in (
+                        "🔴 Self-Use Mode",
+                        "🟢 Remote Mode",
+                        "🔴 Self-Use Mode (Pause)",
+                        "🟢 Remote Mode (Activate)",
+                    ):
+                        btn["text"] = btn_text
+        except Exception:
+            pass
 
 
 def get_laptop_control_keyboard() -> dict:
@@ -645,7 +655,10 @@ def tg_send_document(
 def sync_bot_commands() -> None:
     """Update Telegram bot command list visible in chat menu."""
     commands = [
+        {"command": "self", "description": "🔴 Self-Use Mode (Pause / Resume Remote)"},
         {"command": "menu", "description": "📱 Interactive Control Panel & Buttons"},
+        {"command": "laptop", "description": "💻 Laptop Controls Dashboard"},
+        {"command": "offline", "description": "🌐 Offline Mobile Web Hub (Bina Net)"},
         {"command": "status", "description": "📊 Host Health & AI Model Status"},
         {"command": "files", "description": "📁 Workspace Files Browser"},
         {"command": "remind", "description": "⏰ Set a Timer / Reminder (e.g. 5m)"},
