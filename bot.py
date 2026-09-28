@@ -186,9 +186,9 @@ AI_REPLY_KEYBOARD = {
 # 6. Media & Sound Sub-menu
 MEDIA_REPLY_KEYBOARD = {
     "keyboard": [
-        [{"text": "🔉 Vol -"}, {"text": "🔊 Vol +"}, {"text": "🔇 Mute"}],
-        [{"text": "⏯️ Play/Pause"}, {"text": "⏹️ Stop Music"}],
-        [{"text": "🗣️ Speak Text"}, {"text": "🎵 Play Music"}],
+        [{"text": "🔴 Self-Use Mode"}, {"text": "🔇 Mute"}],
+        [{"text": "🔉 Vol -"}, {"text": "🔊 Vol +"}, {"text": "⏯️ Play/Pause"}],
+        [{"text": "🗣️ Speak Text"}, {"text": "🎵 Play Music"}, {"text": "⏹️ Stop Music"}],
         [{"text": "🔙 Laptop Menu"}, {"text": "🔙 Main Menu"}],
     ],
     "resize_keyboard": True,
@@ -239,7 +239,7 @@ HUMAN_GUI_KEYBOARD = {
 # 9. Alarm Mode Sub-menu
 ALARM_REPLY_KEYBOARD = {
     "keyboard": [
-        [{"text": "⏹️ Stop Alarm"}],
+        [{"text": "🔴 Self-Use Mode"}, {"text": "⏹️ Stop Alarm"}],
         [{"text": "🔒 Lock Screen"}, {"text": "🎥 Video (10s)"}],
         [{"text": "🔙 Laptop Menu"}, {"text": "🔙 Main Menu"}],
     ],
@@ -269,6 +269,8 @@ def update_dynamic_keyboards(remote_active: Optional[bool] = None) -> None:
         HUMAN_GUI_KEYBOARD,
         SPY_REPLY_KEYBOARD,
         LAPTOP_EXTRA_KEYBOARD,
+        MEDIA_REPLY_KEYBOARD,
+        ALARM_REPLY_KEYBOARD,
     ):
         try:
             for row in kb.get("keyboard", []):
