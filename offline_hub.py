@@ -435,6 +435,9 @@ MOBILE_HTML = """<!DOCTYPE html>
     <button class="btn" onclick="sendAction('__ACTION_VOL_DOWN__')">
       🔉 Vol -10%
     </button>
+    <button class="btn btn-warning full-width" id="btn-hotspot" onclick="toggleHotspot()">
+      📡 Laptop Hotspot: START (Hermes-Offline)
+    </button>
   </div>
 
   <!-- System Health & Battery -->
@@ -518,6 +521,14 @@ MOBILE_HTML = """<!DOCTYPE html>
       await sendAction('__ACTION_MUTE__');
     }
 
+    async function toggleHotspot() {
+      const btn = document.getElementById('btn-hotspot');
+      const isStart = btn.innerText.includes('START');
+      showToast(isStart ? '📡 Starting laptop offline hotspot...' : '🛑 Stopping hotspot...');
+      await sendAction(isStart ? '__ACTION_HOTSPOT_START__' : '__ACTION_HOTSPOT_STOP__');
+      setTimeout(fetchStatus, 2500);
+    }
+
     async function toggleCCTV() {
       await sendAction('__ACTION_CCTV_TOGGLE__');
     }
@@ -580,6 +591,18 @@ MOBILE_HTML = """<!DOCTYPE html>
         // Update CCTV button
         const btnCctv = document.getElementById('btn-cctv');
         btnCctv.innerText = data.cctv_active ? '🛑 Stop CCTV' : '👁️ CCTV Motion';
+
+        // Update Hotspot button
+        const btnHotspot = document.getElementById('btn-hotspot');
+        if (btnHotspot) {
+          if (data.hotspot_active) {
+            btnHotspot.className = 'btn btn-danger full-width';
+            btnHotspot.innerText = '🛑 Stop Hotspot (Hermes-Offline)';
+          } else {
+            btnHotspot.className = 'btn btn-warning full-width';
+            btnHotspot.innerText = '📡 Laptop Hotspot: START (Hermes-Offline)';
+          }
+        }
 
         // Battery and stats
         document.getElementById('stat-battery').innerText = data.battery || 'Good';
@@ -676,6 +699,15 @@ def api_status():
     except Exception:
         pass
 
+    # Hotspot
+    hotspot_active = False
+    try:
+        import offline_hotspot
+
+        hotspot_active = offline_hotspot.is_hotspot_active()
+    except Exception:
+        pass
+
     return jsonify(
         {
             "ip": get_local_ip(),
@@ -684,6 +716,7 @@ def api_status():
             "is_locked": is_screen_locked(),
             "is_muted": is_muted,
             "cctv_active": cctv_active,
+            "hotspot_active": hotspot_active,
             "battery": bat_str,
             "wifi": wifi_str,
         }

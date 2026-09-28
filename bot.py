@@ -81,6 +81,9 @@ from bridge import (
     laptop_screen_vision_click,
     laptop_offline_url,
     laptop_offline_qr,
+    laptop_hotspot_start,
+    laptop_hotspot_stop,
+    laptop_hotspot_status,
     record_heartbeat,
     store_task_result,
 )
@@ -209,6 +212,7 @@ POWER_REPLY_KEYBOARD = {
 LAPTOP_EXTRA_KEYBOARD = {
     "keyboard": [
         [{"text": "🌐 Offline Hub Link"}, {"text": "📱 Offline Hub QR"}],
+        [{"text": "📡 Start Hotspot"}, {"text": "🛑 Stop Hotspot"}],
         [{"text": "🌐 Open URL"}, {"text": "💬 Screen Popup"}],
         [{"text": "📶 Wi-Fi Status"}, {"text": "📱 Running Apps"}],
         [{"text": "🔙 Laptop Menu"}, {"text": "🔙 Main Menu"}],
@@ -1052,6 +1056,23 @@ class TelegramBotRunner:
                 f"{url_res}\n\n📱 *PWA App Tip:* Chrome/Safari me kholkar menu se **'Add to Home Screen'** karein, ye phone me bilkul native app ki tarah save ho jayega!",
                 reply_markup=LAPTOP_EXTRA_KEYBOARD,
             )
+            return True
+
+        if clean in ("📡 Start Hotspot", "/hotspot on", "/hotspot_on", "/hotspot") or clean_lower in ("start hotspot", "hotspot on", "chalu hotspot", "laptop hotspot"):
+            temp_id = tg_send_message(chat_id, "📡 Laptop Wi-Fi Hotspot ('Hermes-Offline') chalu kiya ja raha hai...")
+            res = laptop_hotspot_start()
+            tg_delete_message(chat_id, temp_id)
+            tg_send_message(chat_id, res, reply_markup=LAPTOP_EXTRA_KEYBOARD)
+            return True
+
+        if clean in ("🛑 Stop Hotspot", "/hotspot off", "/hotspot_off") or clean_lower in ("stop hotspot", "hotspot off", "band hotspot"):
+            res = laptop_hotspot_stop()
+            tg_send_message(chat_id, res, reply_markup=LAPTOP_EXTRA_KEYBOARD)
+            return True
+
+        if clean in ("/hotspot status",) or clean_lower in ("hotspot status",):
+            res = laptop_hotspot_status()
+            tg_send_message(chat_id, res, reply_markup=LAPTOP_EXTRA_KEYBOARD)
             return True
 
         # ======================================================================

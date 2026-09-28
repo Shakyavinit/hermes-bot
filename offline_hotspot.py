@@ -63,14 +63,13 @@ def print_qr_banner(url: str):
         pass
 
 
-def start_hotspot():
+def start_hotspot() -> tuple[bool, str]:
     """Start autonomous offline Wi-Fi Hotspot."""
     if is_hotspot_active():
-        print(f"🟢 Hotspot '{HOTSPOT_SSID}' is already active!")
         ip = get_current_ip()
-        print(f"📱 Connect phone to Wi-Fi: '{HOTSPOT_SSID}' (Password: '{HOTSPOT_PASSWORD}')")
-        print(f"🌐 Mobile Hub URL: http://{ip}:{HUB_PORT}")
-        return
+        msg = f"Hotspot '{HOTSPOT_SSID}' already active on http://{ip}:{HUB_PORT}"
+        print(f"🟢 {msg}")
+        return True, msg
 
     ifname = get_wifi_interface()
     print(f"📡 Starting offline hotspot on interface '{ifname}'...")
@@ -87,8 +86,9 @@ def start_hotspot():
     )
     code, out = run_cmd(cmd)
     if code != 0:
-        print(f"❌ Failed to start hotspot:\n{out}")
-        return
+        err_msg = f"Failed to start hotspot: {out}"
+        print(f"❌ {err_msg}")
+        return False, err_msg
 
     time.sleep(2)
     ip = get_current_ip()
@@ -110,9 +110,10 @@ def start_hotspot():
     print("=" * 60)
 
     print_qr_banner(hub_url)
+    return True, f"Hotspot '{HOTSPOT_SSID}' started on {hub_url}"
 
 
-def stop_hotspot():
+def stop_hotspot() -> tuple[bool, str]:
     """Stop hotspot and restore normal Wi-Fi connection."""
     print("🛑 Stopping offline hotspot...")
     run_cmd(f"nmcli con down '{HOTSPOT_CON_NAME}' 2>/dev/null")
@@ -121,6 +122,7 @@ def stop_hotspot():
     # Rescan & reconnect to default Wi-Fi
     run_cmd("nmcli dev wifi rescan 2>/dev/null")
     print("✅ Hotspot stopped. Normal Wi-Fi restored.")
+    return True, "Hotspot stopped and normal Wi-Fi restored"
 
 
 def status():

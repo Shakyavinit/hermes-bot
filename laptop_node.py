@@ -945,6 +945,53 @@ def execute_action(cmd: str) -> str:
         except Exception as e:
             return f"Error generating QR code: {e}"
 
+    # 33. Autonomous Hotspot Control
+    if clean in ("__ACTION_HOTSPOT_START__", "__ACTION_HOTSPOT_ON__"):
+        try:
+            import offline_hotspot
+            ok, msg = offline_hotspot.start_hotspot()
+            ip = offline_hotspot.get_current_ip()
+            if ok:
+                return (
+                    "📡 *Hermes Offline Hotspot ACTIVATED!* 🟢\n\n"
+                    "• **Wi-Fi Name (SSID):** `Hermes-Offline`\n"
+                    "• **Password:** `hermes12345`\n"
+                    f"• **Laptop IP:** `{ip}`\n"
+                    f"• **Mobile Hub URL:** `http://{ip}:7777`\n\n"
+                    "📱 *Mobile Se Connect Karein:*\n"
+                    "1. Phone me Wi-Fi settings kholein aur `Hermes-Offline` connect karein.\n"
+                    "2. Password `hermes12345` dalein.\n"
+                    f"3. Phone browser me `http://{ip}:7777` kholein!"
+                )
+            return f"❌ Failed to start hotspot: {msg}"
+        except Exception as e:
+            return f"Error starting hotspot: {e}"
+
+    if clean in ("__ACTION_HOTSPOT_STOP__", "__ACTION_HOTSPOT_OFF__"):
+        try:
+            import offline_hotspot
+            ok, msg = offline_hotspot.stop_hotspot()
+            ip = offline_hotspot.get_current_ip()
+            return f"🛑 *Hermes Offline Hotspot STOPPED!*\nNormal Wi-Fi connection restore ho gaya hai.\nLocal IP: `{ip}`"
+        except Exception as e:
+            return f"Error stopping hotspot: {e}"
+
+    if clean == "__ACTION_HOTSPOT_STATUS__":
+        try:
+            import offline_hotspot
+            active = offline_hotspot.is_hotspot_active()
+            ip = offline_hotspot.get_current_ip()
+            state_str = "ACTIVE 🟢" if active else "INACTIVE ⚪"
+            return (
+                f"📡 *Hermes Hotspot Status:* {state_str}\n"
+                f"• **SSID:** `Hermes-Offline`\n"
+                f"• **Password:** `hermes12345`\n"
+                f"• **Current IP:** `{ip}`\n"
+                f"• **Offline Hub:** `http://{ip}:7777`"
+            )
+        except Exception as e:
+            return f"Error checking hotspot: {e}"
+
     # General Shell Command
     try:
         proc = subprocess.run(

@@ -286,3 +286,16 @@ def laptop_offline_qr() -> str:
     return dispatch_to_laptop("__ACTION_OFFLINE_QR__")
 
 
+def laptop_hotspot_start() -> str:
+    return dispatch_to_laptop("__ACTION_HOTSPOT_START__", timeout=25)
+
+
+def laptop_hotspot_stop() -> str:
+    return dispatch_to_laptop("__ACTION_HOTSPOT_STOP__", timeout=20)
+
+
+def laptop_hotspot_status() -> str:
+    return dispatch_to_laptop("__ACTION_HOTSPOT_STATUS__", timeout=15)
+
+
+
