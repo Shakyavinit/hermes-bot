@@ -122,7 +122,7 @@ UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
 # Multi-Level Nested Bottom Reply Keyboards (Clean, Categorized & Extendable)
 # ==============================================================================
 
-# 1. Main Root Switcher (All-In-One Persistent Reply Keypad)
+# 1. Master Root Switcher (All-In-One Persistent Reply Keypad - Zero Hidden Menus)
 ROOT_CHOICE_KEYBOARD = {
     "keyboard": [
         [{"text": "🔴 Self-Use Mode"}, {"text": "⚡ Auto Mode: OFF 🔴"}],
@@ -132,126 +132,29 @@ ROOT_CHOICE_KEYBOARD = {
         [{"text": "🔇 Mute"}, {"text": "🔋 Battery"}, {"text": "🌐 Offline Hub"}],
         [{"text": "🕶️ Ghost Mode"}, {"text": "☀️ Screen ON"}],
         [{"text": "📷 Selfie (Webcam)"}, {"text": "🚨 Siren Alarm"}],
-        [{"text": "💻 More Tools ➡️"}, {"text": "☁️ Cloud Server"}, {"text": "🔄 Refresh Panel"}],
+        [{"text": "🎥 Video (10s)"}, {"text": "🎙️ Mic (10s)"}],
+        [{"text": "📡 Start Hotspot"}, {"text": "💤 Sleep Laptop"}],
+        [{"text": "☁️ Cloud Server"}, {"text": "🔄 Refresh Panel"}],
     ],
     "resize_keyboard": True,
     "is_persistent": True,
 }
+
+# All keyboards strictly point to the Master Root Keypad (No hidden sub-menus, no categories)
 REPLY_KEYBOARD = ROOT_CHOICE_KEYBOARD
-
-# 2. Laptop Dashboard (Categories for Physical Laptop)
-LAPTOP_DASHBOARD_KEYBOARD = {
-    "keyboard": [
-        [{"text": "🔴 Self-Use Mode"}, {"text": "🤖 Sandbox & AI"}],
-        [{"text": "🛡️ Spy & Security"}, {"text": "⚡ Power & Ghost Mode"}],
-        [{"text": "🎵 Media & Sound"}, {"text": "🌟 Extra Tools ➡️"}],
-        [{"text": "📊 Laptop Status"}, {"text": "🔙 Main Menu"}],
-    ],
-    "resize_keyboard": True,
-    "is_persistent": True,
-}
+LAPTOP_DASHBOARD_KEYBOARD = ROOT_CHOICE_KEYBOARD
 MAIN_DASHBOARD_KEYBOARD = ROOT_CHOICE_KEYBOARD
-
-# 3. Cloud Server Dashboard (Render 24/7 Cloud Controls)
-CLOUD_DASHBOARD_KEYBOARD = {
-    "keyboard": [
-        [{"text": "📊 Cloud Status"}, {"text": "📁 Cloud Files"}],
-        [{"text": "⚡ Cloud Quick Test"}, {"text": "🧹 Reset AI Memory"}],
-        [{"text": "🌐 24/7 Hosting Guide"}, {"text": "🗑️ Clean Messages"}],
-        [{"text": "🔙 Main Menu"}],
-    ],
-    "resize_keyboard": True,
-    "is_persistent": True,
-}
-
-# 4. Spy & Security Sub-menu
-SPY_REPLY_KEYBOARD = {
-    "keyboard": [
-        [{"text": "🔴 Self-Use Mode"}, {"text": "👁️ CCTV Mode"}],
-        [{"text": "📷 Selfie (Webcam)"}, {"text": "🎥 Video (10s)"}, {"text": "🎙️ Mic (10s)"}],
-        [{"text": "🚨 Siren Alarm"}, {"text": "📍 Find Laptop"}],
-        [{"text": "🔙 Laptop Menu"}, {"text": "🔙 Main Menu"}],
-    ],
-    "resize_keyboard": True,
-    "is_persistent": True,
-}
-
-# 5. AI & Sandbox Terminal Sub-menu (Send Box Approvals & Actions)
-AI_REPLY_KEYBOARD = {
-    "keyboard": [
-        [{"text": "⭐ Best Option"}, {"text": "⚡ Auto Mode (Toggle)"}],
-        [{"text": "🔴 Self-Use Mode"}, {"text": "📸 Screen Peek"}],
-        [{"text": "✅ Approve (Enter)"}, {"text": "🟢 Send 'y'"}, {"text": "🔴 Send 'n'"}],
-        [{"text": "🛑 Ctrl+C"}, {"text": "📊 AI Status"}],
-        [{"text": "🔙 Laptop Menu"}, {"text": "🔙 Main Menu"}],
-    ],
-    "resize_keyboard": True,
-    "is_persistent": True,
-}
-
-# 6. Media & Sound Sub-menu
-MEDIA_REPLY_KEYBOARD = {
-    "keyboard": [
-        [{"text": "🔴 Self-Use Mode"}, {"text": "🔇 Mute"}],
-        [{"text": "🔉 Vol -"}, {"text": "🔊 Vol +"}, {"text": "⏯️ Play/Pause"}],
-        [{"text": "🗣️ Speak Text"}, {"text": "🎵 Play Music"}, {"text": "⏹️ Stop Music"}],
-        [{"text": "🔙 Laptop Menu"}, {"text": "🔙 Main Menu"}],
-    ],
-    "resize_keyboard": True,
-    "is_persistent": True,
-}
-VOLUME_REPLY_KEYBOARD = MEDIA_REPLY_KEYBOARD
-
-# 7. System & Power Sub-menu (With Ghost Mode Screen OFF and Screen ON)
-POWER_REPLY_KEYBOARD = {
-    "keyboard": [
-        [{"text": "🔴 Self-Use Mode"}, {"text": "🕶️ Ghost Mode (Screen OFF)"}, {"text": "☀️ Screen ON"}],
-        [{"text": "📸 Screenshot"}, {"text": "🔋 Battery"}, {"text": "🔒 Lock Screen"}],
-        [{"text": "💤 Sleep Laptop"}, {"text": "🔄 Restart Laptop"}, {"text": "⛔ Shutdown Laptop"}],
-        [{"text": "📋 Clipboard"}, {"text": "📱 Running Apps"}],
-        [{"text": "🔙 Laptop Menu"}, {"text": "🔙 Main Menu"}],
-    ],
-    "resize_keyboard": True,
-    "is_persistent": True,
-}
-
-# 8. Extra Laptop Tools Sub-menu
-LAPTOP_EXTRA_KEYBOARD = {
-    "keyboard": [
-        [{"text": "🔴 Self-Use Mode"}, {"text": "🌐 Offline Hub Link"}],
-        [{"text": "📡 Start Hotspot"}, {"text": "🛑 Stop Hotspot"}],
-        [{"text": "🌐 Open URL"}, {"text": "💬 Screen Popup"}],
-        [{"text": "📶 Wi-Fi Status"}, {"text": "📱 Running Apps"}],
-        [{"text": "🔙 Laptop Menu"}, {"text": "🔙 Main Menu"}],
-    ],
-    "resize_keyboard": True,
-    "is_persistent": True,
-}
-NEXT_SECTION_KEYBOARD = LAPTOP_EXTRA_KEYBOARD
-TOOLS_REPLY_KEYBOARD = CLOUD_DASHBOARD_KEYBOARD
-
-# 8b. Human Screen & Mouse Sub-menu
-HUMAN_GUI_KEYBOARD = {
-    "keyboard": [
-        [{"text": "🔴 Self-Use Mode"}, {"text": "🚀 Open App (Human)"}],
-        [{"text": "👁️ Screen Vision"}, {"text": "🎯 Click Element"}],
-        [{"text": "⌨️ Human Typing"}, {"text": "📸 Quick Screen"}],
-        [{"text": "🔙 Laptop Menu"}, {"text": "🔙 Main Menu"}],
-    ],
-    "resize_keyboard": True,
-    "is_persistent": True,
-}
-
-# 9. Alarm Mode Sub-menu
-ALARM_REPLY_KEYBOARD = {
-    "keyboard": [
-        [{"text": "🔴 Self-Use Mode"}, {"text": "⏹️ Stop Alarm"}],
-        [{"text": "🔒 Lock Screen"}, {"text": "🎥 Video (10s)"}],
-        [{"text": "🔙 Laptop Menu"}, {"text": "🔙 Main Menu"}],
-    ],
-    "resize_keyboard": True,
-    "is_persistent": True,
-}
+CLOUD_DASHBOARD_KEYBOARD = ROOT_CHOICE_KEYBOARD
+SPY_REPLY_KEYBOARD = ROOT_CHOICE_KEYBOARD
+AI_REPLY_KEYBOARD = ROOT_CHOICE_KEYBOARD
+MEDIA_REPLY_KEYBOARD = ROOT_CHOICE_KEYBOARD
+VOLUME_REPLY_KEYBOARD = ROOT_CHOICE_KEYBOARD
+POWER_REPLY_KEYBOARD = ROOT_CHOICE_KEYBOARD
+LAPTOP_EXTRA_KEYBOARD = ROOT_CHOICE_KEYBOARD
+NEXT_SECTION_KEYBOARD = ROOT_CHOICE_KEYBOARD
+TOOLS_REPLY_KEYBOARD = ROOT_CHOICE_KEYBOARD
+HUMAN_GUI_KEYBOARD = ROOT_CHOICE_KEYBOARD
+ALARM_REPLY_KEYBOARD = ROOT_CHOICE_KEYBOARD
 
 
 _is_remote_active = True
@@ -944,7 +847,7 @@ class TelegramBotRunner:
             return True
 
         # ======================================================================
-        # 2. Dual-Mode Switchers: Laptop Mode vs Cloud Server
+        # 2. Dual-Mode Switchers & Legacy Sub-menus (All Flattened to Master Keypad)
         # ======================================================================
         if clean in (
             "💻 More Tools ➡️",
@@ -956,17 +859,44 @@ class TelegramBotRunner:
             "🔙 Laptop Menu",
             "🔙 Back to Laptop",
             "/laptop",
-        ) or clean_lower in ("laptop", "laptop mode", "laptop exec", "laptop panel", "/laptop", "more tools"):
+            "🛡️ Spy & Security",
+            "/spy",
+            "/security",
+            "🤖 Sandbox & AI",
+            "🤖 AI & Terminal",
+            "🤖 AI & Coding",
+            "🤖 Sandbox",
+            "/sandbox",
+            "/coder",
+            "🎵 Media & Sound",
+            "🔊 Volume & Media",
+            "/volume",
+            "⚡ Power & Ghost Mode",
+            "⚡ System & Power",
+            "⚡ Power & Lock",
+            "/power",
+            "🌟 Extra Tools ➡️",
+            "🌟 Next Section ➡️",
+            "/next",
+            "/more",
+            "⬅️ Previous Section",
+        ) or clean_lower in (
+            "laptop", "laptop mode", "laptop exec", "laptop panel", "/laptop", "more tools",
+            "send box", "sendbox", "sandbox", "sandbox & ai", "spy", "security",
+            "power", "power mode", "ghost mode", "volume", "sound", "extra tools"
+        ):
+            update_dynamic_keyboards()
             laptop_status = "ONLINE 🟢 (Connected)" if is_laptop_online() else "OFFLINE 🔴 (Not connected)"
             text = (
-                f"💻 *Laptop Control Panel* ({laptop_status})\n\n"
-                "Aapka physical Kali Linux laptop yahan se operate hoga.\n"
-                "Niche diye categories me se select karein:"
+                f"📱 *Hermes All-In-One Control Panel* ({laptop_status})\n\n"
+                "Sabhi specific controls bahar screen ke niche persistent keypad par open hain.\n"
+                "Koi category ya sub-menu nahi hai — seedhe niche se direct action lein:"
             )
+            _user_active_keyboard[chat_id] = ROOT_CHOICE_KEYBOARD
             send_or_replace_nav(
                 chat_id,
                 text,
-                reply_markup=LAPTOP_DASHBOARD_KEYBOARD,
+                reply_markup=ROOT_CHOICE_KEYBOARD,
             )
             return True
 
@@ -980,68 +910,13 @@ class TelegramBotRunner:
                 "☁️ *Cloud Server Panel (Render 24/7)*\n\n"
                 "Bot Render Cloud container par 24/7 live hai.\n"
                 "Laptop band hone par bhi bot yahan se active rehta hai.\n\n"
-                "Niche diye options se Cloud manage karein:"
+                "Sabhi actions niche master keypad par available hain:"
             )
+            _user_active_keyboard[chat_id] = ROOT_CHOICE_KEYBOARD
             send_or_replace_nav(
                 chat_id,
                 text,
-                reply_markup=CLOUD_DASHBOARD_KEYBOARD,
-            )
-            return True
-
-        # ======================================================================
-        # 3. Category Switchers (Nested Sub-Menus inside Laptop & Cloud)
-        # ======================================================================
-
-        # Category 1: Spy & Security (Laptop)
-        if clean in ("🛡️ Spy & Security", "/spy", "/security"):
-            send_or_replace_nav(
-                chat_id,
-                "🛡️ *Spy & Security Controls:*\nNiche diye buttons se webcam photo, 10s video, mic, CCTV aur siren operate karein:",
-                reply_markup=SPY_REPLY_KEYBOARD,
-            )
-            return True
-
-        # Category 2: Sandbox & AI Terminal (Laptop)
-        if clean in (
-            "🤖 Sandbox & AI",
-            "🤖 AI & Terminal",
-            "🤖 AI & Coding",
-            "🤖 Sandbox",
-            "/sandbox",
-            "/coder",
-        ) or clean.lower() in ("send box", "sendbox", "sandbox", "sandbox & ai"):
-            send_or_replace_nav(
-                chat_id,
-                "🤖 *Antigravity AI & Sandbox Terminal Keypad:*\nApproval commands (Enter, 'y', 'n', Ctrl+C) aur live status niche buttons se control karein:",
-                reply_markup=AI_REPLY_KEYBOARD,
-            )
-            return True
-
-        # Category 3: Media & Sound (Laptop)
-        if clean in ("🎵 Media & Sound", "🔊 Volume & Media", "/volume"):
-            send_or_replace_nav(
-                chat_id,
-                "🎵 *Media & Sound Controls:*\nVolume up/down, mute, playback aur music control karein:",
-                reply_markup=MEDIA_REPLY_KEYBOARD,
-            )
-            return True
-
-        # Category 4: System & Power & Ghost Mode (Laptop)
-        if clean in ("⚡ Power & Ghost Mode", "⚡ System & Power", "⚡ Power & Lock", "/power"):
-            send_or_replace_nav(
-                chat_id,
-                "⚡ *System & Power Controls:*\nGhost mode, Screen ON, screenshot, battery, lock, sleep, restart aur running apps niche se control karein:",
-                reply_markup=POWER_REPLY_KEYBOARD,
-            )
-            return True
-
-        # Category 5: Extra Tools (Laptop)
-        if clean in ("🌟 Extra Tools ➡️", "🌟 Next Section ➡️", "/next", "/more", "⬅️ Previous Section"):
-            send_or_replace_nav(
-                chat_id,
-                "🌟 *Extra Laptop Tools:*\nRemote URL launcher, Wi-Fi info, screen popup aur running apps yahan hain:",
-                reply_markup=LAPTOP_EXTRA_KEYBOARD,
+                reply_markup=ROOT_CHOICE_KEYBOARD,
             )
             return True
 
