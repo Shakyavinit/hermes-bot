@@ -254,6 +254,26 @@ _is_auto_approve_active = False
 _is_cctv_active = False
 
 
+def update_dynamic_keyboards(remote_active: Optional[bool] = None) -> None:
+    """Synchronize persistent reply keyboard button labels dynamically."""
+    global _is_remote_active
+    if remote_active is not None:
+        _is_remote_active = remote_active
+    btn_text = "🔴 Self-Use Mode" if _is_remote_active else "🟢 Remote Mode"
+    try:
+        ROOT_CHOICE_KEYBOARD["keyboard"][1][0]["text"] = btn_text
+    except Exception:
+        pass
+    try:
+        LAPTOP_DASHBOARD_KEYBOARD["keyboard"][0][0]["text"] = btn_text
+    except Exception:
+        pass
+    try:
+        AI_REPLY_KEYBOARD["keyboard"][1][0]["text"] = btn_text
+    except Exception:
+        pass
+
+
 def get_laptop_control_keyboard() -> dict:
     """Full remote control keypad for physical laptop with dynamic dual-state toggle buttons."""
     global _is_remote_active, _is_locked, _is_muted, _is_auto_approve_active, _is_cctv_active
@@ -440,6 +460,7 @@ def schedule_reminder(chat_id: int, delay_seconds: int, reminder_text: str) -> N
 # In-memory tracking for chat message cleanup & smooth navigation
 _last_nav_msg: Dict[int, int] = {}
 _recent_bot_msgs: Dict[int, List[int]] = {}
+_user_active_keyboard: Dict[int, dict] = {}
 
 
 def track_bot_msg(chat_id: int, msg_id: Optional[int]) -> None:
@@ -492,6 +513,8 @@ def tg_send_message(
         payload["parse_mode"] = parse_mode
     if reply_markup:
         payload["reply_markup"] = reply_markup
+        if "keyboard" in reply_markup:
+            _user_active_keyboard[chat_id] = reply_markup
 
     try:
         resp = requests.post(url, json=payload, timeout=20)
@@ -727,6 +750,17 @@ def start_health_server(port: int = 7860) -> None:
     class HealthHandler(http.server.SimpleHTTPRequestHandler):
         def do_GET(self):
             parsed = urllib.parse.urlparse(self.path)
+            query_params = urllib.parse.parse_qs(parsed.query)
+
+            if "remote_enabled" in query_params:
+                val = query_params["remote_enabled"][0]
+                update_dynamic_keyboards(val == "1")
+
+            if "auto_approve" in query_params:
+                val = query_params["auto_approve"][0]
+                global _is_auto_approve_active
+                _is_auto_approve_active = (val == "1")
+
             if parsed.path == "/api/laptop/poll":
                 record_heartbeat()
                 task = get_pending_task()
@@ -1078,44 +1112,80 @@ class TelegramBotRunner:
         # ======================================================================
         # 4b. Master Remote Access Switch (Self-Use Mode vs Remote Mode)
         # ======================================================================
-        # Explicit Turn ON Self-Use Mode (Remote OFF)
-        if (
-            clean in ("/self on", "/self_on", "/selfmode on", "/selfmode_on")
-            or clean_lower in ("self on", "self mode on", "selfmode on", "apna mode on", "turn on self mode", "enable self mode", "self use on", "self-use on")
-            or (clean in ("/remote off", "/remoteoff") or clean_lower in ("remote off", "turn off remote", "remote pause", "pause remote"))
-        ):
-            res = laptop_remote_off()
+        # A) Explicit Turn ON Self-Use Mode (Remote OFF)
+        is_turn_on_self = (
+            clean in ("/self on", "/self_on", "/selfmode on", "/selfmode_on", "/selfuse on")
+            or any(p in clean_lower for p in [
+                "self on", "self mode on", "selfuse on", "self-use on", "self use on",
+                "self use mode on", "self-use mode on", "turn on self", "enable self",
+                "activate self", "self chalu", "self mode chalu", "self use chalu",
+                "apna mode on", "apna use on", "apna mode chalu",
+                "/remote off", "/remoteoff", "remote off", "turn off remote", "disable remote",
+                "pause remote", "remote pause", "remote band", "remote stop"
+            ])
+        )
+
+        # B) Explicit Turn OFF Self-Use Mode (Remote ON)
+        is_turn_off_self = (
+            clean in ("/self off", "/self_off", "/selfmode off", "/selfmode_off", "/selfuse off")
+            or any(p in clean_lower for p in [
+                "self off", "self mode off", "selfuse off", "self-use off", "self use off",
+                "self use mode off", "self-use mode off", "turn off self", "disable self",
+                "deactivate self", "self band", "self mode band", "self use band",
+                "apna mode off", "apna use off", "apna mode band",
+                "/remote on", "/remoteon", "remote on", "turn on remote", "enable remote",
+                "resume remote", "remote resume", "remote chalu", "remote start"
+            ])
+        )
+
+        # C) Toggle or General Self Mode / Remote Mode trigger
+        is_toggle_self = (
+            clean in ("🔴 Self-Use Mode", "🟢 Remote Mode", "🔴 Self Mode", "🟢 Remote Mode (Activate)", "🔴 Self-Use Mode (Pause)", "/remote", "/selfuse", "/selfmode", "/self", "/mode")
+            or clean_lower in (
+                "self", "/self", "/selfuse", "/selfmode", "/mode",
+                "self mode", "selfmode", "self-mode",
+                "self use", "selfuse", "self-use",
+                "self use mode", "selfuse mode", "self-use mode",
+                "apna mode", "apna use",
+                "remote", "/remote", "remote mode", "remotemode", "toggle remote", "toggle self"
+            )
+            or ("self" in clean_lower and any(w in clean_lower for w in ["mode", "use", "toggle", "switch", "wala", "chalu", "band"]))
+        )
+
+        if is_turn_on_self:
             _is_remote_active = False
-            tg_send_message(chat_id, res, reply_markup=get_main_inline_keyboard())
+            update_dynamic_keyboards(False)
+            res = laptop_remote_off()
+            active_kb = _user_active_keyboard.get(chat_id, ROOT_CHOICE_KEYBOARD)
+            tg_send_message(chat_id, res, reply_markup=active_kb)
             return True
 
-        # Explicit Turn OFF Self-Use Mode (Remote ON)
-        if (
-            clean in ("/self off", "/self_off", "/selfmode off", "/selfmode_off")
-            or clean_lower in ("self off", "self mode off", "selfmode off", "apna mode off", "turn off self mode", "disable self mode", "self use off", "self-use off")
-            or (clean in ("/remote on", "/remoteon") or clean_lower in ("remote on", "turn on remote", "resume remote"))
-        ):
-            res = laptop_remote_on()
+        if is_turn_off_self:
             _is_remote_active = True
-            tg_send_message(chat_id, res, reply_markup=get_main_inline_keyboard())
+            update_dynamic_keyboards(True)
+            res = laptop_remote_on()
+            active_kb = _user_active_keyboard.get(chat_id, ROOT_CHOICE_KEYBOARD)
+            tg_send_message(chat_id, res, reply_markup=active_kb)
             return True
 
-        # Toggle or General Self/Remote triggers
-        if (
-            clean in ("🔴 Self-Use Mode", "🟢 Remote Mode", "/remote", "/selfuse", "/selfmode", "/self", "/mode")
-            or clean_lower in ("self mode", "selfmode", "self-mode", "self use", "selfuse", "self-use", "self", "apna mode", "apna use", "remote mode", "remotemode", "toggle remote", "remote")
-        ):
+        if is_toggle_self:
             res = laptop_remote_toggle()
             if "Self-Use Mode: ACTIVE" in res:
                 _is_remote_active = False
             elif "Remote Mode: ACTIVE" in res:
                 _is_remote_active = True
-            tg_send_message(chat_id, res, reply_markup=get_main_inline_keyboard())
+            else:
+                _is_remote_active = not _is_remote_active
+            update_dynamic_keyboards(_is_remote_active)
+            active_kb = _user_active_keyboard.get(chat_id, ROOT_CHOICE_KEYBOARD)
+            tg_send_message(chat_id, res, reply_markup=active_kb)
             return True
 
         if clean in ("/remote status", "/self status") or clean_lower in ("remote status", "self status", "self mode status"):
             res = laptop_remote_status()
-            tg_send_message(chat_id, res, reply_markup=get_main_inline_keyboard())
+            update_dynamic_keyboards()
+            active_kb = _user_active_keyboard.get(chat_id, ROOT_CHOICE_KEYBOARD)
+            tg_send_message(chat_id, res, reply_markup=active_kb)
             return True
 
         # ======================================================================
@@ -1693,12 +1763,14 @@ class TelegramBotRunner:
                 _is_remote_active = True
             else:
                 _is_remote_active = not _is_remote_active
+            update_dynamic_keyboards(_is_remote_active)
             if cq_msg_id:
                 tg_edit_reply_markup(chat_id, cq_msg_id, get_laptop_control_keyboard())
+            active_kb = _user_active_keyboard.get(chat_id, ROOT_CHOICE_KEYBOARD)
             tg_send_message(
                 chat_id,
                 res,
-                reply_markup=get_laptop_control_keyboard(),
+                reply_markup=active_kb,
             )
         elif data == "lap_coder_menu":
             tg_send_message(

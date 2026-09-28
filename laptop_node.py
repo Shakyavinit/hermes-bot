@@ -6,6 +6,7 @@ screenshots, webcam snapshots, check battery, control volume/media, simulate key
 for Sandbox/Terminal approvals, monitor Antigravity AI tasks, record audio, and manage power.
 """
 
+import fcntl
 import glob
 import json
 import logging
@@ -22,6 +23,22 @@ logging.basicConfig(
     level=logging.INFO,
 )
 logger = logging.getLogger("LaptopNode")
+
+_instance_lock_file = None
+
+def acquire_instance_lock() -> bool:
+    """Ensure only one instance of laptop_node.py runs at any given time."""
+    global _instance_lock_file
+    lock_path = "/tmp/hermes_laptop_node.lock"
+    try:
+        _instance_lock_file = open(lock_path, "w")
+        fcntl.flock(_instance_lock_file, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        _instance_lock_file.write(f"{os.getpid()}\n")
+        _instance_lock_file.flush()
+        return True
+    except (IOError, BlockingIOError):
+        logger.warning(f"⚠️ Another instance of laptop_node.py is already active (lock: {lock_path}). Exiting.")
+        sys.exit(0)
 
 from human_gui import (
     human_open_app,
@@ -1451,7 +1468,11 @@ def heartbeat_thread() -> None:
         try:
             requests.get(
                 f"{CLOUD_URL}/api/laptop/heartbeat",
-                params={"secret": SECRET},
+                params={
+                    "secret": SECRET,
+                    "remote_enabled": "1" if is_remote_access_enabled() else "0",
+                    "auto_approve": "1" if get_auto_approve_state() else "0",
+                },
                 timeout=6,
             )
         except Exception:
@@ -1485,6 +1506,7 @@ def media_janitor_thread() -> None:
 
 
 def start_node() -> None:
+    acquire_instance_lock()
     logger.info("=" * 60)
     logger.info("💻 Hermes Laptop Live Control Node Started")
     logger.info(f"Target Cloud Gateway: {CLOUD_URL}")
@@ -1517,7 +1539,11 @@ def start_node() -> None:
             poll_url = f"{CLOUD_URL}/api/laptop/poll"
             resp = requests.get(
                 poll_url,
-                params={"secret": SECRET},
+                params={
+                    "secret": SECRET,
+                    "remote_enabled": "1" if is_remote_access_enabled() else "0",
+                    "auto_approve": "1" if get_auto_approve_state() else "0",
+                },
                 timeout=25,
             )
 
