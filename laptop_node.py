@@ -1347,6 +1347,8 @@ def intruder_watcher_thread() -> None:
         )
         for line in proc.stdout:
             if "authentication failure" in line.lower() or "auth failure" in line.lower():
+                if not is_remote_access_enabled():
+                    continue
                 now = time.time()
                 if now - last_intruder_time > 10:
                     last_intruder_time = now
