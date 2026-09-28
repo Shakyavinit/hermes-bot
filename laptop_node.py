@@ -237,6 +237,33 @@ def toggle_auto_approve_state(scope: str = "task") -> bool:
 
 _active_prompt_msg_id: Optional[int] = None
 
+NODE_ROOT_REPLY_KEYBOARD = {
+    "keyboard": [
+        [{"text": "🔴 Self-Use Mode"}, {"text": "⚡ Auto Mode: OFF 🔴"}],
+        [{"text": "🔒 Lock Screen"}, {"text": "📸 Screenshot"}],
+        [{"text": "⭐ Best Option"}, {"text": "🟢 Send 'y'"}, {"text": "🔴 Send 'n'"}],
+        [{"text": "✅ Approve (Enter)"}, {"text": "🛑 Ctrl+C"}],
+        [{"text": "🔇 Mute"}, {"text": "🔋 Battery"}, {"text": "🌐 Offline Hub"}],
+        [{"text": "🕶️ Ghost Mode"}, {"text": "☀️ Screen ON"}],
+        [{"text": "📷 Selfie (Webcam)"}, {"text": "🚨 Siren Alarm"}],
+        [{"text": "💻 More Tools ➡️"}, {"text": "☁️ Cloud Server"}, {"text": "🔄 Refresh Panel"}],
+    ],
+    "resize_keyboard": True,
+    "is_persistent": True,
+}
+
+
+def get_node_reply_keyboard() -> dict:
+    """Generate dynamic persistent bottom reply keyboard with updated toggle states."""
+    mode_text = "🔴 Self-Use Mode" if is_remote_access_enabled() else "🟢 Remote Mode"
+    auto_text = "⚡ Auto Mode: ON 🟢" if get_auto_approve_state() else "⚡ Auto Mode: OFF 🔴"
+    try:
+        NODE_ROOT_REPLY_KEYBOARD["keyboard"][0][0]["text"] = mode_text
+        NODE_ROOT_REPLY_KEYBOARD["keyboard"][0][1]["text"] = auto_text
+    except Exception:
+        pass
+    return NODE_ROOT_REPLY_KEYBOARD
+
 
 def send_tg_msg(text: str, reply_markup: Optional[dict] = None) -> Optional[int]:
     """Send text message directly to owner on Telegram and return message_id."""
@@ -1177,23 +1204,27 @@ def antigravity_watcher_thread():
                         alert_msg = (
                             "⚡ *Antigravity: Sandbox Approval Required*\n\n"
                             "Terminal execution permission mang raha hai.\n"
-                            "Niche se best option select karein:"
+                            "Niche bottom keypad se option dabayein:\n"
+                            "• ⭐ **Best Option**\n"
+                            "• 🟢 **Send 'y'**\n"
+                            "• 🔴 **Send 'n'**\n"
+                            "• ✅ **Approve (Enter)**"
                         )
                         try:
                             from offline_hub import set_offline_prompt
                             set_offline_prompt({
                                 "type": "sandbox",
                                 "title": "⚡ Antigravity: Sandbox Approval Required",
-                                "text": "Terminal execution permission mang raha hai. Best option select karein.",
+                                "text": "Terminal execution permission mang raha hai. Niche button dabayein.",
                                 "time": now,
                             })
                         except Exception:
                             pass
 
                         if captured and os.path.exists(captured) and os.path.getsize(captured) > 15000:
-                            _active_prompt_msg_id = send_tg_photo(captured, alert_msg, reply_markup=sandbox_keyboard)
+                            _active_prompt_msg_id = send_tg_photo(captured, alert_msg, reply_markup=get_node_reply_keyboard())
                         else:
-                            _active_prompt_msg_id = send_tg_msg(alert_msg, reply_markup=sandbox_keyboard)
+                            _active_prompt_msg_id = send_tg_msg(alert_msg, reply_markup=get_node_reply_keyboard())
                         break
 
                     try:
@@ -1284,9 +1315,9 @@ def antigravity_watcher_thread():
                                     "🚀 *Process Completed Successfully!*\n\n"
                                     f"📋 *Final Summary:* {summary_text}"
                                     f"{auto_info}\n\n"
-                                    "Agla option select karein:"
+                                    "Niche bottom keypad se agla action select karein:"
                                 )
-                                send_tg_msg(done_msg, reply_markup=done_keyboard)
+                                send_tg_msg(done_msg, reply_markup=get_node_reply_keyboard())
                                 break
                     except Exception:
                         pass
@@ -1303,19 +1334,6 @@ def intruder_watcher_thread() -> None:
     """Background listener for failed password attempts via journalctl."""
     logger.info("Intruder Trap (Chor Pakdo) watcher active.")
     last_intruder_time = 0.0
-
-    intruder_keyboard = {
-        "inline_keyboard": [
-            [
-                {"text": "🚨 Sound Alarm", "callback_data": "lap_alarm"},
-                {"text": "🔒 Lock Screen", "callback_data": "lap_lock"},
-            ],
-            [
-                {"text": "🎥 Record 10s Video", "callback_data": "lap_video"},
-                {"text": "📍 Find Location", "callback_data": "lap_location"},
-            ],
-        ]
-    }
 
     try:
         proc = subprocess.Popen(
@@ -1345,12 +1363,12 @@ def intruder_watcher_thread() -> None:
                         "Laptop par kisi ne **galat password** dala hai!\n"
                         f"⏰ *Time:* `{time_str}`\n"
                         "📍 *Activity:* Lock Screen / Login Failure\n\n"
-                        "Action lene ke liye buttons dabayein:"
+                        "Action lene ke liye niche keypad se buttons dabayein:"
                     )
                     if os.path.exists(img_path):
-                        send_tg_photo(img_path, caption, reply_markup=intruder_keyboard)
+                        send_tg_photo(img_path, caption, reply_markup=get_node_reply_keyboard())
                     else:
-                        send_tg_msg(caption, reply_markup=intruder_keyboard)
+                        send_tg_msg(caption, reply_markup=get_node_reply_keyboard())
     except Exception as e:
         logger.error(f"Intruder watcher exception: {e}")
 

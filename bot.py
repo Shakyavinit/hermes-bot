@@ -122,11 +122,17 @@ UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
 # Multi-Level Nested Bottom Reply Keyboards (Clean, Categorized & Extendable)
 # ==============================================================================
 
-# 1. Main Root Switcher (Laptop, Cloud & Human GUI)
+# 1. Main Root Switcher (All-In-One Persistent Reply Keypad)
 ROOT_CHOICE_KEYBOARD = {
     "keyboard": [
-        [{"text": "💻 Laptop Mode"}, {"text": "☁️ Cloud Server"}],
-        [{"text": "🔴 Self-Use Mode"}, {"text": "🖱️ Human Screen & Mouse"}],
+        [{"text": "🔴 Self-Use Mode"}, {"text": "⚡ Auto Mode: OFF 🔴"}],
+        [{"text": "🔒 Lock Screen"}, {"text": "📸 Screenshot"}],
+        [{"text": "⭐ Best Option"}, {"text": "🟢 Send 'y'"}, {"text": "🔴 Send 'n'"}],
+        [{"text": "✅ Approve (Enter)"}, {"text": "🛑 Ctrl+C"}],
+        [{"text": "🔇 Mute"}, {"text": "🔋 Battery"}, {"text": "🌐 Offline Hub"}],
+        [{"text": "🕶️ Ghost Mode"}, {"text": "☀️ Screen ON"}],
+        [{"text": "📷 Selfie (Webcam)"}, {"text": "🚨 Siren Alarm"}],
+        [{"text": "💻 More Tools ➡️"}, {"text": "☁️ Cloud Server"}, {"text": "🔄 Refresh Panel"}],
     ],
     "resize_keyboard": True,
     "is_persistent": True,
@@ -257,10 +263,16 @@ _is_cctv_active = False
 
 def update_dynamic_keyboards(remote_active: Optional[bool] = None) -> None:
     """Synchronize persistent reply keyboard button labels dynamically across all menus."""
-    global _is_remote_active
+    global _is_remote_active, _is_auto_approve_active, _is_locked, _is_muted, _is_cctv_active
     if remote_active is not None:
         _is_remote_active = remote_active
-    btn_text = "🔴 Self-Use Mode" if _is_remote_active else "🟢 Remote Mode"
+
+    mode_btn_text = "🔴 Self-Use Mode" if _is_remote_active else "🟢 Remote Mode"
+    auto_btn_text = "⚡ Auto Mode: ON 🟢" if _is_auto_approve_active else "⚡ Auto Mode: OFF 🔴"
+    lock_btn_text = "🔓 Unlock Screen" if _is_locked else "🔒 Lock Screen"
+    mute_btn_text = "🔊 Unmute" if _is_muted else "🔇 Mute"
+    cctv_btn_text = "🛑 Stop CCTV" if _is_cctv_active else "👁️ CCTV Mode"
+
     for kb in (
         ROOT_CHOICE_KEYBOARD,
         LAPTOP_DASHBOARD_KEYBOARD,
@@ -275,13 +287,28 @@ def update_dynamic_keyboards(remote_active: Optional[bool] = None) -> None:
         try:
             for row in kb.get("keyboard", []):
                 for btn in row:
-                    if btn.get("text") in (
+                    txt = btn.get("text", "")
+                    if txt in (
                         "🔴 Self-Use Mode",
                         "🟢 Remote Mode",
                         "🔴 Self-Use Mode (Pause)",
                         "🟢 Remote Mode (Activate)",
                     ):
-                        btn["text"] = btn_text
+                        btn["text"] = mode_btn_text
+                    elif txt in (
+                        "⚡ Auto Mode (Toggle)",
+                        "⚡ Auto Mode: OFF 🔴",
+                        "⚡ Auto Mode: ON 🟢",
+                        "⚡ Auto: ON 🟢",
+                        "⚡ Auto: OFF 🔴",
+                    ):
+                        btn["text"] = auto_btn_text
+                    elif txt in ("🔒 Lock Screen", "🔓 Unlock Screen"):
+                        btn["text"] = lock_btn_text
+                    elif txt in ("🔇 Mute", "🔊 Unmute"):
+                        btn["text"] = mute_btn_text
+                    elif txt in ("👁️ CCTV Mode", "🛑 Stop CCTV", "👁️ CCTV Motion Alert"):
+                        btn["text"] = cctv_btn_text
         except Exception:
             pass
 
@@ -775,6 +802,7 @@ def start_health_server(port: int = 7860) -> None:
                 val = query_params["auto_approve"][0]
                 global _is_auto_approve_active
                 _is_auto_approve_active = (val == "1")
+                update_dynamic_keyboards()
 
             if parsed.path == "/api/laptop/poll":
                 record_heartbeat()
@@ -860,7 +888,6 @@ class TelegramBotRunner:
 
         # ======================================================================
         # 1. Main Root Switcher (/start, /menu, "🔙 Main Menu")
-        # ONLY TWO OPTIONS: [💻 Laptop Mode] [☁️ Cloud Server]
         # ======================================================================
         if cmd in ("/start", "/menu") or clean in (
             "📱 Menu",
@@ -873,15 +900,21 @@ class TelegramBotRunner:
                 set_owner(user_id)
                 is_new_owner = True
 
+            update_dynamic_keyboards()
             laptop_status = "ONLINE 🟢" if is_laptop_online() else "OFFLINE 🔴"
+            remote_status = "🔴 Self-Use (PAUSED)" if not _is_remote_active else "🟢 Remote Control ACTIVE"
+            auto_status = "🟢 ON" if _is_auto_approve_active else "🔴 OFF"
 
             welcome = (
                 "👑 *Hermes Autonomous Agent Panel*\n\n"
                 f"{'✅ Registered as Primary Owner.' if is_new_owner else '⚡ System Ready & Active.'}\n"
                 f"• 💻 **Laptop Node:** {laptop_status}\n"
+                f"• 🎮 **Control State:** {remote_status}\n"
+                f"• ⚡ **Auto-Approve:** {auto_status}\n"
                 "• ☁️ **Cloud Host:** ONLINE 24/7 🟢\n\n"
-                "Chuniye aap kise control karna chahte hain:"
+                "Sabhi main controls niche mobile keypad par available hain:"
             )
+            _user_active_keyboard[chat_id] = ROOT_CHOICE_KEYBOARD
             send_or_replace_nav(
                 chat_id,
                 welcome,
@@ -889,17 +922,41 @@ class TelegramBotRunner:
             )
             return True
 
+        # Refresh Panel & Sync
+        if clean in ("🔄 Refresh Panel", "/refresh", "/sync") or clean_lower in ("refresh", "sync", "refresh panel", "panel refresh"):
+            update_dynamic_keyboards()
+            laptop_status = "ONLINE 🟢" if is_laptop_online() else "OFFLINE 🔴"
+            remote_status = "🔴 Self-Use (PAUSED)" if not _is_remote_active else "🟢 Remote Control ACTIVE"
+            auto_status = "🟢 ON" if _is_auto_approve_active else "🔴 OFF"
+            lock_status = "🔒 LOCKED" if _is_locked else "🔓 UNLOCKED"
+            mute_status = "🔇 MUTED" if _is_muted else "🔊 UNMUTED"
+            msg = (
+                "🔄 *Hermes Bottom Panel Refreshed!*\n\n"
+                f"• 💻 **Laptop Node:** {laptop_status}\n"
+                f"• 🎮 **Control State:** {remote_status}\n"
+                f"• ⚡ **Auto-Approve:** {auto_status}\n"
+                f"• 🔒 **Screen Lock:** {lock_status}\n"
+                f"• 🔊 **Sound State:** {mute_status}\n\n"
+                "Niche diye buttons se direct command dein:"
+            )
+            _user_active_keyboard[chat_id] = ROOT_CHOICE_KEYBOARD
+            send_or_replace_nav(chat_id, msg, reply_markup=ROOT_CHOICE_KEYBOARD)
+            return True
+
         # ======================================================================
         # 2. Dual-Mode Switchers: Laptop Mode vs Cloud Server
         # ======================================================================
         if clean in (
+            "💻 More Tools ➡️",
+            "💻 Laptop Dashboard ➡️",
+            "💻 More Laptop Controls ➡️",
             "💻 Laptop Mode",
             "💻 Laptop Exec",
             "💻 Laptop",
             "🔙 Laptop Menu",
             "🔙 Back to Laptop",
             "/laptop",
-        ) or clean_lower in ("laptop", "laptop mode", "laptop exec", "laptop panel", "/laptop"):
+        ) or clean_lower in ("laptop", "laptop mode", "laptop exec", "laptop panel", "/laptop", "more tools"):
             laptop_status = "ONLINE 🟢 (Connected)" if is_laptop_online() else "OFFLINE 🔴 (Not connected)"
             text = (
                 f"💻 *Laptop Control Panel* ({laptop_status})\n\n"
@@ -1038,11 +1095,12 @@ class TelegramBotRunner:
             res = laptop_webcam()
             if temp_id:
                 tg_delete_message(chat_id, temp_id)
+            active_kb = _user_active_keyboard.get(chat_id, ROOT_CHOICE_KEYBOARD)
             tg_send_message(
                 chat_id,
                 "📷 *Webcam Snapshot Completed!*\n\n"
                 "📋 *Short Summary:* Front camera photo send ho gayi hai (purani images auto-clean ho gayi).",
-                reply_markup=SPY_REPLY_KEYBOARD,
+                reply_markup=active_kb,
             )
             return True
 
@@ -1051,11 +1109,12 @@ class TelegramBotRunner:
             res = laptop_webcam_video()
             if temp_id:
                 tg_delete_message(chat_id, temp_id)
+            active_kb = _user_active_keyboard.get(chat_id, ROOT_CHOICE_KEYBOARD)
             tg_send_message(
                 chat_id,
                 "🎥 *Webcam Video Completed!*\n\n"
                 "📋 *Short Summary:* 10s video clip send ho gayi hai.",
-                reply_markup=SPY_REPLY_KEYBOARD,
+                reply_markup=active_kb,
             )
             return True
 
@@ -1064,64 +1123,75 @@ class TelegramBotRunner:
             res = laptop_mic(10)
             if temp_id:
                 tg_delete_message(chat_id, temp_id)
+            active_kb = _user_active_keyboard.get(chat_id, ROOT_CHOICE_KEYBOARD)
             tg_send_message(
                 chat_id,
                 "🎙️ *Audio Recording Completed!*\n\n"
                 "📋 *Short Summary:* 10s voice note send ho gaya hai.",
-                reply_markup=SPY_REPLY_KEYBOARD,
+                reply_markup=active_kb,
             )
             return True
 
         if clean in ("👁️ CCTV Mode", "👁️ CCTV Motion Alert", "/cctv") or clean_lower in ("cctv", "cctv mode", "cctv alert", "motion alert"):
             res = laptop_cctv_toggle()
-            tg_send_message(chat_id, res, reply_markup=SPY_REPLY_KEYBOARD)
+            active_kb = _user_active_keyboard.get(chat_id, ROOT_CHOICE_KEYBOARD)
+            tg_send_message(chat_id, res, reply_markup=active_kb)
             return True
 
         if clean in ("🚨 Siren Alarm", "/alarm", "/siren") or clean_lower in ("alarm", "siren"):
             res = laptop_alarm()
-            tg_send_message(chat_id, res, reply_markup=ALARM_REPLY_KEYBOARD)
+            active_kb = _user_active_keyboard.get(chat_id, ROOT_CHOICE_KEYBOARD)
+            tg_send_message(chat_id, res, reply_markup=active_kb)
             return True
 
         if clean in ("⏹️ Stop Alarm", "/stopalarm") or clean_lower in ("stop alarm", "alarm stop", "stop siren"):
             res = laptop_stop_alarm()
-            tg_send_message(chat_id, res, reply_markup=SPY_REPLY_KEYBOARD)
+            active_kb = _user_active_keyboard.get(chat_id, ROOT_CHOICE_KEYBOARD)
+            tg_send_message(chat_id, res, reply_markup=active_kb)
             return True
 
         if clean in ("📍 Find Laptop", "📍 Find My Laptop", "/locate", "/find", "/location") or clean_lower in ("location", "locate", "find laptop", "find my laptop", "where is laptop"):
             temp_id = tg_send_message(chat_id, "📍 Fetching laptop live location...")
             res = laptop_location()
-            tg_delete_message(chat_id, temp_id)
-            tg_send_message(chat_id, res, reply_markup=SPY_REPLY_KEYBOARD)
+            if temp_id:
+                tg_delete_message(chat_id, temp_id)
+            active_kb = _user_active_keyboard.get(chat_id, ROOT_CHOICE_KEYBOARD)
+            tg_send_message(chat_id, res, reply_markup=active_kb)
             return True
 
         # ======================================================================
         # 4a. Hermes Offline Mobile Hub (Zero Internet Control)
         # ======================================================================
-        if clean in ("🌐 Offline Hub Link", "📱 Offline Hub QR", "/offline", "/hub", "/wifi_hub") or clean_lower in ("offline", "offline hub", "offline link", "bina net", "offline qr"):
+        if clean in ("🌐 Offline Hub", "🌐 Offline Hub Link", "📱 Offline Hub QR", "/offline", "/hub", "/wifi_hub") or clean_lower in ("offline", "offline hub", "offline link", "bina net", "offline qr"):
             qr_res = laptop_offline_qr()
             url_res = laptop_offline_url()
+            active_kb = _user_active_keyboard.get(chat_id, ROOT_CHOICE_KEYBOARD)
             tg_send_message(
                 chat_id,
                 f"{url_res}\n\n📱 *PWA App Tip:* Chrome/Safari me kholkar menu se **'Add to Home Screen'** karein, ye phone me bilkul native app ki tarah save ho jayega!",
-                reply_markup=LAPTOP_EXTRA_KEYBOARD,
+                reply_markup=active_kb,
             )
             return True
 
         if clean in ("📡 Start Hotspot", "/hotspot on", "/hotspot_on", "/hotspot") or clean_lower in ("start hotspot", "hotspot on", "chalu hotspot", "laptop hotspot"):
             temp_id = tg_send_message(chat_id, "📡 Laptop Wi-Fi Hotspot ('Hermes-Offline') chalu kiya ja raha hai...")
             res = laptop_hotspot_start()
-            tg_delete_message(chat_id, temp_id)
-            tg_send_message(chat_id, res, reply_markup=LAPTOP_EXTRA_KEYBOARD)
+            if temp_id:
+                tg_delete_message(chat_id, temp_id)
+            active_kb = _user_active_keyboard.get(chat_id, ROOT_CHOICE_KEYBOARD)
+            tg_send_message(chat_id, res, reply_markup=active_kb)
             return True
 
         if clean in ("🛑 Stop Hotspot", "/hotspot off", "/hotspot_off") or clean_lower in ("stop hotspot", "hotspot off", "band hotspot"):
             res = laptop_hotspot_stop()
-            tg_send_message(chat_id, res, reply_markup=LAPTOP_EXTRA_KEYBOARD)
+            active_kb = _user_active_keyboard.get(chat_id, ROOT_CHOICE_KEYBOARD)
+            tg_send_message(chat_id, res, reply_markup=active_kb)
             return True
 
         if clean in ("/hotspot status",) or clean_lower in ("hotspot status",):
             res = laptop_hotspot_status()
-            tg_send_message(chat_id, res, reply_markup=LAPTOP_EXTRA_KEYBOARD)
+            active_kb = _user_active_keyboard.get(chat_id, ROOT_CHOICE_KEYBOARD)
+            tg_send_message(chat_id, res, reply_markup=active_kb)
             return True
 
         # ======================================================================
@@ -1208,105 +1278,152 @@ class TelegramBotRunner:
         # ======================================================================
         if clean in ("⭐ Best Option", "/best", "/recommended") or clean_lower in ("best", "best option"):
             res = laptop_key_enter()
+            active_kb = _user_active_keyboard.get(chat_id, ROOT_CHOICE_KEYBOARD)
             tg_send_message(
                 chat_id,
                 "⭐ *Best Option Executed!*\n\n"
                 "📋 *Short Summary:* Recommended option select karke Enter bhej diya gaya hai.",
-                reply_markup=AI_REPLY_KEYBOARD,
+                reply_markup=active_kb,
             )
             return True
 
-        if clean in ("⚡ Auto Mode (Toggle)", "/auto", "/autotoggle", "/auto task") or clean_lower in ("auto", "auto mode", "auto approve", "autotoggle", "auto task"):
+        if clean in (
+            "⚡ Auto Mode (Toggle)",
+            "⚡ Auto Mode: OFF 🔴",
+            "⚡ Auto Mode: ON 🟢",
+            "⚡ Auto: ON 🟢",
+            "⚡ Auto: OFF 🔴",
+            "/auto",
+            "/autotoggle",
+            "/auto task",
+        ) or clean_lower in ("auto", "auto mode", "auto approve", "autotoggle", "auto task"):
             res = laptop_auto_toggle()
+            if "Auto Mode: ACTIVE" in res or "ENABLED" in res or "ON 🟢" in res:
+                _is_auto_approve_active = True
+            elif "Auto Mode: DEACTIVATED" in res or "DISABLED" in res or "OFF 🔴" in res:
+                _is_auto_approve_active = False
+            else:
+                _is_auto_approve_active = not _is_auto_approve_active
+            update_dynamic_keyboards()
+            active_kb = _user_active_keyboard.get(chat_id, ROOT_CHOICE_KEYBOARD)
             tg_send_message(
                 chat_id,
                 f"🔄 *Auto Mode Toggled!*\n\n📋 *Short Summary:* {res}",
-                reply_markup=AI_REPLY_KEYBOARD,
+                reply_markup=active_kb,
             )
             return True
 
         if clean in ("/auto on", "/autoon") or clean_lower in ("auto on", "autoon"):
             res = laptop_auto_on()
+            _is_auto_approve_active = True
+            update_dynamic_keyboards()
+            active_kb = _user_active_keyboard.get(chat_id, ROOT_CHOICE_KEYBOARD)
             tg_send_message(
                 chat_id,
                 "⚡ *Auto Mode Activated (Task Scope)*\n\n"
                 "📋 *Short Summary:* Auto Mode is chat process ke complete hone tak chalu rahega, beech me bina roke automatic approve karega, aur process complete hone par final summary dega.",
-                reply_markup=AI_REPLY_KEYBOARD,
+                reply_markup=active_kb,
             )
             return True
 
         if clean in ("/auto always", "/auto permanent") or clean_lower in ("auto always", "auto permanent"):
             res = laptop_auto_always()
+            _is_auto_approve_active = True
+            update_dynamic_keyboards()
+            active_kb = _user_active_keyboard.get(chat_id, ROOT_CHOICE_KEYBOARD)
             tg_send_message(
                 chat_id,
                 "⚡ *Auto Mode Activated (Always ON)*\n\n"
                 "📋 *Short Summary:* Auto Mode hamesha active rahega jab tak aap manually `/auto off` na karein.",
-                reply_markup=AI_REPLY_KEYBOARD,
+                reply_markup=active_kb,
             )
             return True
 
         if clean in ("/auto off", "/autooff") or clean_lower in ("auto off", "autooff"):
             res = laptop_auto_off()
+            _is_auto_approve_active = False
+            update_dynamic_keyboards()
+            active_kb = _user_active_keyboard.get(chat_id, ROOT_CHOICE_KEYBOARD)
             tg_send_message(
                 chat_id,
                 "🛑 *Auto-Approve Deactivated!*\n\n"
                 "📋 *Short Summary:* Auto mode OFF ho gaya hai. Ab har approval aur question aapse poocha jayega.",
-                reply_markup=AI_REPLY_KEYBOARD,
+                reply_markup=active_kb,
             )
             return True
 
         if clean in ("/auto status", "/autostatus") or clean_lower in ("auto status",):
             res = laptop_auto_status()
+            active_kb = _user_active_keyboard.get(chat_id, ROOT_CHOICE_KEYBOARD)
             tg_send_message(
                 chat_id,
                 f"📊 *Auto-Approve Status:*\n\n📋 *Short Summary:* {res}",
-                reply_markup=AI_REPLY_KEYBOARD,
+                reply_markup=active_kb,
             )
             return True
 
         if clean in ("✅ Approve (Enter)", "/enter", "/approve") or clean_lower in ("approve", "enter", "ok"):
             res = laptop_key_enter()
-            tg_send_message(chat_id, res, reply_markup=AI_REPLY_KEYBOARD)
+            active_kb = _user_active_keyboard.get(chat_id, ROOT_CHOICE_KEYBOARD)
+            tg_send_message(chat_id, res, reply_markup=active_kb)
             return True
 
         if clean in ("🟢 Send 'y'", "/yes", "/y") or clean_lower in ("y", "yes", "send y"):
             res = laptop_key_y()
-            tg_send_message(chat_id, res, reply_markup=AI_REPLY_KEYBOARD)
+            active_kb = _user_active_keyboard.get(chat_id, ROOT_CHOICE_KEYBOARD)
+            tg_send_message(chat_id, res, reply_markup=active_kb)
             return True
 
         if clean in ("🔴 Send 'n'", "/no", "/n") or clean_lower in ("n", "no", "send n"):
             res = laptop_key_n()
-            tg_send_message(chat_id, res, reply_markup=AI_REPLY_KEYBOARD)
+            active_kb = _user_active_keyboard.get(chat_id, ROOT_CHOICE_KEYBOARD)
+            tg_send_message(chat_id, res, reply_markup=active_kb)
             return True
 
         if clean in ("🛑 Ctrl+C", "/ctrlc", "/cancel") or clean_lower in ("ctrl+c", "ctrl c", "cancel"):
             res = laptop_key_ctrlc()
-            tg_send_message(chat_id, res, reply_markup=AI_REPLY_KEYBOARD)
+            active_kb = _user_active_keyboard.get(chat_id, ROOT_CHOICE_KEYBOARD)
+            tg_send_message(chat_id, res, reply_markup=active_kb)
             return True
 
         if clean in ("📊 AI Status", "/aistatus") or clean_lower in ("ai status",):
             res = laptop_ai_status()
-            tg_send_message(chat_id, res, reply_markup=AI_REPLY_KEYBOARD)
+            active_kb = _user_active_keyboard.get(chat_id, ROOT_CHOICE_KEYBOARD)
+            tg_send_message(chat_id, res, reply_markup=active_kb)
+            return True
+
+        # Number choices (1, 2, 3...)
+        if (clean.isdigit() and len(clean) <= 2) or (clean.startswith(("1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣"))):
+            num = int(clean) if clean.isdigit() else int(clean[0])
+            res = laptop_key_num(num)
+            active_kb = _user_active_keyboard.get(chat_id, ROOT_CHOICE_KEYBOARD)
+            tg_send_message(
+                chat_id,
+                f"🔢 *Option {num} Selected!*\n\n📋 *Short Summary:* {res}",
+                reply_markup=active_kb,
+            )
             return True
 
         if clean in ("⌨️ Type Text",) or cmd == "/type":
             type_text = clean[5:].strip() if cmd == "/type" else ""
+            active_kb = _user_active_keyboard.get(chat_id, ROOT_CHOICE_KEYBOARD)
             if type_text:
                 res = laptop_type(type_text)
-                tg_send_message(chat_id, res, reply_markup=AI_REPLY_KEYBOARD)
+                tg_send_message(chat_id, res, reply_markup=active_kb)
             else:
-                tg_send_message(chat_id, "Usage: `/type text to type on active window`", reply_markup=AI_REPLY_KEYBOARD)
+                tg_send_message(chat_id, "Usage: `/type text to type on active window`", reply_markup=active_kb)
             return True
 
         if clean in ("💻 Run Bash Cmd",) or cmd == "/cmd":
             bash_cmd = clean[4:].strip() if cmd == "/cmd" else ""
+            active_kb = _user_active_keyboard.get(chat_id, ROOT_CHOICE_KEYBOARD)
             if bash_cmd:
                 temp_id = tg_send_message(chat_id, f"💻 *Running on Laptop:*\n`{bash_cmd}`")
                 res = execute_on_laptop(bash_cmd)
                 tg_delete_message(chat_id, temp_id)
-                tg_send_message(chat_id, f"💻 *Laptop Terminal Output:*\n```\n{res}\n```", reply_markup=AI_REPLY_KEYBOARD)
+                tg_send_message(chat_id, f"💻 *Laptop Terminal Output:*\n```\n{res}\n```", reply_markup=active_kb)
             else:
-                tg_send_message(chat_id, "Usage: `/cmd ls -la` ya `/cmd uname -a`", reply_markup=AI_REPLY_KEYBOARD)
+                tg_send_message(chat_id, "Usage: `/cmd ls -la` ya `/cmd uname -a`", reply_markup=active_kb)
             return True
 
         # ======================================================================
@@ -1314,27 +1431,39 @@ class TelegramBotRunner:
         # ======================================================================
         if clean == "🔉 Vol -" or clean_lower in ("vol-", "vol -", "volume down", "vol down", "volume kam"):
             res = laptop_vol_down()
-            tg_send_message(chat_id, res, reply_markup=MEDIA_REPLY_KEYBOARD)
+            active_kb = _user_active_keyboard.get(chat_id, ROOT_CHOICE_KEYBOARD)
+            tg_send_message(chat_id, res, reply_markup=active_kb)
             return True
 
         if clean == "🔊 Vol +" or clean_lower in ("vol+", "vol +", "volume up", "vol up", "volume badhao"):
             res = laptop_vol_up()
-            tg_send_message(chat_id, res, reply_markup=MEDIA_REPLY_KEYBOARD)
+            active_kb = _user_active_keyboard.get(chat_id, ROOT_CHOICE_KEYBOARD)
+            tg_send_message(chat_id, res, reply_markup=active_kb)
             return True
 
-        if clean == "🔇 Mute" or clean_lower in ("mute", "unmute"):
+        if clean in ("🔇 Mute", "🔊 Unmute") or clean_lower in ("mute", "unmute", "sound mute", "volume mute"):
             res = laptop_mute()
-            tg_send_message(chat_id, res, reply_markup=MEDIA_REPLY_KEYBOARD)
+            if "MUTED" in res or "Mute: ACTIVE" in res or "Audio MUTED" in res:
+                _is_muted = True
+            elif "UNMUTED" in res or "Mute: OFF" in res or "Audio UNMUTED" in res:
+                _is_muted = False
+            else:
+                _is_muted = not _is_muted
+            update_dynamic_keyboards()
+            active_kb = _user_active_keyboard.get(chat_id, ROOT_CHOICE_KEYBOARD)
+            tg_send_message(chat_id, res, reply_markup=active_kb)
             return True
 
         if clean == "⏯️ Play/Pause" or clean_lower in ("play/pause", "play pause", "pause"):
             res = laptop_playpause()
-            tg_send_message(chat_id, res, reply_markup=MEDIA_REPLY_KEYBOARD)
+            active_kb = _user_active_keyboard.get(chat_id, ROOT_CHOICE_KEYBOARD)
+            tg_send_message(chat_id, res, reply_markup=active_kb)
             return True
 
         if clean in ("⏹️ Stop Music", "/stop", "/stopmusic") or clean_lower in ("stop music", "stop audio", "stop song", "music stop", "/stop"):
             res = laptop_stop_music()
-            tg_send_message(chat_id, res, reply_markup=MEDIA_REPLY_KEYBOARD)
+            active_kb = _user_active_keyboard.get(chat_id, ROOT_CHOICE_KEYBOARD)
+            tg_send_message(chat_id, res, reply_markup=active_kb)
             return True
 
         if clean_lower.startswith("play ") or clean_lower.startswith("gaana chalao ") or clean_lower.startswith("play music ") or cmd == "/play" or clean == "🎵 Play Music":
@@ -1351,11 +1480,14 @@ class TelegramBotRunner:
             if song:
                 temp_id = tg_send_message(chat_id, f"🎵 Playing '{song}' on laptop...")
                 res = laptop_play_music(song)
-                tg_delete_message(chat_id, temp_id)
-                tg_send_message(chat_id, res, reply_markup=MEDIA_REPLY_KEYBOARD)
+                if temp_id:
+                    tg_delete_message(chat_id, temp_id)
+                active_kb = _user_active_keyboard.get(chat_id, ROOT_CHOICE_KEYBOARD)
+                tg_send_message(chat_id, res, reply_markup=active_kb)
                 return True
             else:
-                tg_send_message(chat_id, "Usage: `/play arijit singh songs` ya `play barsaat`", reply_markup=MEDIA_REPLY_KEYBOARD)
+                active_kb = _user_active_keyboard.get(chat_id, ROOT_CHOICE_KEYBOARD)
+                tg_send_message(chat_id, "Usage: `/play arijit singh songs` ya `play barsaat`", reply_markup=active_kb)
                 return True
 
         # ======================================================================
@@ -1366,18 +1498,19 @@ class TelegramBotRunner:
             res = laptop_screenshot()
             if temp_id:
                 tg_delete_message(chat_id, temp_id)
-            markup = AI_REPLY_KEYBOARD if clean == "📸 Screen Peek" else (LAPTOP_DASHBOARD_KEYBOARD if clean == "📸 Quick Screen" else POWER_REPLY_KEYBOARD)
+            active_kb = _user_active_keyboard.get(chat_id, ROOT_CHOICE_KEYBOARD)
             tg_send_message(
                 chat_id,
                 "📸 *Screenshot Completed!*\n\n"
                 "📋 *Short Summary:* Nayi desktop screen photo bhej di gayi hai (purani images auto-delete ho gayi).",
-                reply_markup=markup,
+                reply_markup=active_kb,
             )
             return True
 
         if clean in ("🔋 Battery", "/battery") or clean_lower in ("battery", "battery status", "charge", "charging", "/battery"):
             res = laptop_battery()
-            tg_send_message(chat_id, res, reply_markup=POWER_REPLY_KEYBOARD)
+            active_kb = _user_active_keyboard.get(chat_id, ROOT_CHOICE_KEYBOARD)
+            tg_send_message(chat_id, res, reply_markup=active_kb)
             return True
 
         if clean in ("🔒 Lock Screen", "🔓 Unlock Screen", "/lock", "/unlock") or clean_lower in ("lock", "lock screen", "lock laptop", "/lock", "unlock", "unlock screen"):
@@ -1388,36 +1521,44 @@ class TelegramBotRunner:
                 _is_locked = False
             else:
                 _is_locked = not _is_locked
-            tg_send_message(chat_id, res, reply_markup=get_laptop_control_keyboard())
+            update_dynamic_keyboards()
+            active_kb = _user_active_keyboard.get(chat_id, ROOT_CHOICE_KEYBOARD)
+            tg_send_message(chat_id, res, reply_markup=active_kb)
             return True
 
         if clean == "💤 Sleep Laptop" or clean_lower in ("sleep", "sleep laptop"):
             res = laptop_power_sleep()
-            tg_send_message(chat_id, res, reply_markup=POWER_REPLY_KEYBOARD)
+            active_kb = _user_active_keyboard.get(chat_id, ROOT_CHOICE_KEYBOARD)
+            tg_send_message(chat_id, res, reply_markup=active_kb)
             return True
 
         if clean == "🔄 Restart Laptop" or clean_lower in ("restart", "reboot", "restart laptop", "reboot laptop"):
             res = laptop_power_reboot()
-            tg_send_message(chat_id, res, reply_markup=POWER_REPLY_KEYBOARD)
+            active_kb = _user_active_keyboard.get(chat_id, ROOT_CHOICE_KEYBOARD)
+            tg_send_message(chat_id, res, reply_markup=active_kb)
             return True
 
         if clean == "⛔ Shutdown Laptop" or clean_lower in ("shutdown", "poweroff", "shutdown laptop"):
             res = laptop_power_poweroff()
-            tg_send_message(chat_id, res, reply_markup=POWER_REPLY_KEYBOARD)
+            active_kb = _user_active_keyboard.get(chat_id, ROOT_CHOICE_KEYBOARD)
+            tg_send_message(chat_id, res, reply_markup=active_kb)
             return True
 
         if clean == "📋 Clipboard" or cmd in ("/clip", "/clipboard"):
             parts = clean.split(maxsplit=1)
             clip_val = parts[1] if len(parts) > 1 and parts[0] in ("/clip", "/clipboard") else ""
             res = laptop_clipboard(clip_val)
-            tg_send_message(chat_id, res, reply_markup=POWER_REPLY_KEYBOARD)
+            active_kb = _user_active_keyboard.get(chat_id, ROOT_CHOICE_KEYBOARD)
+            tg_send_message(chat_id, res, reply_markup=active_kb)
             return True
 
         if clean in ("📱 Running Apps", "/apps") or clean_lower in ("apps", "running apps", "processes", "top apps", "/apps"):
             temp_id = tg_send_message(chat_id, "📱 Fetching running apps...")
             res = laptop_apps()
-            tg_delete_message(chat_id, temp_id)
-            tg_send_message(chat_id, res, reply_markup=POWER_REPLY_KEYBOARD)
+            if temp_id:
+                tg_delete_message(chat_id, temp_id)
+            active_kb = _user_active_keyboard.get(chat_id, ROOT_CHOICE_KEYBOARD)
+            tg_send_message(chat_id, res, reply_markup=active_kb)
             return True
 
         # ======================================================================
@@ -1431,8 +1572,10 @@ class TelegramBotRunner:
         ) or clean_lower in ("ghost", "ghost mode", "screen off", "screenoff", "display off", "/ghost"):
             temp_id = tg_send_message(chat_id, "🕶️ Activating Ghost Mode...")
             res = laptop_ghost_mode()
-            tg_delete_message(chat_id, temp_id)
-            tg_send_message(chat_id, res, reply_markup=POWER_REPLY_KEYBOARD)
+            if temp_id:
+                tg_delete_message(chat_id, temp_id)
+            active_kb = _user_active_keyboard.get(chat_id, ROOT_CHOICE_KEYBOARD)
+            tg_send_message(chat_id, res, reply_markup=active_kb)
             return True
 
         if clean in (
@@ -1443,8 +1586,10 @@ class TelegramBotRunner:
         ) or clean_lower in ("screen on", "screenon", "display on", "/screenon"):
             temp_id = tg_send_message(chat_id, "☀️ Display turn ON kar rahe hain...")
             res = laptop_screen_on()
-            tg_delete_message(chat_id, temp_id)
-            tg_send_message(chat_id, res, reply_markup=POWER_REPLY_KEYBOARD)
+            if temp_id:
+                tg_delete_message(chat_id, temp_id)
+            active_kb = _user_active_keyboard.get(chat_id, ROOT_CHOICE_KEYBOARD)
+            tg_send_message(chat_id, res, reply_markup=active_kb)
             return True
 
         if clean in ("🌐 Open URL",) or cmd == "/open":
@@ -1661,6 +1806,7 @@ class TelegramBotRunner:
             return
 
         tg_answer_callback_query(cq_id)
+        active_kb = _user_active_keyboard.get(chat_id, ROOT_CHOICE_KEYBOARD)
 
         if data == "lap_screenshot":
             temp_id = tg_send_message(chat_id, "📸 Laptop screen capture ho rahi hai...")
@@ -1671,7 +1817,7 @@ class TelegramBotRunner:
                 chat_id,
                 "📸 *Screenshot Completed!*\n\n"
                 "📋 *Short Summary:* Nayi desktop screen photo bhej di gayi hai (purani images chat se auto-delete ho gayi).",
-                reply_markup=get_laptop_control_keyboard(),
+                reply_markup=active_kb,
             )
         elif data == "lap_webcam":
             temp_id = tg_send_message(chat_id, "📷 Front camera photo capture ho rahi hai...")
@@ -1682,28 +1828,28 @@ class TelegramBotRunner:
                 chat_id,
                 "📷 *Webcam Snapshot Completed!*\n\n"
                 "📋 *Short Summary:* Front camera snapshot bhej diya gaya hai (purani images chat se auto-delete ho gayi).",
-                reply_markup=get_laptop_control_keyboard(),
+                reply_markup=active_kb,
             )
         elif data == "lap_battery":
             res = laptop_battery()
             tg_send_message(
                 chat_id,
                 f"🔋 *Battery Status Completed!*\n\n📋 *Short Summary:*\n{res}",
-                reply_markup=get_laptop_control_keyboard(),
+                reply_markup=active_kb,
             )
         elif data == "lap_vol_up":
             res = laptop_vol_up()
             tg_send_message(
                 chat_id,
                 f"🔊 *Volume Up Completed!*\n\n📋 *Short Summary:* {res}",
-                reply_markup=get_laptop_control_keyboard(),
+                reply_markup=active_kb,
             )
         elif data == "lap_vol_down":
             res = laptop_vol_down()
             tg_send_message(
                 chat_id,
                 f"🔉 *Volume Down Completed!*\n\n📋 *Short Summary:* {res}",
-                reply_markup=get_laptop_control_keyboard(),
+                reply_markup=active_kb,
             )
         elif data == "lap_mute":
             res = laptop_mute()
@@ -1713,26 +1859,27 @@ class TelegramBotRunner:
                 _is_muted = False
             else:
                 _is_muted = not _is_muted
+            update_dynamic_keyboards()
             if cq_msg_id:
-                tg_edit_reply_markup(chat_id, cq_msg_id, get_laptop_control_keyboard())
+                tg_delete_message(chat_id, cq_msg_id)
             tg_send_message(
                 chat_id,
                 f"🔇 *Mute Toggle Completed!*\n\n📋 *Short Summary:* {res}",
-                reply_markup=get_laptop_control_keyboard(),
+                reply_markup=active_kb,
             )
         elif data == "lap_playpause":
             res = laptop_playpause()
             tg_send_message(
                 chat_id,
                 f"⏯️ *Play/Pause Completed!*\n\n📋 *Short Summary:* {res}",
-                reply_markup=get_laptop_control_keyboard(),
+                reply_markup=active_kb,
             )
         elif data == "lap_apps":
             res = laptop_apps()
             tg_send_message(
                 chat_id,
                 f"📱 *Running Apps Completed!*\n\n📋 *Short Summary:*\n{res}",
-                reply_markup=get_laptop_control_keyboard(),
+                reply_markup=active_kb,
             )
         elif data in ("lap_lock", "lap_lock_toggle"):
             res = laptop_lock_toggle()
@@ -1742,25 +1889,26 @@ class TelegramBotRunner:
                 _is_locked = False
             else:
                 _is_locked = not _is_locked
+            update_dynamic_keyboards()
             if cq_msg_id:
-                tg_edit_reply_markup(chat_id, cq_msg_id, get_laptop_control_keyboard())
+                tg_delete_message(chat_id, cq_msg_id)
             tg_send_message(
                 chat_id,
                 f"🔒 *Screen Lock Toggle:*\n\n{res}",
-                reply_markup=get_laptop_control_keyboard(),
+                reply_markup=active_kb,
             )
         elif data == "lap_wifi":
             res = laptop_wifi()
             tg_send_message(
                 chat_id,
                 f"📶 *Wi-Fi Status Completed!*\n\n📋 *Short Summary:*\n{res}",
-                reply_markup=get_laptop_control_keyboard(),
+                reply_markup=active_kb,
             )
         elif data == "lap_controls":
             tg_send_message(
                 chat_id,
-                "🎛️ *Laptop Live Control Panel:*\nButtons se direct laptop control karein:",
-                reply_markup=get_laptop_control_keyboard(),
+                "🎛️ *Laptop Live Control Panel:*\nNiche persistent buttons se direct laptop control karein:",
+                reply_markup=active_kb,
             )
         elif data == "lap_offline_hub":
             qr_res = laptop_offline_qr()
@@ -1768,7 +1916,7 @@ class TelegramBotRunner:
             tg_send_message(
                 chat_id,
                 f"{url_res}\n\n📱 *PWA App Tip:* Chrome/Safari me kholkar menu se **'Add to Home Screen'** karein, ye phone me bilkul native app ki tarah save ho jayega!",
-                reply_markup=get_laptop_control_keyboard(),
+                reply_markup=active_kb,
             )
         elif data == "lap_toggle_remote":
             res = laptop_remote_toggle()
@@ -1904,43 +2052,45 @@ class TelegramBotRunner:
                 chat_id,
                 "🎙️ *Audio Recording Completed!*\n\n"
                 "📋 *Short Summary:* 10s voice note send ho gaya hai.",
-                reply_markup=get_laptop_control_keyboard(),
+                reply_markup=active_kb,
             )
         elif data == "lap_stop_music":
             res = laptop_stop_music()
             tg_send_message(
                 chat_id,
                 f"⏹️ *Music Stopped!*\n\n📋 *Short Summary:* {res}",
-                reply_markup=get_laptop_control_keyboard(),
+                reply_markup=active_kb,
             )
         elif data == "lap_clipboard":
             res = laptop_clipboard()
-            tg_send_message(chat_id, res, reply_markup=get_laptop_control_keyboard())
+            tg_send_message(chat_id, res, reply_markup=active_kb)
         elif data == "lap_power_menu":
             tg_send_message(
                 chat_id,
                 "⚡ *Laptop Power Management:*\nAction select karein:",
-                reply_markup=get_power_keyboard(),
+                reply_markup=POWER_REPLY_KEYBOARD,
             )
         elif data == "lap_ghost":
             res = laptop_ghost_mode()
-            tg_send_message(chat_id, res, reply_markup=get_power_keyboard())
+            tg_send_message(chat_id, res, reply_markup=active_kb)
         elif data == "lap_screen_on":
             res = laptop_screen_on()
-            tg_send_message(chat_id, res, reply_markup=get_power_keyboard())
+            tg_send_message(chat_id, res, reply_markup=active_kb)
         elif data == "lap_power_sleep":
             res = laptop_power_sleep()
-            tg_send_message(chat_id, res, reply_markup=get_laptop_control_keyboard())
+            tg_send_message(chat_id, res, reply_markup=active_kb)
         elif data == "lap_power_reboot":
             res = laptop_power_reboot()
-            tg_send_message(chat_id, res, reply_markup=get_laptop_control_keyboard())
+            tg_send_message(chat_id, res, reply_markup=active_kb)
         elif data == "lap_power_poweroff":
             res = laptop_power_poweroff()
-            tg_send_message(chat_id, res, reply_markup=get_laptop_control_keyboard())
+            tg_send_message(chat_id, res, reply_markup=active_kb)
         elif data == "lap_video":
-            tg_send_message(chat_id, "🎥 10-second webcam video + audio recording chalu hai...")
+            temp_id = tg_send_message(chat_id, "🎥 10-second webcam video + audio recording chalu hai...")
             res = laptop_webcam_video()
-            tg_send_message(chat_id, res, reply_markup=get_laptop_control_keyboard())
+            if temp_id:
+                tg_delete_message(chat_id, temp_id)
+            tg_send_message(chat_id, res, reply_markup=active_kb)
         elif data == "lap_cctv":
             res = laptop_cctv_toggle()
             if "ACTIVATED" in res:
@@ -1949,22 +2099,19 @@ class TelegramBotRunner:
                 _is_cctv_active = False
             else:
                 _is_cctv_active = not _is_cctv_active
+            update_dynamic_keyboards()
             if cq_msg_id:
-                tg_edit_reply_markup(chat_id, cq_msg_id, get_laptop_control_keyboard())
-            tg_send_message(chat_id, res, reply_markup=get_laptop_control_keyboard())
+                tg_delete_message(chat_id, cq_msg_id)
+            tg_send_message(chat_id, res, reply_markup=active_kb)
         elif data == "lap_alarm":
             res = laptop_alarm()
-            tg_send_message(
-                chat_id,
-                res,
-                reply_markup={"inline_keyboard": [[{"text": "⏹️ Stop Alarm", "callback_data": "lap_stop_alarm"}]]},
-            )
+            tg_send_message(chat_id, res, reply_markup=active_kb)
         elif data == "lap_stop_alarm":
             res = laptop_stop_alarm()
-            tg_send_message(chat_id, res, reply_markup=get_laptop_control_keyboard())
+            tg_send_message(chat_id, res, reply_markup=active_kb)
         elif data == "lap_location":
             res = laptop_location()
-            tg_send_message(chat_id, res, reply_markup=get_laptop_control_keyboard())
+            tg_send_message(chat_id, res, reply_markup=active_kb)
         elif data == "btn_laptop":
             if is_laptop_online():
                 res = execute_on_laptop("uname -a && uptime -p && free -h")
@@ -1977,28 +2124,28 @@ class TelegramBotRunner:
                     f"```\n{cloud_res}\n```\n"
                     "✅ Fallback to 24/7 Cloud Server successful!"
                 )
-            tg_send_message(chat_id, msg, reply_markup=get_main_inline_keyboard())
+            tg_send_message(chat_id, msg, reply_markup=active_kb)
         elif data == "btn_cloud":
             res = execute_bash("uname -a && uptime -p && free -h")
             msg = f"☁️ *24/7 Render Cloud Server (Online 🟢):*\n```\n{res}\n```\n✅ Cloud Server execution verified!"
-            tg_send_message(chat_id, msg, reply_markup=get_main_inline_keyboard())
+            tg_send_message(chat_id, msg, reply_markup=active_kb)
         elif data == "btn_status":
-            tg_send_message(chat_id, get_status_text(), reply_markup=get_main_inline_keyboard())
+            tg_send_message(chat_id, get_status_text(), reply_markup=active_kb)
         elif data == "btn_files":
-            tg_send_message(chat_id, get_files_text(), reply_markup=get_main_inline_keyboard())
+            tg_send_message(chat_id, get_files_text(), reply_markup=active_kb)
         elif data == "btn_test":
-            tg_send_message(chat_id, get_quick_test_text(), reply_markup=get_main_inline_keyboard())
+            tg_send_message(chat_id, get_quick_test_text(), reply_markup=active_kb)
         elif data == "btn_reset":
             clear_history(f"tg_{chat_id}")
             tg_send_message(
                 chat_id,
                 "🧹 Context clear ho gaya!",
-                reply_markup=get_main_inline_keyboard(),
+                reply_markup=active_kb,
             )
         elif data == "btn_vps":
-            tg_send_message(chat_id, get_vps_guide_text(), reply_markup=get_main_inline_keyboard())
+            tg_send_message(chat_id, get_vps_guide_text(), reply_markup=active_kb)
         elif data == "btn_help":
-            tg_send_message(chat_id, get_help_text(), reply_markup=get_main_inline_keyboard())
+            tg_send_message(chat_id, get_help_text(), reply_markup=active_kb)
 
     def process_message(self, message: dict) -> None:
         """Process incoming Telegram message (text, photo, or document)."""
