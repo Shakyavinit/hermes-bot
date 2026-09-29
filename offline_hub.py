@@ -369,7 +369,10 @@ MOBILE_HTML = """<!DOCTYPE html>
         <div style="font-size: 11px; color: var(--text-muted);" id="local-ip-label">Offline Direct</div>
       </div>
     </div>
-    <div class="badge badge-offline">Offline LAN</div>
+    <div style="display:flex; gap:6px; align-items:center;">
+      <a href="/designer" style="text-decoration:none; background: linear-gradient(135deg, #00f0ff, #a855f7); color:#000; font-size:11px; font-weight:700; padding:6px 10px; border-radius:8px;">🎨 Button Designer</a>
+      <div class="badge badge-offline">Offline LAN</div>
+    </div>
   </header>
 
   <!-- Antigravity Sandbox Live Approval Card (Dynamic) -->
