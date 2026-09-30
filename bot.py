@@ -122,25 +122,10 @@ UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
 # Multi-Level Nested Bottom Reply Keyboards (Clean, Categorized & Extendable)
 # ==============================================================================
 
-# 1. Master Root Switcher (All-In-One Persistent Reply Keypad - Zero Hidden Menus)
-ROOT_CHOICE_KEYBOARD = {
-    "keyboard": [
-        [{"text": "🔴 Self-Use Mode"}, {"text": "⚡ Auto Mode: OFF 🔴"}],
-        [{"text": "🔒 Lock Screen"}, {"text": "📸 Screenshot"}],
-        [{"text": "⭐ Best Option"}, {"text": "🟢 Send 'y'"}, {"text": "🔴 Send 'n'"}],
-        [{"text": "✅ Approve (Enter)"}, {"text": "🛑 Ctrl+C"}],
-        [{"text": "🔇 Mute"}, {"text": "🔋 Battery"}, {"text": "🌐 Offline Hub"}],
-        [{"text": "🕶️ Ghost Mode"}, {"text": "☀️ Screen ON"}],
-        [{"text": "📷 Selfie (Webcam)"}, {"text": "🚨 Siren Alarm"}],
-        [{"text": "🎥 Video (10s)"}, {"text": "🎙️ Mic (10s)"}],
-        [{"text": "📡 Start Hotspot"}, {"text": "💤 Sleep Laptop"}],
-        [{"text": "☁️ Cloud Server"}, {"text": "🔄 Refresh Panel"}],
-    ],
-    "resize_keyboard": True,
-    "is_persistent": True,
-}
+# 1. Master Root Switcher (All buttons temporarily removed on user request)
+ROOT_CHOICE_KEYBOARD = {"remove_keyboard": True}
 
-# All keyboards strictly point to the Master Root Keypad (No hidden sub-menus, no categories)
+# All keyboards strictly point to remove_keyboard
 REPLY_KEYBOARD = ROOT_CHOICE_KEYBOARD
 LAPTOP_DASHBOARD_KEYBOARD = ROOT_CHOICE_KEYBOARD
 MAIN_DASHBOARD_KEYBOARD = ROOT_CHOICE_KEYBOARD
@@ -155,17 +140,6 @@ NEXT_SECTION_KEYBOARD = ROOT_CHOICE_KEYBOARD
 TOOLS_REPLY_KEYBOARD = ROOT_CHOICE_KEYBOARD
 HUMAN_GUI_KEYBOARD = ROOT_CHOICE_KEYBOARD
 ALARM_REPLY_KEYBOARD = ROOT_CHOICE_KEYBOARD
-
-# Load persistent custom layout if saved by user in Designer
-_custom_layout_file = BASE_DIR / "data" / "custom_layout.json"
-if _custom_layout_file.exists():
-    try:
-        with open(_custom_layout_file, "r", encoding="utf-8") as _f:
-            _d = json.load(_f)
-            if "keyboard" in _d and isinstance(_d["keyboard"], list) and len(_d["keyboard"]) > 0:
-                ROOT_CHOICE_KEYBOARD["keyboard"] = _d["keyboard"]
-    except Exception:
-        pass
 
 
 _is_remote_active = True

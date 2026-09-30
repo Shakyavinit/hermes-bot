@@ -237,33 +237,11 @@ def toggle_auto_approve_state(scope: str = "task") -> bool:
 
 _active_prompt_msg_id: Optional[int] = None
 
-NODE_ROOT_REPLY_KEYBOARD = {
-    "keyboard": [
-        [{"text": "🔴 Self-Use Mode"}, {"text": "⚡ Auto Mode: OFF 🔴"}],
-        [{"text": "🔒 Lock Screen"}, {"text": "📸 Screenshot"}],
-        [{"text": "⭐ Best Option"}, {"text": "🟢 Send 'y'"}, {"text": "🔴 Send 'n'"}],
-        [{"text": "✅ Approve (Enter)"}, {"text": "🛑 Ctrl+C"}],
-        [{"text": "🔇 Mute"}, {"text": "🔋 Battery"}, {"text": "🌐 Offline Hub"}],
-        [{"text": "🕶️ Ghost Mode"}, {"text": "☀️ Screen ON"}],
-        [{"text": "📷 Selfie (Webcam)"}, {"text": "🚨 Siren Alarm"}],
-        [{"text": "🎥 Video (10s)"}, {"text": "🎙️ Mic (10s)"}],
-        [{"text": "📡 Start Hotspot"}, {"text": "💤 Sleep Laptop"}],
-        [{"text": "☁️ Cloud Server"}, {"text": "🔄 Refresh Panel"}],
-    ],
-    "resize_keyboard": True,
-    "is_persistent": True,
-}
+NODE_ROOT_REPLY_KEYBOARD = {"remove_keyboard": True}
 
 
 def get_node_reply_keyboard() -> dict:
     """Generate dynamic persistent bottom reply keyboard with updated toggle states."""
-    mode_text = "🔴 Self-Use Mode" if is_remote_access_enabled() else "🟢 Remote Mode"
-    auto_text = "⚡ Auto Mode: ON 🟢" if get_auto_approve_state() else "⚡ Auto Mode: OFF 🔴"
-    try:
-        NODE_ROOT_REPLY_KEYBOARD["keyboard"][0][0]["text"] = mode_text
-        NODE_ROOT_REPLY_KEYBOARD["keyboard"][0][1]["text"] = auto_text
-    except Exception:
-        pass
     return NODE_ROOT_REPLY_KEYBOARD
 
 
