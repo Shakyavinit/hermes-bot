@@ -43,7 +43,14 @@ from config import (
     is_user_allowed, set_owner,
 )
 from memory import clear_history, get_all_facts, save_fact
-from tools import execute_bash, execute_on_laptop, list_directory, smart_execute, system_status
+from tools import (
+    execute_bash,
+    execute_on_laptop,
+    list_directory,
+    run_system_diagnostics,
+    smart_execute,
+    system_status,
+)
 
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
@@ -273,9 +280,9 @@ def get_quick_toggles_kb() -> dict:
 def get_help_status_kb() -> dict:
     """❓ HELP & STATUS MENU"""
     return kb([
-        ["📊 Full Status", "💻 Laptop Status"],
-        ["☁️ Cloud Status", "💡 Help Guide"],
-        ["🌐 24/7 Hosting Info"],
+        ["📊 Full Status", "🩺 Self-Diagnostics"],
+        ["💻 Laptop Status", "☁️ Cloud Status"],
+        ["💡 Help Guide", "🌐 24/7 Hosting Info"],
         ["🏠 Main Menu"],
     ])
 
@@ -438,6 +445,7 @@ def sync_bot_commands() -> None:
         {"command": "auto", "description": "⚡ Toggle Auto-Approve"},
         {"command": "remind", "description": "⏰ Set Reminder"},
         {"command": "reset", "description": "🧹 Clear History"},
+        {"command": "diagnose", "description": "🩺 Self-Diagnostics & API Check"},
         {"command": "help", "description": "💡 Show Help"},
     ]
     try:
@@ -1270,6 +1278,13 @@ class TelegramBotRunner:
             return True
 
         # ==================== HELP & STATUS ====================
+        if clean in ("🩺 Self-Diagnostics", "/diagnose") or cmd == "/diagnose":
+            temp = tg_send_message(chat_id, "🩺 Running self-diagnostics across providers...")
+            diag = run_system_diagnostics()
+            tg_delete_message(chat_id, temp)
+            self.send_result(chat_id, diag, "")
+            return True
+
         if clean == "💻 Laptop Status":
             online = is_laptop_online()
             status = f"💻 *Laptop:* {'🟢 ONLINE' if online else '🔴 OFFLINE'}"

@@ -47,15 +47,27 @@ else:
     GEMINI_API_KEYS = [k for k in [GEMINI_API_KEY, GEMINI_API_KEY_2] if k]
 WORKSPACE_DIR = Path(os.getenv("WORKSPACE_DIR", str(BASE_DIR))).resolve()
 
-# Default models
+# Multi-Provider Models (2026 Verified Working)
 GROQ_MODEL = os.getenv("GROQ_MODEL", "openai/gpt-oss-120b")
-GEMINI_MODELS = [
-    "gemini-flash-lite-latest",
-    "gemini-flash-latest",
-    "gemini-3.5-flash",
-    "gemini-2.5-flash",
+GROQ_MODELS = [
+    "openai/gpt-oss-120b",
+    "qwen/qwen3.8-27b",
+    "openai/gpt-oss-20b",
 ]
-GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-flash-lite-latest")
+
+GEMINI_MODELS = [
+    "gemini-2.5-flash",
+    "gemini-2.5-flash-lite",
+    "gemini-flash-latest",
+    "gemini-2.5-pro",
+]
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+
+OPENROUTER_MODELS = [
+    "qwen/qwen3.8-27b:free",
+    "nvidia/nemotron-3.5-lightning:free",
+    "liquid/lfm-2.5-2.6b:free",
+]
 
 # Ensure data dir exists
 (BASE_DIR / "data").mkdir(exist_ok=True)

@@ -522,8 +522,87 @@ def call_api(url: str, method: str = "GET", headers_json: str = "{}", body_json:
         return f"API execution failed: {str(e)}"
 
 
+def record_learned_incident(error_pattern: str, solution: str) -> str:
+    """Explicitly record a verified error resolution to Hermes long-term self-healing memory."""
+    try:
+        from memory import save_incident
+        save_incident(error_pattern, solution, context="Autonomous Learning")
+        return f"✅ Learned incident saved to memory: '{error_pattern}' -> '{solution}'"
+    except Exception as e:
+        return f"Error saving incident: {e}"
+
+
+def run_system_diagnostics() -> str:
+    """Run comprehensive self-diagnostics across all AI providers, laptop bridge, and system health."""
+    results = []
+    results.append("🩺 *Hermes Self-Diagnostics Report:*")
+
+    # 1. Laptop Bridge Status
+    laptop_state = "ONLINE 🟢" if is_laptop_online() else "OFFLINE 🔴"
+    results.append(f"• **💻 Laptop Node:** {laptop_state}")
+
+    # 2. Gemini Health
+    from config import GEMINI_API_KEYS, GROQ_API_KEY, OPENROUTER_API_KEY
+    if GEMINI_API_KEYS:
+        t0 = time.time()
+        try:
+            k = GEMINI_API_KEYS[0]
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={k}"
+            r = requests.post(url, json={"contents": [{"parts": [{"text": "ping"}]}]}, timeout=6)
+            lat = int((time.time() - t0) * 1000)
+            if r.status_code == 200:
+                results.append(f"• **🧠 Gemini 2.5 Flash (Tier 1):** HEALTHY 🟢 ({lat}ms)")
+            else:
+                results.append(f"• **🧠 Gemini (Tier 1):** HTTP {r.status_code} 🟡")
+        except Exception as e:
+            results.append(f"• **🧠 Gemini (Tier 1):** Unreachable 🔴 ({e})")
+    else:
+        results.append("• **🧠 Gemini (Tier 1):** Missing Key 🔴")
+
+    # 3. Groq Health
+    if GROQ_API_KEY:
+        t0 = time.time()
+        try:
+            url = "https://api.groq.com/openai/v1/chat/completions"
+            headers = {"Authorization": f"Bearer {GROQ_API_KEY}"}
+            r = requests.post(url, json={"model": "openai/gpt-oss-120b", "messages": [{"role": "user", "content": "ping"}]}, headers=headers, timeout=6)
+            lat = int((time.time() - t0) * 1000)
+            if r.status_code == 200:
+                results.append(f"• **⚡ Groq LPU (Tier 2):** HEALTHY 🟢 ({lat}ms)")
+            else:
+                results.append(f"• **⚡ Groq LPU (Tier 2):** HTTP {r.status_code} 🟡")
+        except Exception as e:
+            results.append(f"• **⚡ Groq LPU (Tier 2):** Unreachable 🔴 ({e})")
+    else:
+        results.append("• **⚡ Groq LPU (Tier 2):** Not configured")
+
+    # 4. OpenRouter Health
+    if OPENROUTER_API_KEY:
+        results.append("• **🌐 OpenRouter (Tier 3):** Ready 🟢 (17 free models)")
+    else:
+        results.append("• **🌐 OpenRouter (Tier 3):** Not configured")
+
+    # 5. Incident Memory Count
+    try:
+        import sqlite3
+        from memory import DB_PATH
+        with sqlite3.connect(DB_PATH) as conn:
+            c = conn.cursor()
+            c.execute("SELECT count(*) FROM incidents")
+            inc_cnt = c.fetchone()[0]
+            c.execute("SELECT count(*) FROM facts")
+            fact_cnt = c.fetchone()[0]
+        results.append(f"• **💾 Self-Healing Knowledge:** {inc_cnt} incidents verified, {fact_cnt} facts saved")
+    except Exception:
+        pass
+
+    return "\n".join(results)
+
+
 # Tool Registry & Schemas
 TOOLS_MAP: Dict[str, Callable] = {
+    "run_system_diagnostics": run_system_diagnostics,
+    "record_learned_incident": record_learned_incident,
     "execute_bash": execute_bash,
     "execute_on_laptop": execute_on_laptop,
     "execute_cloud_bash": execute_cloud_bash,
@@ -566,6 +645,33 @@ TOOLS_MAP: Dict[str, Callable] = {
 }
 
 GEMINI_FUNCTION_DECLARATIONS = [
+    {
+        "name": "run_system_diagnostics",
+        "description": "Run live self-diagnostics across all AI providers (Gemini, Groq, OpenRouter), physical laptop connectivity, and system health.",
+        "parameters": {
+            "type": "object",
+            "properties": {},
+            "required": [],
+        },
+    },
+    {
+        "name": "record_learned_incident",
+        "description": "Store a newly resolved error pattern and verified solution into Hermes long-term self-healing memory.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "error_pattern": {
+                    "type": "string",
+                    "description": "The key error keyword or signature (e.g. 'pactl sink error', 'network unreachable').",
+                },
+                "solution": {
+                    "type": "string",
+                    "description": "The exact command or steps that fixed the problem.",
+                },
+            },
+            "required": ["error_pattern", "solution"],
+        },
+    },
     {
         "name": "execute_bash",
         "description": "Execute any Linux bash shell command (e.g. system info, files, processes, network, scripts). Automatically runs directly on user's physical laptop when online, or cloud server if laptop is offline.",

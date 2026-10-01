@@ -16,9 +16,18 @@ from config import (
     GEMINI_MODELS,
     GROQ_API_KEY,
     GROQ_MODEL,
+    GROQ_MODELS,
+    OPENROUTER_API_KEY,
+    OPENROUTER_MODELS,
     WORKSPACE_DIR,
 )
-from memory import add_message, get_all_facts, get_history
+from memory import (
+    add_message,
+    get_all_facts,
+    get_history,
+    get_incident_solutions,
+    save_incident,
+)
 from tools import GEMINI_FUNCTION_DECLARATIONS, dispatch_tool_call
 
 logger = logging.getLogger(__name__)
@@ -40,8 +49,11 @@ PRIMARY EXECUTION GUIDELINES:
    - Dedicated laptop controls: `ghost_mode_screen_off`, `screen_on`, `capture_laptop_screenshot`, `capture_laptop_webcam`, `capture_laptop_video`, `record_laptop_mic`, `toggle_laptop_cctv`, `trigger_laptop_alarm`, `stop_laptop_alarm`, `find_laptop_location`, `play_music_on_laptop`, `stop_music_on_laptop`, `speak_on_laptop`, `send_laptop_key`, `open_url_on_laptop`.
 3. GENERAL SHELL: For terminal commands, use `execute_bash` (which automatically executes on the physical laptop when connected). Only use `execute_cloud_bash` if the user explicitly asks for cloud server.
 4. LIVE APIS & REAL-TIME DATA: For crypto rates, live weather, IP info, Wikipedia, or dictionary, use `query_public_api`. For external URLs or REST APIs, use `call_api` or `fetch_url`.
-5. TRUTHFULNESS & GROUNDING: NEVER guess or hallucinate. Rely 100% on tool outputs. If a tool reports laptop is offline, state it honestly in 1 sentence.
-6. ULTRA SHORT & DIRECT: Answer in 1 to 3 short lines in natural Hindi / Hinglish. Strictly NO long paragraphs or robotic filler.
+5. SELF-HEALING & ERROR RESOLUTION:
+   - When a command or tool returns an error, DO NOT just stop and dump the error to the user.
+   - Analyze the root cause, inspect any provided Diagnostic Memory hints, and autonomously attempt a corrected alternative command or solution.
+6. TRUTHFULNESS & GROUNDING: NEVER guess or hallucinate. Rely 100% on tool outputs. If a tool reports laptop is offline, state it honestly in 1 sentence.
+7. ULTRA SHORT & DIRECT: Answer in 1 to 3 short lines in natural Hindi / Hinglish. Strictly NO long paragraphs or robotic filler.
 """
 
 
@@ -49,6 +61,8 @@ class AgentEngine:
     def __init__(self):
         self.keys = GEMINI_API_KEYS
         self.models = GEMINI_MODELS
+        self.groq_models = GROQ_MODELS
+        self.openrouter_models = OPENROUTER_MODELS
         self.max_steps = 10
 
     def _call_gemini_api(self, contents: List[Dict], with_tools: bool = True) -> Optional[Dict]:
@@ -74,7 +88,7 @@ class AgentEngine:
                         url,
                         json=payload,
                         headers={"Content-Type": "application/json"},
-                        timeout=35,
+                        timeout=30,
                     )
                     if resp.status_code == 200:
                         data = resp.json()
@@ -95,7 +109,7 @@ class AgentEngine:
         return None
 
     def _call_groq_fallback(self, user_message: str) -> Optional[str]:
-        """High-speed emergency fallback to Groq Cloud (GPT-OSS-120B / Qwen) when Gemini is unavailable."""
+        """Tier-2 high-speed fallback to Groq Cloud (LPU Inference)."""
         if not GROQ_API_KEY:
             return None
         url = "https://api.groq.com/openai/v1/chat/completions"
@@ -103,7 +117,7 @@ class AgentEngine:
             "Authorization": f"Bearer {GROQ_API_KEY}",
             "Content-Type": "application/json",
         }
-        for model in [GROQ_MODEL, "openai/gpt-oss-120b", "qwen/qwen3.8-27b"]:
+        for model in self.groq_models:
             payload = {
                 "model": model,
                 "messages": [
@@ -119,8 +133,46 @@ class AgentEngine:
                     choices = data.get("choices", [])
                     if choices:
                         return choices[0].get("message", {}).get("content", "").strip()
+                elif resp.status_code in (429, 404, 503):
+                    logger.warning(f"Groq model {model} HTTP {resp.status_code}, trying next...")
+                    continue
             except Exception as e:
                 logger.warning(f"Groq fallback failed for {model}: {e}")
+                continue
+        return None
+
+    def _call_openrouter_fallback(self, user_message: str) -> Optional[str]:
+        """Tier-3 zero-cost fallback to OpenRouter Free tier."""
+        if not OPENROUTER_API_KEY:
+            return None
+        url = "https://openrouter.ai/api/v1/chat/completions"
+        headers = {
+            "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+            "Content-Type": "application/json",
+            "HTTP-Referer": "https://github.com/Shakyavinit/hermes-bot",
+            "X-Title": "Hermes Autonomous Agent",
+        }
+        for model in self.openrouter_models:
+            payload = {
+                "model": model,
+                "messages": [
+                    {"role": "system", "content": SYSTEM_PROMPT},
+                    {"role": "user", "content": user_message},
+                ],
+                "temperature": 0.3,
+            }
+            try:
+                resp = requests.post(url, json=payload, headers=headers, timeout=25)
+                if resp.status_code == 200:
+                    data = resp.json()
+                    choices = data.get("choices", [])
+                    if choices:
+                        return choices[0].get("message", {}).get("content", "").strip()
+                elif resp.status_code in (429, 404, 503):
+                    logger.warning(f"OpenRouter model {model} HTTP {resp.status_code}, trying next...")
+                    continue
+            except Exception as e:
+                logger.warning(f"OpenRouter fallback failed for {model}: {e}")
                 continue
         return None
 
@@ -183,14 +235,22 @@ class AgentEngine:
             model_content = self._call_gemini_api(contents, with_tools=True)
 
             if not model_content:
-                # Emergency fast fallback to Groq Cloud
+                # Multi-Tier Fallback: Tier 2 Groq -> Tier 3 OpenRouter
                 if progress_callback:
-                    progress_callback("Failing over to Groq LPU engine...")
+                    progress_callback("⚡ Gemini busy/failing, switching to Groq LPU engine...")
                 groq_reply = self._call_groq_fallback(user_message)
                 if groq_reply:
                     add_message(session_id, "assistant", groq_reply)
-                    return groq_reply
-                return "⚠️ Error: Gemini aur Groq dono backend reach nahi ho rahe hain. Kripya network check karein."
+                    return f"{groq_reply}\n\n_(⚡ Handled via Groq LPU Fallback)_"
+
+                if progress_callback:
+                    progress_callback("🌐 Groq unavailable, switching to OpenRouter Cloud...")
+                openrouter_reply = self._call_openrouter_fallback(user_message)
+                if openrouter_reply:
+                    add_message(session_id, "assistant", openrouter_reply)
+                    return f"{openrouter_reply}\n\n_(🌐 Handled via OpenRouter Fallback)_"
+
+                return "⚠️ Notice: Gemini, Groq aur OpenRouter teeno busy hain. Kripya thodi der baad dobara try karein."
 
             parts = model_content.get("parts", [])
 
@@ -209,7 +269,7 @@ class AgentEngine:
             # Add model's tool call turn to contents
             contents.append(model_content)
 
-            # Execute tool calls
+            # Execute tool calls with Self-Healing Diagnostic Observation
             for tcall in tool_calls:
                 func_name = tcall.get("name")
                 args = tcall.get("args", {})
@@ -226,7 +286,7 @@ class AgentEngine:
                         desc = func_name
                         if func_name == "execute_bash":
                             cmd = args.get("command", "")
-                            desc = f"Running command: `{cmd[:60]}`"
+                            desc = f"Running: `{cmd[:60]}`"
                         elif func_name in ("read_file", "write_file"):
                             desc = f"{func_name}: `{args.get('filepath', '')}`"
                         elif func_name == "fetch_url":
@@ -235,6 +295,32 @@ class AgentEngine:
 
                     # Execute the tool
                     tool_output = dispatch_tool_call(func_name, args)
+
+                    # Self-Healing Check: inspect output for errors & attach incident hints
+                    if isinstance(tool_output, str):
+                        lower_out = tool_output.lower()
+                        has_error = any(
+                            e in lower_out
+                            for e in [
+                                "error",
+                                "exit code: 1",
+                                "exit code: 127",
+                                "command not found",
+                                "permission denied",
+                                "failed",
+                                "timed out",
+                            ]
+                        )
+                        if has_error:
+                            incident_sols = get_incident_solutions(tool_output)
+                            if incident_sols:
+                                hint_msg = (
+                                    "\n\n[🩺 HERMES SELF-HEALING DIAGNOSTIC]\n"
+                                    "Verified past resolutions found for this error:\n"
+                                    + "\n".join(incident_sols)
+                                    + "\n\nInstruction: Diagnose the error and immediately try an alternative approach, flag, or tool."
+                                )
+                                tool_output += hint_msg
 
                 # Feed tool observation back to model as user turn with functionResponse
                 contents.append(

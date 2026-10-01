@@ -44,6 +44,23 @@ def init_db() -> None:
             )
             """
         )
+
+        # Incident & Self-Healing Knowledge Base
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS incidents (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                error_pattern TEXT NOT NULL,
+                solution TEXT NOT NULL,
+                context TEXT,
+                success_count INTEGER DEFAULT 1,
+                updated_at REAL NOT NULL
+            )
+            """
+        )
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS idx_error_pattern ON incidents (error_pattern)"
+        )
         conn.commit()
 
 
@@ -99,3 +116,55 @@ def get_all_facts() -> Dict[str, str]:
         cursor = conn.cursor()
         cursor.execute("SELECT key, value FROM facts")
         return dict(cursor.fetchall())
+
+
+def save_incident(error_pattern: str, solution: str, context: str = "") -> None:
+    """Store or increment a verified incident resolution in the self-healing database."""
+    pattern_clean = error_pattern.strip().lower()
+    with sqlite3.connect(DB_PATH) as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT id, success_count FROM incidents WHERE error_pattern = ?",
+            (pattern_clean,),
+        )
+        row = cursor.fetchone()
+        if row:
+            cursor.execute(
+                "UPDATE incidents SET solution = ?, context = ?, success_count = success_count + 1, updated_at = ? WHERE id = ?",
+                (solution, context, time.time(), row[0]),
+            )
+        else:
+            cursor.execute(
+                "INSERT INTO incidents (error_pattern, solution, context, success_count, updated_at) VALUES (?, ?, ?, 1, ?)",
+                (pattern_clean, solution, context, time.time()),
+            )
+        conn.commit()
+
+
+def get_incident_solutions(error_text: str) -> List[str]:
+    """Search for proven solutions to an observed error pattern."""
+    error_clean = error_text.strip().lower()
+    solutions = []
+    with sqlite3.connect(DB_PATH) as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT error_pattern, solution FROM incidents ORDER BY success_count DESC")
+        for pattern, solution in cursor.fetchall():
+            if pattern in error_clean or any(word in error_clean for word in pattern.split() if len(word) > 4):
+                solutions.append(f"• Pattern '{pattern}': {solution}")
+    return solutions[:3]
+
+
+def seed_known_incidents() -> None:
+    """Seed foundational Linux & cloud incident solutions."""
+    known = [
+        ("render sleep 15m spin down", "Use external 5m keep-alive cron ping to https://hermes-bot-kqv8.onrender.com/health via cron-job.org or uptimerobot."),
+        ("wayland xdotool xwayland display", "Ensure DISPLAY=:0, WAYLAND_DISPLAY=wayland-0, and dynamic /run/user/1000/.mutter-Xwaylandauth is loaded in environment."),
+        ("pactl set-sink-volume default_sink", "Use pactl set-sink-volume @DEFAULT_SINK@ <percentage>% or check pamixer --set-volume."),
+        ("credit_balance_exhausted 429", "Switch to Google Gemini Flash (1500 RPD) or Groq LPU (14400 RPD) or OpenRouter free models."),
+        ("direct ip access is not allowed 7777", "Access through local network LAN IP (e.g. 192.168.x.x:7777) or specify correct Host header."),
+    ]
+    for pattern, sol in known:
+        save_incident(pattern, sol, context="System Seed")
+
+
+seed_known_incidents()
