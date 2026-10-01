@@ -45,6 +45,7 @@ from config import (
 from memory import clear_history, get_all_facts, save_fact
 from tools import (
     execute_bash,
+    execute_cloud_bash,
     execute_on_laptop,
     list_directory,
     run_system_diagnostics,
@@ -89,16 +90,43 @@ def kb(rows: List[List[str]], resize: bool = True, persistent: bool = True) -> d
 
 
 def get_main_menu_kb() -> dict:
-    """🏠 MAIN MENU - Root of all categories."""
+    """🏠 MAIN MENU - Clean, compact & sleek (only 3 rows)."""
+    global _is_remote_active
+    self_btn = "🔴 Self-Use Mode" if _is_remote_active else "🟢 Remote Mode"
+    return kb([
+        ["💻 Laptop Mode", "☁️ Cloud Server"],
+        [self_btn, "🖱️ Mouse & Keyboard"],
+        ["🎛️ Quick Toggles", "❓ Help & Status"],
+    ])
+
+
+def get_laptop_dashboard_kb() -> dict:
+    """💻 LAPTOP CONTROL PANEL (Physical Laptop Hardware Controls)"""
     return kb([
         ["📸 Camera & Media", "🎙️ Audio & Voice"],
-        ["🖥️ System Info", "⚡ Power & Screen"],
-        ["🔊 Volume & Sound", "🎵 Media Control"],
-        ["🖱️ Mouse & Keyboard", "🌐 Browser & Apps"],
-        ["🚨 Security & Spy", "🤖 AI & Automation"],
-        ["📋 Clipboard & Notes", "📶 Network & Offline"],
-        ["🔧 Terminal & Files", "⏰ Reminders & Memory"],
-        ["🎛️ Quick Toggles", "❓ Help & Status"],
+        ["⚡ Power & Screen", "🚨 Security & Spy"],
+        ["🔊 Volume & Media", "🤖 AI & Automation"],
+        ["🌟 Extra Tools ➡️", "🏠 Main Menu"],
+    ])
+
+
+def get_extra_tools_kb() -> dict:
+    """🌟 EXTRA TOOLS PANEL (Apps, Network, Terminal, Memory)"""
+    return kb([
+        ["🌐 Browser & Apps", "📶 Network & Hotspot"],
+        ["📋 Clipboard & Notes", "🔧 Terminal & Files"],
+        ["🖥️ System Info", "⏰ Reminders & Memory"],
+        ["🔙 Laptop Menu", "🏠 Main Menu"],
+    ])
+
+
+def get_cloud_dashboard_kb() -> dict:
+    """☁️ CLOUD SERVER PANEL (24/7 Render Cloud Container)"""
+    return kb([
+        ["📊 Cloud Status", "📁 Cloud Files"],
+        ["⚡ Cloud Quick Test", "🧹 Reset AI Memory"],
+        ["🩺 Self-Diagnostics", "🌐 24/7 Hosting Info"],
+        ["🏠 Main Menu"],
     ])
 
 
@@ -108,7 +136,7 @@ def get_camera_media_kb() -> dict:
         ["📸 Screenshot", "📷 Front Camera Photo"],
         ["🎥 5s Webcam Video", "🎥 10s Webcam Video"],
         ["🖼️ AI Photo Analysis", "🧹 Clean Photos"],
-        ["🏠 Main Menu"],
+        ["🔙 Laptop Menu", "🏠 Main Menu"],
     ])
 
 
@@ -117,19 +145,17 @@ def get_audio_voice_kb() -> dict:
     return kb([
         ["🎙️ Record Mic 10s", "🎙️ Record Mic 30s"],
         ["🗣️ Text-to-Speech", "📝 Voice Transcribe"],
-        ["🏠 Main Menu"],
+        ["🔙 Laptop Menu", "🏠 Main Menu"],
     ])
 
 
 def get_system_info_kb() -> dict:
     """🖥️ SYSTEM INFO MENU"""
     return kb([
-        ["🔋 Battery Status", "⚡ Charging Alert"],
-        ["💻 CPU & RAM Usage", "💾 Disk Space"],
-        ["🌡️ CPU Temperature", "📶 WiFi Name"],
-        ["🌍 Public IP", "🏠 Local IP"],
-        ["📍 Laptop Location", "📊 Full System Status"],
-        ["🏠 Main Menu"],
+        ["🔋 Battery Status", "💻 CPU & RAM Usage"],
+        ["💾 Disk Space", "🌡️ CPU Temperature"],
+        ["🌍 Public IP", "📍 Laptop Location"],
+        ["🔙 Extra Tools", "🏠 Main Menu"],
     ])
 
 
@@ -137,46 +163,40 @@ def get_power_screen_kb() -> dict:
     """⚡ POWER & SCREEN MENU"""
     global _is_locked, _is_ghost_mode
     lock_btn = "🔓 Unlock Screen" if _is_locked else "🔒 Lock Screen"
-    ghost_btn = "☀️ Display ON" if _is_ghost_mode else "🕶️ Display OFF (Ghost)"
+    ghost_btn = "☀️ Display ON" if _is_ghost_mode else "🕶️ Ghost Mode (Screen OFF)"
     return kb([
         [lock_btn, ghost_btn],
         ["💤 Sleep Laptop", "🔄 Reboot Laptop"],
         ["⛔ Shutdown Laptop"],
-        ["🏠 Main Menu"],
+        ["🔙 Laptop Menu", "🏠 Main Menu"],
     ])
 
 
-def get_volume_sound_kb() -> dict:
-    """🔊 VOLUME & SOUND MENU"""
+def get_volume_media_kb() -> dict:
+    """🔊 VOLUME & MEDIA MENU"""
     global _is_muted
     mute_btn = "🔊 Unmute" if _is_muted else "🔇 Mute"
     return kb([
-        ["🔉 Volume Down", "🔊 Volume Up"],
-        [mute_btn, "🎚️ Set Volume %"],
-        ["🏠 Main Menu"],
-    ])
-
-
-def get_media_control_kb() -> dict:
-    """🎵 MEDIA CONTROL MENU"""
-    return kb([
+        ["🔉 Vol -", "🔊 Vol +", mute_btn],
         ["⏯️ Play/Pause", "⏹️ Stop Music"],
-        ["⏭️ Next Track", "⏮️ Previous Track"],
-        ["🎵 Play Song (Search)"],
-        ["🏠 Main Menu"],
+        ["⏭️ Next Track", "⏮️ Prev Track"],
+        ["🎵 Play Song", "🎚️ Set Volume %"],
+        ["🔙 Laptop Menu", "🏠 Main Menu"],
     ])
+
+
+# Aliases for backward compatibility
+get_volume_sound_kb = get_volume_media_kb
+get_media_control_kb = get_volume_media_kb
 
 
 def get_mouse_keyboard_kb() -> dict:
-    """🖱️ MOUSE & KEYBOARD MENU"""
+    """🖱️ MOUSE & KEYBOARD MENU (Compact 5 Rows)"""
     return kb([
-        ["🖱️ Left Click", "🖱️ Right Click"],
-        ["⬆️ Scroll Up", "⬇️ Scroll Down"],
-        ["👁️ AI Vision Click", "🎯 Click Element"],
+        ["🖱️ Left Click", "🖱️ Right Click", "🎯 Click Element"],
+        ["⬆️ Scroll Up", "⬇️ Scroll Down", "👁️ AI Vision Click"],
         ["⌨️ Type Text", "⌨️ Human Type"],
-        ["↩️ Press Enter", "🛑 Press Ctrl+C"],
-        ["⎋ Press Esc", "␣ Press Space"],
-        ["⇥ Press Tab", "❌ Press Alt+F4"],
+        ["↩️ Press Enter", "🛑 Press Ctrl+C", "⎋ Press Esc"],
         ["🏠 Main Menu"],
     ])
 
@@ -184,11 +204,10 @@ def get_mouse_keyboard_kb() -> dict:
 def get_browser_apps_kb() -> dict:
     """🌐 BROWSER & APPS MENU"""
     return kb([
-        ["🌐 Open URL", "🌐 Open Chrome"],
-        ["💻 Open VS Code", "⌨️ Open Terminal"],
-        ["🎵 Open Spotify", "🚀 Open Any App"],
-        ["📱 Running Apps"],
-        ["🏠 Main Menu"],
+        ["🌐 Open Chrome", "💻 Open VS Code"],
+        ["⌨️ Open Terminal", "🎵 Open Spotify"],
+        ["🌐 Open URL", "📱 Running Apps"],
+        ["🔙 Extra Tools", "🏠 Main Menu"],
     ])
 
 
@@ -200,23 +219,21 @@ def get_security_spy_kb() -> dict:
         ["🚨 Siren Alarm", "⏹️ Stop Alarm"],
         [cctv_btn, "📍 Find Laptop"],
         ["📷 Silent Snap", "🎥 Silent Video"],
-        ["🏠 Main Menu"],
+        ["🔙 Laptop Menu", "🏠 Main Menu"],
     ])
 
 
 def get_ai_automation_kb() -> dict:
-    """🤖 AI & AUTOMATION MENU"""
+    """🤖 AI & AUTOMATION MENU (Sandbox Approvals & Status)"""
     global _is_auto_approve_active, _is_remote_active
-    auto_btn = "⚡ Auto-Approve: ON 🟢" if _is_auto_approve_active else "⚡ Auto-Approve: OFF 🔴"
+    auto_btn = "⚡ Auto: ON 🟢" if _is_auto_approve_active else "⚡ Auto: OFF 🔴"
     self_btn = "🟢 Remote Mode" if not _is_remote_active else "🔴 Self-Use Mode"
     return kb([
         [self_btn, auto_btn],
-        ["♾️ Auto Always ON", "🎯 Auto Task Only"],
-        ["🛑 Auto OFF", "📊 AI Status"],
-        ["✅ Approve (Enter)", "🟢 Send 'y'"],
-        ["🔴 Send 'n'", "🛑 Cancel Ctrl+C"],
-        ["1️⃣", "2️⃣", "3️⃣"],
-        ["🏠 Main Menu"],
+        ["✅ Approve (Enter)", "🛑 Cancel Ctrl+C"],
+        ["🟢 Send 'y'", "🔴 Send 'n'"],
+        ["1️⃣", "2️⃣", "3️⃣", "📊 AI Status"],
+        ["🔙 Laptop Menu", "🏠 Main Menu"],
     ])
 
 
@@ -225,7 +242,7 @@ def get_clipboard_notes_kb() -> dict:
     return kb([
         ["📋 Read Clipboard", "✏️ Write Clipboard"],
         ["📝 Save Note", "📖 Recall Notes"],
-        ["🏠 Main Menu"],
+        ["🔙 Extra Tools", "🏠 Main Menu"],
     ])
 
 
@@ -237,7 +254,7 @@ def get_network_offline_kb() -> dict:
         ["📶 WiFi Status", "🌍 Check Internet"],
         [hotspot_btn, "📊 Hotspot Status"],
         ["🌐 Offline Hub URL", "📱 Offline Hub QR"],
-        ["🏠 Main Menu"],
+        ["🔙 Extra Tools", "🏠 Main Menu"],
     ])
 
 
@@ -246,7 +263,7 @@ def get_terminal_files_kb() -> dict:
     return kb([
         ["💻 Run Bash Command", "📁 List Files"],
         ["⬇️ Download File", "⬆️ Upload File Info"],
-        ["🏠 Main Menu"],
+        ["🔙 Extra Tools", "🏠 Main Menu"],
     ])
 
 
@@ -255,7 +272,7 @@ def get_reminders_memory_kb() -> dict:
     return kb([
         ["⏰ Set Reminder", "🧠 Save to Memory"],
         ["📖 Show Memory", "🧹 Reset History"],
-        ["🏠 Main Menu"],
+        ["🔙 Extra Tools", "🏠 Main Menu"],
     ])
 
 
@@ -272,7 +289,6 @@ def get_quick_toggles_kb() -> dict:
         [self_btn, auto_btn],
         [lock_btn, mute_btn],
         [cctv_btn, ghost_btn],
-        ["🎨 Toggle Custom Keypad"],
         ["🏠 Main Menu"],
     ])
 
@@ -292,12 +308,15 @@ def get_help_status_kb() -> dict:
 # ==============================================================================
 MENU_MAP = {
     "main": get_main_menu_kb,
+    "laptop": get_laptop_dashboard_kb,
+    "cloud": get_cloud_dashboard_kb,
+    "extra": get_extra_tools_kb,
     "camera": get_camera_media_kb,
     "audio": get_audio_voice_kb,
     "system": get_system_info_kb,
     "power": get_power_screen_kb,
-    "volume": get_volume_sound_kb,
-    "media": get_media_control_kb,
+    "volume": get_volume_media_kb,
+    "media": get_volume_media_kb,
     "mouse": get_mouse_keyboard_kb,
     "browser": get_browser_apps_kb,
     "security": get_security_spy_kb,
@@ -604,23 +623,41 @@ class TelegramBotRunner:
         """Switch to a submenu."""
         _user_menu_state[chat_id] = menu_name
         menu_titles = {
-            "main": "🏠 *Main Menu* - Sabhi categories:",
+            "main": (
+                "👑 *Hermes Autonomous Agent*\n\n"
+                f"💻 Laptop: {'🟢 ONLINE' if is_laptop_online() else '🔴 OFFLINE'}\n"
+                f"🎮 Remote: {'🟢 ACTIVE' if _is_remote_active else '🔴 PAUSED'}\n"
+                f"⚡ Auto: {'🟢 ON' if _is_auto_approve_active else '🔴 OFF'}\n\n"
+                "Mode ya Control select karein:"
+            ),
+            "laptop": (
+                f"💻 *Laptop Control Panel* ({'🟢 ONLINE' if is_laptop_online() else '🔴 OFFLINE'})\n\n"
+                "Hardware controls & primary laptop actions:"
+            ),
+            "cloud": (
+                "☁️ *Cloud Server Panel (Render 24/7)*\n\n"
+                "24/7 Cloud container management & diagnostics:"
+            ),
+            "extra": (
+                "🌟 *Extra Tools Panel*\n\n"
+                "Apps, network, terminal, memory aur system details:"
+            ),
             "camera": "📸 *Camera & Media* - Photo/Video controls:",
             "audio": "🎙️ *Audio & Voice* - Mic aur sound:",
             "system": "🖥️ *System Info* - Laptop ki details:",
             "power": "⚡ *Power & Screen* - Power management:",
-            "volume": "🔊 *Volume & Sound* - Sound controls:",
-            "media": "🎵 *Media Control* - Music aur video:",
-            "mouse": "🖱️ *Mouse & Keyboard* - Input controls:",
+            "volume": "🔊 *Volume & Media* - Sound & playback controls:",
+            "media": "🔊 *Volume & Media* - Sound & playback controls:",
+            "mouse": "🖱️ *Mouse & Keyboard* - Human GUI controls:",
             "browser": "🌐 *Browser & Apps* - App launcher:",
-            "security": "🚨 *Security & Spy* - Surveillance:",
-            "ai": "🤖 *AI & Automation* - Sandbox controls:",
+            "security": "🚨 *Security & Spy* - Surveillance & CCTV:",
+            "ai": "🤖 *AI & Automation* - Sandbox approvals & AI status:",
             "clipboard": "📋 *Clipboard & Notes* - Text management:",
-            "network": "📶 *Network & Offline* - WiFi/Hotspot:",
-            "terminal": "🔧 *Terminal & Files* - Bash commands:",
-            "reminders": "⏰ *Reminders & Memory* - Notes/Alerts:",
+            "network": "📶 *Network & Hotspot* - WiFi/Hotspot/Offline Hub:",
+            "terminal": "🔧 *Terminal & Files* - Bash commands & files:",
+            "reminders": "⏰ *Reminders & Memory* - Notes & alerts:",
             "toggles": "🎛️ *Quick Toggles* - Fast switches:",
-            "help": "❓ *Help & Status* - Info aur guide:",
+            "help": "❓ *Help & Status* - System info & guide:",
         }
         text = title or menu_titles.get(menu_name, "📱 Menu:")
         tg_send_message(chat_id, text, reply_markup=get_kb_for(menu_name))
@@ -712,22 +749,30 @@ class TelegramBotRunner:
             cfg = get_runtime_config()
             if cfg.get("owner_user_id") is None:
                 set_owner(user_id)
-            self.switch_menu(chat_id, "main",
-                "👑 *Hermes Autonomous Agent*\n\n"
-                f"💻 Laptop: {'🟢 ONLINE' if is_laptop_online() else '🔴 OFFLINE'}\n"
-                f"🎮 Remote: {'🟢 ACTIVE' if _is_remote_active else '🔴 PAUSED'}\n"
-                f"⚡ Auto: {'🟢 ON' if _is_auto_approve_active else '🔴 OFF'}\n\n"
-                "Category select karein:"
-            )
+            self.switch_menu(chat_id, "main")
             return True
 
         # ==================== CATEGORY SWITCHES ====================
         category_map = {
+            # Top-Level Dashboards & Navigation
+            "💻 Laptop Mode": "laptop",
+            "/laptop": "laptop",
+            "☁️ Cloud Server": "cloud",
+            "/cloud": "cloud",
+            "/server": "cloud",
+            "🌟 Extra Tools ➡️": "extra",
+            "🌟 Extra Tools": "extra",
+            "🔙 Extra Tools": "extra",
+            "🔙 Laptop Menu": "laptop",
+            "🔙 Back": "laptop",
+
+            # Sub-category menus
             "📸 Camera & Media": "camera",
             "🎙️ Audio & Voice": "audio",
             "🖥️ System Info": "system",
             "⚡ Power & Screen": "power",
             "🔊 Volume & Sound": "volume",
+            "🔊 Volume & Media": "volume",
             "🎵 Media Control": "media",
             "🖱️ Mouse & Keyboard": "mouse",
             "🌐 Browser & Apps": "browser",
@@ -735,6 +780,7 @@ class TelegramBotRunner:
             "🤖 AI & Automation": "ai",
             "📋 Clipboard & Notes": "clipboard",
             "📶 Network & Offline": "network",
+            "📶 Network & Hotspot": "network",
             "🔧 Terminal & Files": "terminal",
             "⏰ Reminders & Memory": "reminders",
             "🎛️ Quick Toggles": "toggles",
@@ -1293,9 +1339,24 @@ class TelegramBotRunner:
             self.send_result(chat_id, status, "")
             return True
 
-        if clean == "☁️ Cloud Status":
+        if clean in ("☁️ Cloud Status", "📊 Cloud Status"):
             res = system_status()
             self.send_result(chat_id, "☁️ *Cloud Server:*", f"```\n{res}\n```\n✅ 24/7 Live on Render")
+            return True
+
+        if clean in ("📁 Cloud Files", "📁 Workspace Files"):
+            res = list_directory(".")
+            self.send_result(chat_id, "📁 *Cloud Workspace Files:*", f"```\n{res}\n```")
+            return True
+
+        if clean in ("⚡ Cloud Quick Test", "/test"):
+            out = execute_cloud_bash("uname -r && uptime -p && python3 --version")
+            self.send_result(chat_id, "⚡ *Cloud Quick Diagnostic:*", f"```\n{out}\n```\n✅ Render cloud container responsive.")
+            return True
+
+        if clean in ("🧹 Reset AI Memory", "🧹 Reset History"):
+            clear_history(f"tg_{chat_id}")
+            self.send_result(chat_id, "🧹 *AI Memory Cleared!*", "Context reset ho gaya hai.")
             return True
 
         if clean == "💡 Help Guide" or cmd == "/help":
