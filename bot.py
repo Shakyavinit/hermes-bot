@@ -102,12 +102,7 @@ def get_main_menu_kb() -> dict:
 
 def get_laptop_dashboard_kb() -> dict:
     """💻 LAPTOP CONTROL PANEL (Physical Laptop Hardware Controls)"""
-    return kb([
-        ["🛡️ Spy & Security", "🤖 Sandbox & AI"],
-        ["⚡ Power & Ghost Mode", "🎵 Media & Sound"],
-        ["🌟 Extra Tools ➡️", "📊 Laptop Status"],
-        ["📸 Quick Screen", "🔙 Main Menu"],
-    ])
+    return {"remove_keyboard": True}
 
 
 def get_extra_tools_kb() -> dict:
