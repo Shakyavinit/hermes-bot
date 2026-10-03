@@ -103,10 +103,10 @@ def get_main_menu_kb() -> dict:
 def get_laptop_dashboard_kb() -> dict:
     """💻 LAPTOP CONTROL PANEL (Physical Laptop Hardware Controls)"""
     return kb([
-        ["📸 Camera & Media", "🎙️ Audio & Voice"],
-        ["⚡ Power & Screen", "🚨 Security & Spy"],
-        ["🔊 Volume & Media", "🤖 AI & Automation"],
-        ["🌟 Extra Tools ➡️", "🏠 Main Menu"],
+        ["🛡️ Spy & Security", "🤖 Sandbox & AI"],
+        ["⚡ Power & Ghost Mode", "🎵 Media & Sound"],
+        ["🌟 Extra Tools ➡️", "📊 Laptop Status"],
+        ["📸 Quick Screen", "🔙 Main Menu"],
     ])
 
 
@@ -330,9 +330,10 @@ MENU_MAP = {
 }
 
 
-def get_kb_for(menu: str) -> dict:
+def get_kb_for(menu: str) -> Optional[dict]:
     """Get keyboard for a menu name."""
-    return MENU_MAP.get(menu, get_main_menu_kb)()
+    fn = MENU_MAP.get(menu, get_main_menu_kb)
+    return fn()
 
 
 # ==============================================================================
@@ -745,7 +746,7 @@ class TelegramBotRunner:
                 return True
 
         # ==================== ROOT COMMANDS ====================
-        if cmd in ("/start", "/menu") or clean in ("🏠 Main Menu", "📱 Menu"):
+        if cmd in ("/start", "/menu", "/main") or clean in ("🏠 Main Menu", "🔙 Main Menu", "📱 Menu", "Main Menu"):
             cfg = get_runtime_config()
             if cfg.get("owner_user_id") is None:
                 set_owner(user_id)
@@ -756,6 +757,8 @@ class TelegramBotRunner:
         category_map = {
             # Top-Level Dashboards & Navigation
             "💻 Laptop Mode": "laptop",
+            "💻 Laptop Control Panel": "laptop",
+            "💻 Laptop": "laptop",
             "/laptop": "laptop",
             "☁️ Cloud Server": "cloud",
             "/cloud": "cloud",
@@ -764,6 +767,7 @@ class TelegramBotRunner:
             "🌟 Extra Tools": "extra",
             "🔙 Extra Tools": "extra",
             "🔙 Laptop Menu": "laptop",
+            "🔙 Back to Laptop": "laptop",
             "🔙 Back": "laptop",
 
             # Sub-category menus
@@ -771,27 +775,52 @@ class TelegramBotRunner:
             "🎙️ Audio & Voice": "audio",
             "🖥️ System Info": "system",
             "⚡ Power & Screen": "power",
+            "⚡ Power & Ghost Mode": "power",
+            "⚡ Power Mode": "power",
+            "/power": "power",
             "🔊 Volume & Sound": "volume",
             "🔊 Volume & Media": "volume",
-            "🎵 Media Control": "media",
+            "🎵 Media & Sound": "volume",
+            "🎵 Media Control": "volume",
+            "/volume": "volume",
+            "/sound": "volume",
             "🖱️ Mouse & Keyboard": "mouse",
+            "/mouse": "mouse",
             "🌐 Browser & Apps": "browser",
+            "/browser": "browser",
+            "/apps": "browser",
             "🚨 Security & Spy": "security",
+            "🛡️ Spy & Security": "security",
+            "/security": "security",
+            "/spy": "security",
             "🤖 AI & Automation": "ai",
+            "🤖 Sandbox & AI": "ai",
+            "🤖 AI & Terminal": "ai",
+            "🤖 Sandbox": "ai",
+            "/ai": "ai",
+            "/sandbox": "ai",
             "📋 Clipboard & Notes": "clipboard",
+            "/clipboard": "clipboard",
             "📶 Network & Offline": "network",
             "📶 Network & Hotspot": "network",
+            "/network": "network",
+            "/wifi": "network",
             "🔧 Terminal & Files": "terminal",
+            "/terminal": "terminal",
+            "/bash": "terminal",
             "⏰ Reminders & Memory": "reminders",
+            "/remind": "reminders",
             "🎛️ Quick Toggles": "toggles",
+            "/toggles": "toggles",
             "❓ Help & Status": "help",
+            "/help": "help",
         }
         if clean in category_map:
             self.switch_menu(chat_id, category_map[clean])
             return True
 
         # ==================== CAMERA & MEDIA ====================
-        if clean == "📸 Screenshot" or cmd == "/screenshot" or low in ("screenshot", "screen shot"):
+        if clean in ("📸 Quick Screen", "📸 Screenshot", "📸 Screen Peek") or cmd == "/screenshot" or low in ("screenshot", "screen shot", "quick screen"):
             temp = tg_send_message(chat_id, "📸 Capturing screen...")
             res = laptop_screenshot()
             tg_delete_message(chat_id, temp)
@@ -939,12 +968,12 @@ class TelegramBotRunner:
             return True
 
         # ==================== VOLUME & SOUND ====================
-        if clean == "🔉 Volume Down" or low in ("vol down", "volume down"):
+        if clean in ("🔉 Vol -", "🔉 Volume Down") or low in ("vol down", "volume down", "vol -", "voldown"):
             res = laptop_vol_down()
             self.send_result(chat_id, "🔉 *Volume Down:*", res)
             return True
 
-        if clean == "🔊 Volume Up" or low in ("vol up", "volume up"):
+        if clean in ("🔊 Vol +", "🔊 Volume Up") or low in ("vol up", "volume up", "vol +", "volup"):
             res = laptop_vol_up()
             self.send_result(chat_id, "🔊 *Volume Up:*", res)
             return True
@@ -977,12 +1006,12 @@ class TelegramBotRunner:
             self.send_result(chat_id, "⏭️ *Next Track:*", res)
             return True
 
-        if clean == "⏮️ Previous Track":
+        if clean in ("⏮️ Prev Track", "⏮️ Previous Track"):
             res = execute_on_laptop("playerctl previous 2>/dev/null || xdotool key XF86AudioPrev")
             self.send_result(chat_id, "⏮️ *Previous Track:*", res)
             return True
 
-        if clean == "🎵 Play Song (Search)":
+        if clean in ("🎵 Play Song", "🎵 Play Song (Search)"):
             _user_pending_input[chat_id] = "play_song"
             self.send_result(chat_id, "🎵 *Play Song:*", "Song name bhejein:")
             return True
@@ -1089,6 +1118,11 @@ class TelegramBotRunner:
         if clean == "🚀 Open Any App":
             _user_pending_input[chat_id] = "open_app"
             self.send_result(chat_id, "🚀 *Open App:*", "App name bhejein:")
+            return True
+
+        if low in ("antigravity", "antygravity", "open antigravity", "antigravity on kar", "mere antygravity on kar", "mere antigravity on kar", "antigravity chalao", "antigravity open karo"):
+            res = laptop_human_open_app("antigravity")
+            self.send_result(chat_id, "🚀 *Antigravity IDE:*", "Antigravity IDE launch kar diya hai laptop screen par! ✨")
             return True
 
         if clean == "📱 Running Apps" or cmd == "/apps":
@@ -1331,12 +1365,26 @@ class TelegramBotRunner:
             self.send_result(chat_id, diag, "")
             return True
 
-        if clean == "💻 Laptop Status":
+        if clean in ("📊 Laptop Status", "💻 Laptop Status") or cmd in ("/laptop_status", "/status") or low in ("laptop status", "laptop info"):
             online = is_laptop_online()
-            status = f"💻 *Laptop:* {'🟢 ONLINE' if online else '🔴 OFFLINE'}"
+            status = f"💻 *Laptop Status:* {'🟢 ONLINE (Connected)' if online else '🔴 OFFLINE'}"
             if online:
-                status += f"\n🔋 {laptop_battery()}"
-            self.send_result(chat_id, status, "")
+                try:
+                    batt = laptop_battery()
+                    if batt:
+                        status += f"\n🔋 **Battery:** {batt}"
+                except Exception:
+                    pass
+                try:
+                    ip = execute_on_laptop("hostname -I | awk '{print $1}'")
+                    if ip and ip.strip():
+                        status += f"\n🌐 **Local IP:** `{ip.strip()}`"
+                except Exception:
+                    pass
+                status += f"\n🎮 **Remote Control:** {'🟢 ENABLED' if _is_remote_active else '🔴 PAUSED (Self-Use)'}"
+                status += f"\n⚡ **Auto-Approve:** {'🟢 ON' if _is_auto_approve_active else '🔴 OFF'}"
+                status += f"\n🔒 **Screen Lock:** {'🔒 LOCKED' if _is_locked else '🔓 UNLOCKED'}"
+            self.send_result(chat_id, status, "", menu="laptop")
             return True
 
         if clean in ("☁️ Cloud Status", "📊 Cloud Status"):

@@ -42,6 +42,54 @@ def get_x11_env() -> dict:
     return env
 
 
+YDOTOOL_SOCKET = "/tmp/.ydotool_socket"
+_ydotoold_started = False
+
+
+def _ensure_ydotoold():
+    """Start ydotoold daemon if not already running (Wayland mouse input)."""
+    global _ydotoold_started
+    if _ydotoold_started:
+        return
+    env = os.environ.copy()
+    env["YDOTOOL_SOCKET"] = YDOTOOL_SOCKET
+    r = subprocess.run(
+        ["ydotool", "mousemove", "--absolute", "-x", "0", "-y", "0"],
+        env=env, capture_output=True
+    )
+    if r.returncode == 0:
+        _ydotoold_started = True
+        return
+    subprocess.run(["sudo", "chmod", "666", "/dev/uinput"], capture_output=True)
+    subprocess.Popen(
+        ["ydotoold", "--socket-path", YDOTOOL_SOCKET, "--socket-perm", "0666"],
+        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+    )
+    time.sleep(2)
+    _ydotoold_started = True
+
+
+def _yd_move(x: int, y: int):
+    """Move mouse via ydotool — Wayland-native, cursor is actually visible."""
+    _ensure_ydotoold()
+    env = os.environ.copy()
+    env["YDOTOOL_SOCKET"] = YDOTOOL_SOCKET
+    subprocess.run(
+        ["ydotool", "mousemove", "--absolute", "-x", str(x), "-y", str(y)],
+        env=env, capture_output=True
+    )
+
+
+def _yd_click(button: str = "left"):
+    """Click via ydotool (Wayland-native). 0xC0=left, 0xC1=right, 0xC2=middle."""
+    _ensure_ydotoold()
+    env = os.environ.copy()
+    env["YDOTOOL_SOCKET"] = YDOTOOL_SOCKET
+    btn_map = {"left": "0xC0", "right": "0xC1", "middle": "0xC2"}
+    code = btn_map.get(button.lower(), "0xC0")
+    subprocess.run(["ydotool", "click", code], env=env, capture_output=True)
+
+
 def get_current_mouse_position() -> Tuple[int, int]:
     """Retrieve current (x, y) coordinates of the mouse cursor using xdotool."""
     env = get_x11_env()
@@ -73,6 +121,7 @@ def human_mouse_move(target_x: int, target_y: int, duration: Optional[float] = N
     """
     Move the mouse cursor smoothly from current position to (target_x, target_y)
     following a natural cubic Bezier trajectory with realistic human easing.
+    Uses ydotool (Wayland-native) so the cursor is visually visible on screen.
     """
     env = get_x11_env()
     x0, y0 = get_current_mouse_position()
@@ -82,7 +131,7 @@ def human_mouse_move(target_x: int, target_y: int, duration: Optional[float] = N
     dist = math.hypot(dx, dy)
 
     if dist < 4:
-        subprocess.run(["xdotool", "mousemove", str(target_x), str(target_y)], env=env)
+        _yd_move(target_x, target_y)
         return True
 
     # Calculate realistic duration and step count based on distance
@@ -133,11 +182,11 @@ def human_mouse_move(target_x: int, target_y: int, duration: Optional[float] = N
         cur_x = int(round(bx + jitter_x))
         cur_y = int(round(by + jitter_y))
 
-        subprocess.run(["xdotool", "mousemove", str(cur_x), str(cur_y)], env=env)
+        _yd_move(cur_x, cur_y)
         time.sleep(max(0.005, sleep_per_step))
 
     # Exact final landing
-    subprocess.run(["xdotool", "mousemove", str(target_x), str(target_y)], env=env)
+    _yd_move(target_x, target_y)
     return True
 
 
@@ -164,11 +213,7 @@ def human_mouse_click(
     b = btn_map.get(button.lower().strip(), "1")
 
     for c in range(clicks):
-        # Realistic press down and release timing
-        subprocess.run(["xdotool", "mousedown", b], env=env)
-        time.sleep(random.uniform(0.06, 0.10))
-        subprocess.run(["xdotool", "mouseup", b], env=env)
-
+        _yd_click(button)
         if clicks > 1 and c < clicks - 1:
             time.sleep(random.uniform(0.10, 0.16))
 
@@ -580,3 +625,184 @@ def analyze_screen_and_click(target_element: str, instruction: str = "") -> str:
                     os.remove(fpath)
                 except Exception:
                     pass
+
+
+def human_mouse_drag(
+    start_x: int,
+    start_y: int,
+    end_x: int,
+    end_y: int,
+    duration: Optional[float] = None,
+) -> str:
+    """
+    Drag mouse from (start_x, start_y) to (end_x, end_y) using human-like physics:
+    1. Smoothly glide to the start handle.
+    2. Press left mouse button down with realistic press delay.
+    3. Drag along an eased trajectory with natural acceleration,
+       micro-wobble (human hand tremor), and deceleration.
+    4. Optional micro-overshoot and correction at destination.
+    5. Release mouse button after brief visual hesitation.
+    """
+    env = get_x11_env()
+
+    # 1. Move to start position
+    human_mouse_move(start_x, start_y)
+    time.sleep(random.uniform(0.08, 0.16))  # Human grip hesitation
+
+    # 2. Press down
+    subprocess.run(["xdotool", "mousedown", "1"], env=env)
+    time.sleep(random.uniform(0.07, 0.14))
+
+    # Distance and steps
+    dx = end_x - start_x
+    dy = end_y - start_y
+    dist = math.hypot(dx, dy)
+
+    if duration is None:
+        duration = max(0.45, min(1.25, dist / 380.0 + random.uniform(0.18, 0.38)))
+
+    steps = int(max(25, min(70, dist / 7.0 + random.randint(10, 20))))
+    sleep_per_step = duration / float(steps)
+
+    # Subtle perpendicular arc + jitter
+    perp_x = -dy / (dist + 1e-6)
+    perp_y = dx / (dist + 1e-6)
+    arc_dev = random.uniform(-0.06, 0.06) * dist
+
+    # Trajectory with acceleration -> max speed -> deceleration
+    for i in range(1, steps + 1):
+        t = i / float(steps)
+        # S-curve / Smoothstep ease for realistic muscle dynamics
+        ease_t = t * t * (3.0 - 2.0 * t)
+
+        # Base interpolation
+        base_x = start_x + dx * ease_t
+        base_y = start_y + dy * ease_t
+
+        # Sine arc curvature
+        arc = math.sin(math.pi * ease_t) * arc_dev
+
+        # Micro-tremor (human hand tremor: +/- 0.5 to 1.8 px)
+        jitter_x = random.gauss(0, 0.7)
+        jitter_y = random.gauss(0, 0.9)
+
+        target_step_x = int(round(base_x + perp_x * arc + jitter_x))
+        target_step_y = int(round(base_y + perp_y * arc + jitter_y))
+
+        subprocess.run(["xdotool", "mousemove", str(target_step_x), str(target_step_y)], env=env)
+        time.sleep(sleep_per_step)
+
+    # Overshoot & micro-correction (human behavior when aligning puzzle)
+    overshoot_px = random.randint(2, 6) if abs(dx) > 30 else 0
+    if overshoot_px > 0 and random.random() < 0.75:
+        dir_sign = 1 if dx >= 0 else -1
+        os_x = end_x + dir_sign * overshoot_px
+        os_y = end_y + random.randint(-1, 1)
+        subprocess.run(["xdotool", "mousemove", str(os_x), str(os_y)], env=env)
+        time.sleep(random.uniform(0.06, 0.12))
+
+        # Correction back to exact destination
+        subprocess.run(["xdotool", "mousemove", str(end_x), str(end_y)], env=env)
+        time.sleep(random.uniform(0.04, 0.08))
+    else:
+        subprocess.run(["xdotool", "mousemove", str(end_x), str(end_y)], env=env)
+
+    # Confirmation pause before release (100 - 220ms)
+    time.sleep(random.uniform(0.12, 0.24))
+    subprocess.run(["xdotool", "mouseup", "1"], env=env)
+
+    return f"🧩 Human-dragged slider from ({start_x}, {start_y}) to ({end_x}, {end_y}) over {duration:.2f}s with natural Bézier physics!"
+
+
+def solve_slider_captcha(
+    slider_hint: str = "slider puzzle button or handle",
+    target_hint: str = "puzzle piece gap or empty slot",
+) -> str:
+    """
+    Capture screen, use Gemini Multimodal Vision to detect the slider handle
+    and target destination slot, then drag with human-like Bézier physics.
+    """
+    img_path = capture_desktop_image()
+    if not img_path:
+        return "❌ Error: Screen screenshot capture nahi ho paya."
+
+    try:
+        try:
+            with Image.open(img_path) as im:
+                w, h = im.size
+        except Exception:
+            w, h = 1920, 1080
+
+        prompt = (
+            f"You are an expert CAPTCHA Vision Solver. The screen resolution is {w}x{h} pixels.\n"
+            "This screen contains an interactive sliding puzzle or CAPTCHA challenge (like Geetest, Tencent, or slider).\n"
+            f"Identify 2 exact pixel locations:\n"
+            f"1. The slider drag handle/button ({slider_hint})\n"
+            f"2. The target destination gap/slot where the puzzle piece fits ({target_hint})\n\n"
+            "Return ONLY a pure JSON object in this format (no markdown formatting, no other text):\n"
+            "{\n"
+            '  "found": true,\n'
+            '  "start_x": <slider button center x>,\n'
+            '  "start_y": <slider button center y>,\n'
+            '  "end_x": <target destination center x>,\n'
+            '  "end_y": <target destination center y>,\n'
+            '  "explanation": "<short description in Hindi/English>"\n'
+            "}\n"
+            'If you cannot find an active slider or puzzle challenge on screen, return: {"found": false, "explanation": "..."}'
+        )
+
+        vision_out = call_gemini_vision(img_path, prompt)
+        if not vision_out:
+            return "⚠️ Vision AI ne screen par koi slider ya puzzle detect nahi kiya."
+
+        clean_json = vision_out.strip()
+        if clean_json.startswith("```"):
+            clean_json = re.sub(r"^```[a-zA-Z]*\n", "", clean_json)
+            clean_json = re.sub(r"\n```$", "", clean_json).strip()
+
+        data = None
+        try:
+            data = json.loads(clean_json)
+        except Exception:
+            m_sx = re.search(r'"start_x"\s*:\s*(\d+)', clean_json)
+            m_sy = re.search(r'"start_y"\s*:\s*(\d+)', clean_json)
+            m_ex = re.search(r'"end_x"\s*:\s*(\d+)', clean_json)
+            m_ey = re.search(r'"end_y"\s*:\s*(\d+)', clean_json)
+            if m_sx and m_ex:
+                data = {
+                    "found": True,
+                    "start_x": int(m_sx.group(1)),
+                    "start_y": int(m_sy.group(1)) if m_sy else 500,
+                    "end_x": int(m_ex.group(1)),
+                    "end_y": int(m_ey.group(1)) if m_ey else 500,
+                    "explanation": "Extracted via regex",
+                }
+
+        if not data or not data.get("found"):
+            expl = data.get("explanation", clean_json) if data else clean_json
+            return f"⚠️ Slider CAPTCHA detect nahi hua:\n{expl}"
+
+        sx = int(data.get("start_x", 0))
+        sy = int(data.get("start_y", 0))
+        ex = int(data.get("end_x", 0))
+        ey = int(data.get("end_y", sy))
+
+        if sx <= 0 or ex <= 0:
+            return f"⚠️ Invalid slider coordinates found: start=({sx},{sy}), end=({ex},{ey})"
+
+        logger.info(f"Solving slider CAPTCHA: ({sx}, {sy}) -> ({ex}, {ey})")
+        drag_res = human_mouse_drag(sx, sy, ex, ey)
+        return (
+            f"🧩 **Slider CAPTCHA Drag Executed!**\n\n"
+            f"• **Start (Handle):** `(x={sx}, y={sy})`\n"
+            f"• **Target (Gap):** `(x={ex}, y={ey})`\n"
+            f"• **Physics:** Bézier ease-in-out curve + micro-jitter\n\n"
+            f"{drag_res}\n\n"
+            f"*Context:* {data.get('explanation', '')}"
+        )
+    finally:
+        try:
+            if img_path and os.path.exists(img_path):
+                os.remove(img_path)
+        except Exception:
+            pass

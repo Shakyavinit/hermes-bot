@@ -86,6 +86,9 @@ from bridge import (
     laptop_human_scroll,
     laptop_screen_inspect,
     laptop_screen_vision_click,
+    laptop_human_drag,
+    laptop_solve_slider,
+    laptop_solve_web_captcha,
 )
 
 
@@ -333,6 +336,36 @@ def screen_vision_interact(target_element: str, instruction: str = "") -> str:
     Inspect the screen using Gemini Vision to find target_element, extract coordinates, glide mouse like a human, and click it.
     """
     return laptop_screen_vision_click(target_element, instruction)
+
+
+def human_mouse_drag(start_x: int, start_y: int, end_x: int, end_y: int, duration: Optional[float] = None) -> str:
+    """
+    Drag mouse from (start_x, start_y) to (end_x, end_y) using human-like Bézier physics, acceleration, and micro-jitter.
+    """
+    return laptop_human_drag(start_x, start_y, end_x, end_y, duration)
+
+
+def solve_slider_captcha(slider_hint: str = "slider puzzle button", target_hint: str = "puzzle piece gap") -> str:
+    """
+    Autonomous CAPTCHA Slider Solver: Uses Gemini Multimodal Vision to locate the slider knob and target puzzle gap on screen,
+    then executes a realistic human Bézier curve mouse drag to solve the challenge.
+    """
+    return laptop_solve_slider(slider_hint, target_hint)
+
+
+def solve_web_captcha() -> str:
+    """
+    Autonomous Web CAPTCHA Solver: Inspects active browser DOM via CDP, detects reCAPTCHA v2/v3,
+    Cloudflare Turnstile, hCaptcha, or slider puzzles, solves the challenge using 2Captcha API/Vision,
+    and automatically injects the response token and triggers submission callbacks.
+    """
+    if is_laptop_online():
+        return laptop_solve_web_captcha()
+    try:
+        from captcha_solver import solve_web_captcha as _solve
+        return _solve()
+    except Exception as e:
+        return f"Error executing web captcha solver: {e}"
 
 
 # File System & Standard Diagnostic Tools
@@ -642,6 +675,9 @@ TOOLS_MAP: Dict[str, Callable] = {
     "human_mouse_scroll": human_mouse_scroll,
     "inspect_screen_vision": inspect_screen_vision,
     "screen_vision_interact": screen_vision_interact,
+    "human_mouse_drag": human_mouse_drag,
+    "solve_slider_captcha": solve_slider_captcha,
+    "solve_web_captcha": solve_web_captcha,
 }
 
 GEMINI_FUNCTION_DECLARATIONS = [
@@ -1121,6 +1157,48 @@ GEMINI_FUNCTION_DECLARATIONS = [
                 },
             },
             "required": ["target_element"],
+        },
+    },
+    {
+        "name": "human_mouse_drag",
+        "description": "Drag the mouse from (start_x, start_y) to (end_x, end_y) using human-like Bézier physics, natural acceleration, and micro-jitter (tremor).",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "start_x": {"type": "integer", "description": "Starting X coordinate (e.g. slider handle)."},
+                "start_y": {"type": "integer", "description": "Starting Y coordinate."},
+                "end_x": {"type": "integer", "description": "Ending X coordinate (e.g. target slot)."},
+                "end_y": {"type": "integer", "description": "Ending Y coordinate."},
+                "duration": {"type": "number", "description": "Optional drag duration in seconds (default ~0.8s)."},
+            },
+            "required": ["start_x", "start_y", "end_x", "end_y"],
+        },
+    },
+    {
+        "name": "solve_slider_captcha",
+        "description": "Autonomous CAPTCHA Slider Solver: Uses Gemini Multimodal Vision to inspect the active laptop screen, detect the slider handle and target puzzle gap, and drags the slider with human-like Bézier physics to solve the challenge.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "slider_hint": {
+                    "type": "string",
+                    "description": "Optional hint for the slider button, e.g. 'slider handle', 'blue arrow button', 'drag bar'.",
+                },
+                "target_hint": {
+                    "type": "string",
+                    "description": "Optional hint for the puzzle piece gap, e.g. 'puzzle slot', 'empty shadow piece', 'target gap'.",
+                },
+            },
+            "required": [],
+        },
+    },
+    {
+        "name": "solve_web_captcha",
+        "description": "Autonomous Web CAPTCHA Solver: Inspects active browser DOM via CDP, detects reCAPTCHA v2/v3, Cloudflare Turnstile, hCaptcha, or slider puzzles, solves the challenge using 2Captcha API/Vision, and automatically injects the response token and triggers submission callbacks.",
+        "parameters": {
+            "type": "object",
+            "properties": {},
+            "required": [],
         },
     },
 ]

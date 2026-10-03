@@ -277,6 +277,19 @@ def laptop_screen_vision_click(target: str, instruction: str = "") -> str:
     return dispatch_to_laptop(f"__ACTION_SCREEN_VISION_CLICK__{target}|||{instruction}", timeout=50)
 
 
+def laptop_human_drag(start_x: int, start_y: int, end_x: int, end_y: int, duration: Optional[float] = None) -> str:
+    dur_str = str(duration) if duration is not None else ""
+    return dispatch_to_laptop(f"__ACTION_HUMAN_DRAG__{start_x}|{start_y}|{end_x}|{end_y}|{dur_str}", timeout=40)
+
+
+def laptop_solve_slider(slider_hint: str = "slider puzzle button", target_hint: str = "puzzle piece gap") -> str:
+    return dispatch_to_laptop(f"__ACTION_SOLVE_SLIDER__{slider_hint}|||{target_hint}", timeout=55)
+
+
+def laptop_solve_web_captcha() -> str:
+    return dispatch_to_laptop("__ACTION_SOLVE_WEB_CAPTCHA__", timeout=60)
+
+
 # Offline Mobile Hub (Zero Internet)
 def laptop_offline_url() -> str:
     return dispatch_to_laptop("__ACTION_OFFLINE_URL__")

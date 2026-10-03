@@ -44,10 +44,12 @@ from human_gui import (
     human_open_app,
     human_mouse_click,
     human_mouse_move,
+    human_mouse_drag,
     human_mouse_scroll,
     human_type_text,
     inspect_screen_vision,
     analyze_screen_and_click,
+    solve_slider_captcha,
     capture_desktop_image,
 )
 
@@ -974,6 +976,37 @@ def execute_action(cmd: str) -> str:
             send_tg_photo("/tmp/hermes_clicked_state.png", f"🎯 *Clicked '{target}' like a human!*")
         return res
 
+    # 31b. Visual Screen Slider Drag (Human-like Bezier Drag)
+    if clean.startswith("__ACTION_HUMAN_DRAG__"):
+        payload = clean[len("__ACTION_HUMAN_DRAG__"):].strip()
+        parts = payload.split("|")
+        try:
+            sx = int(parts[0])
+            sy = int(parts[1])
+            ex = int(parts[2])
+            ey = int(parts[3])
+            dur = float(parts[4]) if len(parts) > 4 and parts[4] else None
+            return human_mouse_drag(sx, sy, ex, ey, duration=dur)
+        except Exception as e:
+            return f"❌ Error executing human mouse drag: {e}"
+
+    # 31c. Autonomous Vision Slider CAPTCHA Solver
+    if clean.startswith("__ACTION_SOLVE_SLIDER__"):
+        payload = clean[len("__ACTION_SOLVE_SLIDER__"):].strip()
+        parts = payload.split("|||", 1)
+        sl_hint = parts[0] if parts[0] else "slider puzzle button or handle"
+        tg_hint = parts[1] if len(parts) > 1 and parts[1] else "puzzle piece gap or empty slot"
+        res = solve_slider_captcha(slider_hint=sl_hint, target_hint=tg_hint)
+        return res
+
+    # 31d. Autonomous Web CAPTCHA Solver (reCAPTCHA v2/v3, Turnstile, hCaptcha)
+    if clean == "__ACTION_SOLVE_WEB_CAPTCHA__":
+        try:
+            from captcha_solver import solve_web_captcha
+            return solve_web_captcha()
+        except Exception as e:
+            return f"❌ Error executing web captcha solver: {e}" 
+
     # 32. Offline Mobile Hub URL & QR Code
     if clean == "__ACTION_OFFLINE_URL__":
         try:
@@ -1179,8 +1212,6 @@ def antigravity_watcher_thread():
                             logger.info(f"Auto-approved sandbox prompt #{steps} (silent until task completion)")
                             break
 
-                        img_path = "/tmp/hermes_prompt_screen.png"
-                        captured = capture_desktop_image(img_path)
                         alert_msg = (
                             "⚡ *Antigravity: Sandbox Approval Required*\n\n"
                             "Terminal execution permission mang raha hai.\n"
@@ -1201,10 +1232,7 @@ def antigravity_watcher_thread():
                         except Exception:
                             pass
 
-                        if captured and os.path.exists(captured) and os.path.getsize(captured) > 15000:
-                            _active_prompt_msg_id = send_tg_photo(captured, alert_msg, reply_markup=get_node_reply_keyboard())
-                        else:
-                            _active_prompt_msg_id = send_tg_msg(alert_msg, reply_markup=get_node_reply_keyboard())
+                        _active_prompt_msg_id = send_tg_msg(alert_msg, reply_markup=get_node_reply_keyboard())
                         break
 
                     try:

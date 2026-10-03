@@ -40,6 +40,7 @@ GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 GEMINI_API_KEY_2 = os.getenv("GEMINI_API_KEY_2", "")
+APIKEY_2CAPTCHA = os.getenv("APIKEY_2CAPTCHA", os.getenv("TWO_CAPTCHA_API_KEY", ""))
 _keys_raw = os.getenv("GEMINI_API_KEYS", "")
 if _keys_raw:
     GEMINI_API_KEYS = [k.strip() for k in _keys_raw.split(",") if k.strip()]
