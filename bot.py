@@ -474,39 +474,44 @@ def get_status_text() -> str:
     cfg = get_runtime_config()
     facts = get_all_facts()
     laptop_status = "ONLINE 🟢" if is_laptop_online() else "OFFLINE 🔴"
+    owner = cfg.get("owner_username", "kissbilla2")
     return (
-        "📊 *Hermes System Status:*\n\n"
-        f"```\n{sys_stat}\n```\n"
-        f"• **Owner:** @{cfg.get('owner_username', 'kissbilla2')}\n"
-        f"• **💻 Laptop:** {laptop_status}\n"
-        f"• **☁️ Cloud:** ONLINE 24/7 🟢\n"
-        f"• **AI:** Gemini Flash Lite\n"
-        f"• **Memory Facts:** {len(facts)}\n"
-        f"• **Remote Mode:** {'🟢 ON' if _is_remote_active else '🔴 OFF'}\n"
-        f"• **Auto-Approve:** {'🟢 ON' if _is_auto_approve_active else '🔴 OFF'}"
+        "📊 *HERMES SYSTEM TELEMETRY*\n"
+        "━━━━━━━━━━━━━━━━━━━━━\n\n"
+        f"• 👑 *Authorized User:* @{owner}\n"
+        f"• 💻 *Laptop Node:* `{laptop_status}`\n"
+        f"• ☁️ *Cloud Gateway:* `ONLINE 24/7 🟢`\n"
+        f"• 🎮 *Remote Access:* `{'ACTIVE 🟢' if _is_remote_active else 'PAUSED 🔴'}`\n"
+        f"• ⚡ *Auto-Approve:* `{'ENABLED 🟢' if _is_auto_approve_active else 'DISABLED 🔴'}`\n"
+        f"• 🧠 *Memory Store:* `{len(facts)} entries`\n\n"
+        "━━━━━━━━━━━━━━━━━━━━━\n"
+        "🖥️ *HARDWARE STATS*\n"
+        f"```\n{sys_stat}\n```"
     )
 
 
 def get_help_text() -> str:
     return (
-        "🛠️ *Hermes Bot - Complete Guide*\n\n"
-        "*📱 Menu Navigation:*\n"
-        "Har menu me niche `🏠 Main Menu` button hai wapas jaane ke liye.\n\n"
-        "*🎯 Direct Commands:*\n"
-        "• `/screenshot` - Screen photo\n"
-        "• `/webcam` - Camera photo\n"
-        "• `/battery` - Battery status\n"
-        "• `/remind 10m task` - Timer\n"
-        "• `/self` - Toggle self-use\n"
-        "• `/auto` - Toggle auto-approve\n\n"
-        "*🖼️ Media Uploads:*\n"
-        "• Photo bhejein → AI analyze karega\n"
-        "• Voice note → Auto transcribe\n"
-        "• File upload → Save to workspace\n\n"
-        "*🤖 Natural Language:*\n"
-        "Chat me kuch bhi bolein - AI samjhega!\n"
-        "Example: 'chrome khol', 'volume badha', 'screenshot le'\n\n"
-        "🔒 Locked to @kissbilla2"
+        "⚡ *HERMES COMMAND & CONTROL GUIDE*\n"
+        "━━━━━━━━━━━━━━━━━━━━━\n\n"
+        "🎯 *SYSTEM COMMANDS:*\n"
+        "• `/screenshot` — Capture current screen\n"
+        "• `/webcam` — Snapshot from webcam\n"
+        "• `/battery` — Power & charging telemetry\n"
+        "• `/status` — Full system & node status\n"
+        "• `/remind 10m task` — Set proactive reminder\n"
+        "• `/self` — Toggle Self-Use vs Remote Mode\n"
+        "• `/auto` — Toggle Auto-Approve engine\n"
+        "• `/diagnose` — Run API & latency diagnostics\n"
+        "• `/reset` — Reset session memory\n\n"
+        "━━━━━━━━━━━━━━━━━━━━━\n"
+        "🗣️ *NATURAL LANGUAGE CONTROL:*\n"
+        "Koi button dabane ki zaroorat nahi hai. Seedha chat me type karein:\n"
+        "• _'screenshot le aur dikha'_\n"
+        "• _'chrome me youtube kholo'_\n"
+        "• _'volume 50 percent kar do'_\n"
+        "• _'battery kitni bachi hai?'_\n\n"
+        "🔒 *Security:* Restricted strictly to authorized owner."
     )
 
 
@@ -615,44 +620,214 @@ class TelegramBotRunner:
     def switch_menu(self, chat_id: int, menu_name: str, title: str = None) -> None:
         """Switch to a submenu."""
         _user_menu_state[chat_id] = menu_name
+        _laptop = "ONLINE 🟢" if is_laptop_online() else "OFFLINE 🔴"
+        _remote = "ACTIVE 🟢" if _is_remote_active else "PAUSED 🔴"
+        _auto = "ON 🟢" if _is_auto_approve_active else "OFF 🔴"
         menu_titles = {
             "main": (
-                "👑 *Hermes Autonomous Agent*\n\n"
-                f"💻 Laptop: {'🟢 ONLINE' if is_laptop_online() else '🔴 OFFLINE'}\n"
-                f"🎮 Remote: {'🟢 ACTIVE' if _is_remote_active else '🔴 PAUSED'}\n"
-                f"⚡ Auto: {'🟢 ON' if _is_auto_approve_active else '🔴 OFF'}\n\n"
-                "Mode ya Control select karein:"
+                "⚡ *H E R M E S*  |  `v3.0`\n"
+                "━━━━━━━━━━━━━━━━━━━━━\n"
+                "👋 *Namaste! Main Hermes hoon.*\n"
+                "_Aapka 24/7 Autonomous AI Assistant_\n\n"
+                "📡 *LIVE STATUS:*\n"
+                f"• 💻 *Laptop Node:* `{_laptop}`\n"
+                f"• 🎮 *Remote Mode:* `{_remote}`\n"
+                f"• ⚡ *Auto Engine:* `{_auto}`\n"
+                "• ☁️ *Cloud Gateway:* `ONLINE 24/7 🟢`\n\n"
+                "━━━━━━━━━━━━━━━━━━━━━\n"
+                "🎯 *QUICK CONTROLS:*\n"
+                "• 📸 `screenshot` · `webcam` — Screen & Camera\n"
+                "• 🔋 `battery` · `wifi` — Power & Hardware\n"
+                "• 🔊 `volume [0-100]` · `mute` — Sound & Media\n"
+                "• 🌐 `open [app/url]` — App & Browser\n"
+                "• ⏰ `/remind 10m [kaam]` — Proactive Reminders\n\n"
+                "━━━━━━━━━━━━━━━━━━━━━\n"
+                "💬 *Bindaas chat me kuch bhi bolein ya command dein...*"
             ),
             "laptop": (
-                f"💻 *Laptop Control Panel* ({'🟢 ONLINE' if is_laptop_online() else '🔴 OFFLINE'})\n\n"
-                "Hardware controls & primary laptop actions:"
+                "💻 *LAPTOP CONTROL*\n"
+                "━━━━━━━━━━━━━━━━━━━━━\n\n"
+                f"🔌  Status  ›  `{_laptop}`\n\n"
+                "🎯 *Quick commands:*\n"
+                "`screenshot` · `webcam` · `battery`\n"
+                "`lock` · `mute` · `volume up/down`\n"
+                "`wifi` · `sleep` · `location`\n\n"
+                "━━━━━━━━━━━━━━━━━━━━━\n"
+                "📌 _Jo bhi bolein, laptop kar dega_"
             ),
             "cloud": (
-                "☁️ *Cloud Server Panel (Render 24/7)*\n\n"
-                "24/7 Cloud container management & diagnostics:"
+                "☁️ *CLOUD SERVER*  |  Render 24/7\n"
+                "━━━━━━━━━━━━━━━━━━━━━\n\n"
+                "🌐  Status  ›  `ONLINE 🟢`\n"
+                "🔗  Host    ›  `render.com`\n\n"
+                "🎯 *Commands:*\n"
+                "`/status` · `/diagnose` · `/reset`\n\n"
+                "━━━━━━━━━━━━━━━━━━━━━\n"
+                "📌 _24/7 cloud bot active hai_"
             ),
             "extra": (
-                "🌟 *Extra Tools Panel*\n\n"
-                "Apps, network, terminal, memory aur system details:"
+                "🌟 *EXTRA TOOLS*\n"
+                "━━━━━━━━━━━━━━━━━━━━━\n\n"
+                "🛠️ *Available:*\n"
+                "• Apps & Browser control\n"
+                "• Network & Hotspot\n"
+                "• Clipboard & Notes\n"
+                "• Terminal & Files\n"
+                "• System Info\n\n"
+                "━━━━━━━━━━━━━━━━━━━━━\n"
+                "📌 _Command type karein_"
             ),
-            "camera": "📸 *Camera & Media* - Photo/Video controls:",
-            "audio": "🎙️ *Audio & Voice* - Mic aur sound:",
-            "system": "🖥️ *System Info* - Laptop ki details:",
-            "power": "⚡ *Power & Screen* - Power management:",
-            "volume": "🔊 *Volume & Media* - Sound & playback controls:",
-            "media": "🔊 *Volume & Media* - Sound & playback controls:",
-            "mouse": "🖱️ *Mouse & Keyboard* - Human GUI controls:",
-            "browser": "🌐 *Browser & Apps* - App launcher:",
-            "security": "🚨 *Security & Spy* - Surveillance & CCTV:",
-            "ai": "🤖 *AI & Automation* - Sandbox approvals & AI status:",
-            "clipboard": "📋 *Clipboard & Notes* - Text management:",
-            "network": "📶 *Network & Hotspot* - WiFi/Hotspot/Offline Hub:",
-            "terminal": "🔧 *Terminal & Files* - Bash commands & files:",
-            "reminders": "⏰ *Reminders & Memory* - Notes & alerts:",
-            "toggles": "🎛️ *Quick Toggles* - Fast switches:",
-            "help": "❓ *Help & Status* - System info & guide:",
+            "camera": (
+                "📸 *CAMERA & MEDIA*\n"
+                "━━━━━━━━━━━━━━━━━━━━━\n\n"
+                "🎯 *Commands:*\n"
+                "`screenshot` · `/screenshot`\n"
+                "`webcam` · `/webcam`\n\n"
+                "━━━━━━━━━━━━━━━━━━━━━"
+            ),
+            "audio": (
+                "🎙️ *AUDIO & VOICE*\n"
+                "━━━━━━━━━━━━━━━━━━━━━\n\n"
+                "🎯 *Commands:*\n"
+                "`/mic` · `record audio`\n"
+                "`speak [text]` — TTS\n\n"
+                "━━━━━━━━━━━━━━━━━━━━━"
+            ),
+            "system": (
+                "🖥️ *SYSTEM INFO*\n"
+                "━━━━━━━━━━━━━━━━━━━━━\n\n"
+                "🎯 *Commands:*\n"
+                "`/status` · `/battery`\n"
+                "`wifi` · `location`\n\n"
+                "━━━━━━━━━━━━━━━━━━━━━"
+            ),
+            "power": (
+                "⚡ *POWER & SCREEN*\n"
+                "━━━━━━━━━━━━━━━━━━━━━\n\n"
+                "🎯 *Commands:*\n"
+                "`sleep` · `reboot` · `shutdown`\n"
+                "`screen off` · `screen on`\n"
+                "`ghost mode`\n\n"
+                "━━━━━━━━━━━━━━━━━━━━━"
+            ),
+            "volume": (
+                "🔊 *VOLUME & MEDIA*\n"
+                "━━━━━━━━━━━━━━━━━━━━━\n\n"
+                "🎯 *Commands:*\n"
+                "`volume up` · `volume down` · `mute`\n"
+                "`play` · `pause` · `stop`\n"
+                "`play [song name]`\n\n"
+                "━━━━━━━━━━━━━━━━━━━━━"
+            ),
+            "media": (
+                "🔊 *VOLUME & MEDIA*\n"
+                "━━━━━━━━━━━━━━━━━━━━━\n\n"
+                "🎯 *Commands:*\n"
+                "`volume up` · `volume down` · `mute`\n"
+                "`play` · `pause` · `stop`\n\n"
+                "━━━━━━━━━━━━━━━━━━━━━"
+            ),
+            "mouse": (
+                "🖱️ *MOUSE & KEYBOARD*\n"
+                "━━━━━━━━━━━━━━━━━━━━━\n\n"
+                "🎯 *Commands:*\n"
+                "`click [element]`\n"
+                "`type [text]`\n"
+                "`scroll up` · `scroll down`\n\n"
+                "━━━━━━━━━━━━━━━━━━━━━"
+            ),
+            "browser": (
+                "🌐 *BROWSER & APPS*\n"
+                "━━━━━━━━━━━━━━━━━━━━━\n\n"
+                "🎯 *Commands:*\n"
+                "`open [app name]`\n"
+                "`open [URL]`\n"
+                "`chrome` · `firefox` · `vlc`\n\n"
+                "━━━━━━━━━━━━━━━━━━━━━"
+            ),
+            "security": (
+                "🚨 *SECURITY & SPY*\n"
+                "━━━━━━━━━━━━━━━━━━━━━\n\n"
+                "🎯 *Commands:*\n"
+                "`alarm on` · `alarm off`\n"
+                "`lock` · `unlock`\n"
+                "`cctv on` · `cctv off`\n\n"
+                "━━━━━━━━━━━━━━━━━━━━━"
+            ),
+            "ai": (
+                "🤖 *AI & AUTOMATION*\n"
+                "━━━━━━━━━━━━━━━━━━━━━\n\n"
+                "🎯 *Commands:*\n"
+                "`/auto` — Toggle auto-approve\n"
+                "`/diagnose` — API health check\n"
+                "Antigravity task approve/deny\n\n"
+                "━━━━━━━━━━━━━━━━━━━━━"
+            ),
+            "clipboard": (
+                "📋 *CLIPBOARD & NOTES*\n"
+                "━━━━━━━━━━━━━━━━━━━━━\n\n"
+                "🎯 *Commands:*\n"
+                "`clipboard read`\n"
+                "`clipboard write [text]`\n"
+                "`save note [text]`\n"
+                "`show notes`\n\n"
+                "━━━━━━━━━━━━━━━━━━━━━"
+            ),
+            "network": (
+                "📶 *NETWORK & HOTSPOT*\n"
+                "━━━━━━━━━━━━━━━━━━━━━\n\n"
+                "🎯 *Commands:*\n"
+                "`wifi` — WiFi status\n"
+                "`hotspot start` · `hotspot stop`\n"
+                "`offline hub`\n\n"
+                "━━━━━━━━━━━━━━━━━━━━━"
+            ),
+            "terminal": (
+                "🔧 *TERMINAL & FILES*\n"
+                "━━━━━━━━━━━━━━━━━━━━━\n\n"
+                "🎯 *Commands:*\n"
+                "`run [bash command]`\n"
+                "`list files`\n"
+                "`read file [path]`\n\n"
+                "━━━━━━━━━━━━━━━━━━━━━"
+            ),
+            "reminders": (
+                "⏰ *REMINDERS & MEMORY*\n"
+                "━━━━━━━━━━━━━━━━━━━━━\n\n"
+                "🎯 *Commands:*\n"
+                "`/remind 10m task` — Set timer\n"
+                "`save note [text]`\n"
+                "`show memory`\n\n"
+                "━━━━━━━━━━━━━━━━━━━━━"
+            ),
+            "toggles": (
+                "🎛️ *QUICK TOGGLES*\n"
+                "━━━━━━━━━━━━━━━━━━━━━\n\n"
+                f"🔴  Self-Use   ›  `{'ON' if not _is_remote_active else 'OFF'}`\n"
+                f"⚡  Auto       ›  `{'ON' if _is_auto_approve_active else 'OFF'}`\n"
+                f"🔒  Lock       ›  `{'LOCKED' if _is_locked else 'UNLOCKED'}`\n"
+                f"🔇  Mute       ›  `{'MUTED' if _is_muted else 'UNMUTED'}`\n"
+                f"👁️  CCTV       ›  `{'ON' if _is_cctv_active else 'OFF'}`\n\n"
+                "━━━━━━━━━━━━━━━━━━━━━\n"
+                "📌 _Toggle karne ke liye command bhejein_"
+            ),
+            "help": (
+                "❓ *HELP & GUIDE*\n"
+                "━━━━━━━━━━━━━━━━━━━━━\n\n"
+                "📌 `/status` — System status\n"
+                "📌 `/screenshot` — Screen capture\n"
+                "📌 `/webcam` — Camera snap\n"
+                "📌 `/battery` — Battery %\n"
+                "📌 `/remind 10m task` — Timer\n"
+                "📌 `/self` — Self-use toggle\n"
+                "📌 `/auto` — Auto-approve toggle\n"
+                "📌 `/diagnose` — API health\n"
+                "📌 `/reset` — Clear AI memory\n\n"
+                "━━━━━━━━━━━━━━━━━━━━━\n"
+                "🤖 _Ya kuch bhi type karein — AI samjhega!_"
+            ),
         }
-        text = title or menu_titles.get(menu_name, "📱 Menu:")
+        text = title or menu_titles.get(menu_name, "📱 *Hermes Ready*\n━━━━━━━━━━━━━━━━━━━━━\nCommand bhejein:")
         tg_send_message(chat_id, text, reply_markup=get_kb_for(menu_name))
 
     def handle_button_or_command(self, chat_id: int, user_id: int, text: str) -> bool:
