@@ -255,8 +255,10 @@ def send_tg_msg(text: str, reply_markup: Optional[dict] = None) -> Optional[int]
         "text": text,
         "parse_mode": "Markdown",
     }
-    if reply_markup:
+    if reply_markup and "inline_keyboard" in reply_markup:
         payload["reply_markup"] = reply_markup
+    else:
+        payload["reply_markup"] = {"remove_keyboard": True}
     try:
         resp = requests.post(url, json=payload, timeout=20)
         if resp.status_code == 200 and resp.json().get("ok"):

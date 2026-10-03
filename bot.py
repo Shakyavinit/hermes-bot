@@ -81,12 +81,8 @@ _notes_storage: Dict[int, List[str]] = {}  # Local notes
 # ==============================================================================
 
 def kb(rows: List[List[str]], resize: bool = True, persistent: bool = True) -> dict:
-    """Helper to build reply keyboard."""
-    return {
-        "keyboard": [[{"text": t} for t in row] for row in rows],
-        "resize_keyboard": resize,
-        "is_persistent": persistent,
-    }
+    """Helper to build reply keyboard (disabled - all buttons removed)."""
+    return {"remove_keyboard": True}
 
 
 def get_main_menu_kb() -> dict:
@@ -325,10 +321,9 @@ MENU_MAP = {
 }
 
 
-def get_kb_for(menu: str) -> Optional[dict]:
-    """Get keyboard for a menu name."""
-    fn = MENU_MAP.get(menu, get_main_menu_kb)
-    return fn()
+def get_kb_for(menu: str = None) -> dict:
+    """Get keyboard for a menu name (disabled - all buttons removed)."""
+    return {"remove_keyboard": True}
 
 
 # ==============================================================================
@@ -375,8 +370,10 @@ def tg_send_message(
     payload = {"chat_id": chat_id, "text": text}
     if parse_mode:
         payload["parse_mode"] = parse_mode
-    if reply_markup:
+    if reply_markup and "inline_keyboard" in reply_markup:
         payload["reply_markup"] = reply_markup
+    else:
+        payload["reply_markup"] = {"remove_keyboard": True}
 
     try:
         resp = requests.post(f"{API_BASE}/sendMessage", json=payload, timeout=20)
