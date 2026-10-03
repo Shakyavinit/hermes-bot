@@ -15,7 +15,7 @@ import subprocess
 import sys
 import threading
 import time
-from typing import Optional
+from typing import Any, Dict, List, Optional, Tuple, Union
 import requests
 
 logging.basicConfig(
