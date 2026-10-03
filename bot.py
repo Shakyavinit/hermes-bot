@@ -413,6 +413,31 @@ def tg_send_chat_action(chat_id: int, action: str = "typing") -> None:
         pass
 
 
+def animate_jarvis_status(chat_id: int, stop_event: threading.Event) -> Optional[int]:
+    """Render a dynamic high-tech animated JARVIS HUD while processing."""
+    frames = [
+        "⚡ ⟨ J.A.R.V.I.S ⟩  *Neural Link Activating...* `[⬡⬡⬡⬡⬡]` (⌐■_■)",
+        "◈ ⟨ J.A.R.V.I.S ⟩  *Interfacing Kali Subsystems...* `[⬢⬢⬡⬡⬡]` ⚙️",
+        "✦ ⟨ J.A.R.V.I.S ⟩  *Synthesizing Telemetry & Intent...* `[⬢⬢⬢⬢⬡]` 🧠",
+        "❖ ⟨ J.A.R.V.I.S ⟩  *Executing Cyber Protocol...* `[⬢⬢⬢⬢⬢]` ⚡ (•̀ᴗ•́)و",
+    ]
+    msg_id = tg_send_message(chat_id, frames[0])
+    if not msg_id:
+        return None
+
+    def _anim():
+        i = 1
+        while not stop_event.wait(0.65):
+            try:
+                tg_edit_message(chat_id, msg_id, frames[i % len(frames)])
+                i += 1
+            except Exception:
+                break
+
+    threading.Thread(target=_anim, daemon=True).start()
+    return msg_id
+
+
 def tg_send_document(chat_id: int, file_bytes: bytes, filename: str, caption: str = "") -> None:
     try:
         files = {"document": (filename, io.BytesIO(file_bytes))}
@@ -625,24 +650,24 @@ class TelegramBotRunner:
         _auto = "ON 🟢" if _is_auto_approve_active else "OFF 🔴"
         menu_titles = {
             "main": (
-                "⚡ *H E R M E S*  |  `v3.0`\n"
-                "━━━━━━━━━━━━━━━━━━━━━\n"
-                "👋 *Namaste! Main Hermes hoon.*\n"
-                "_Aapka 24/7 Autonomous AI Assistant_\n\n"
-                "📡 *LIVE STATUS:*\n"
-                f"• 💻 *Laptop Node:* `{_laptop}`\n"
-                f"• 🎮 *Remote Mode:* `{_remote}`\n"
-                f"• ⚡ *Auto Engine:* `{_auto}`\n"
-                "• ☁️ *Cloud Gateway:* `ONLINE 24/7 🟢`\n\n"
-                "━━━━━━━━━━━━━━━━━━━━━\n"
-                "🎯 *QUICK CONTROLS:*\n"
-                "• 📸 `screenshot` · `webcam` — Screen & Camera\n"
-                "• 🔋 `battery` · `wifi` — Power & Hardware\n"
-                "• 🔊 `volume [0-100]` · `mute` — Sound & Media\n"
-                "• 🌐 `open [app/url]` — App & Browser\n"
-                "• ⏰ `/remind 10m [kaam]` — Proactive Reminders\n\n"
-                "━━━━━━━━━━━━━━━━━━━━━\n"
-                "💬 *Bindaas chat me kuch bhi bolein ya command dein...*"
+                "┌── ⚡ J.A.R.V.I.S  ::  H E R M E S  v3.0  ◈\n"
+                "│  (⌐■_■) \"Greetings Sir. All neural subsystems online.\"\n"
+                "┝━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+                "│  ⟨ SYSTEM TELEMETRY ⟩\n"
+                f"│  ⬡ 💻 Laptop Node  :: [ `{_laptop}` ]\n"
+                f"│  ⬡ ☁️ Cloud Core   :: [ `ONLINE 24/7 🟢` ]\n"
+                f"│  ⬡ 🎮 Remote Sync  :: [ `{_remote}` ]\n"
+                f"│  ⬡ ⚡ Auto-Engine  :: [ `{_auto}` ]\n"
+                "│  ⬡ 🛡️ Security     :: [ `LOCKED TO OPERATOR 🔒` ]\n"
+                "┝━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+                "│  ⟨ DIRECT PROTOCOLS ⟩\n"
+                "│  ◈ 📸 screenshot · webcam  ── Optical Recon (◉_◉)\n"
+                "│  ◈ 🔋 battery · wifi       ── Power & Link Telemetry ⚡\n"
+                "│  ◈ 🔊 volume · mute        ── Acoustic Control 🎵\n"
+                "│  ◈ 🌐 open [app/url]       ── Cyber Launcher 🚀\n"
+                "│  ◈ ⏰ /remind 10m [task]   ── Chrono Alert (•̀ᴗ•́)و\n"
+                "└──────────────────────────────\n"
+                "💬 (★ω★) Awaiting your command, Sir..."
             ),
             "laptop": (
                 "💻 *LAPTOP CONTROL*\n"
@@ -1703,18 +1728,24 @@ class TelegramBotRunner:
         if self.handle_button_or_command(chat_id, user_id, text):
             return
 
-        # Fallback: Natural language → AI Agent
+        # Fallback: Natural language → AI Agent with Real-time Animation
         tg_send_chat_action(chat_id, "typing")
-        status_id = tg_send_message(chat_id, "⏳ *Hermes:* Processing...")
+        stop_anim = threading.Event()
+        status_id = animate_jarvis_status(chat_id, stop_anim)
         try:
             result = self.agent.run_task(session_id=session_id, user_message=text)
-            tg_delete_message(chat_id, status_id)
-            current = _user_menu_state.get(chat_id, "main")
-            tg_send_message(chat_id, result, reply_markup=get_kb_for(current))
+            stop_anim.set()
+            time.sleep(0.1)
+            if status_id:
+                tg_delete_message(chat_id, status_id)
+            formatted_res = f"┌── ⚡ J.A.R.V.I.S  ::  PROTOCOL EXECUTED  (⌐■_■)\n│\n{result}\n│\n└── ◈ ⬡ Telemetry Nominal 🟢 (•̀ᴗ•́)و"
+            tg_send_message(chat_id, formatted_res)
         except Exception as e:
+            stop_anim.set()
             logger.error(f"Agent error: {e}")
-            tg_delete_message(chat_id, status_id)
-            tg_send_message(chat_id, f"❌ Error: {e}", reply_markup=get_main_menu_kb())
+            if status_id:
+                tg_delete_message(chat_id, status_id)
+            tg_send_message(chat_id, f"❌ [ JARVIS ERROR ] (ง︡'-'︠)ง: {e}")
 
     def start_polling(self) -> None:
         logger.info("Starting Telegram polling...")
