@@ -4,6 +4,7 @@ Enables bidirectional communication between 24/7 Render Cloud Bot
 and the user's physical local laptop.
 """
 
+import os
 import queue
 import time
 from typing import Dict, Optional
@@ -16,8 +17,18 @@ _task_results: Dict[str, str] = {}
 _last_heartbeat = [0.0]
 
 
+def is_running_locally() -> bool:
+    """Return True if Hermes is running directly on the user's physical laptop."""
+    # When deployed on Render cloud, Render sets RENDER=true
+    if os.getenv("RENDER"):
+        return False
+    return True
+
+
 def is_laptop_online() -> bool:
-    """Return True if laptop sent a ping in the last 120 seconds."""
+    """Return True if running locally on laptop, or if remote node sent a ping recently."""
+    if is_running_locally():
+        return True
     return (time.time() - _last_heartbeat[0]) < 120.0
 
 
@@ -41,8 +52,15 @@ def store_task_result(task_id: str, output: str) -> None:
 
 def dispatch_to_laptop(command: str, timeout: int = 40) -> str:
     """
-    Queue a command for the physical laptop and wait synchronously for the result.
+    Execute on physical laptop: directly if running locally, or queued via cloud bridge.
     """
+    if is_running_locally():
+        try:
+            import laptop_node
+            return laptop_node.execute_action(command)
+        except Exception as e:
+            return f"❌ Local execution error: {e}"
+
     if not is_laptop_online():
         return "⚠️ Laptop is currently OFFLINE (laptop band hai ya laptop_node disconnect hai)."
 

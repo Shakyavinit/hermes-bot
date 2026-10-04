@@ -2547,6 +2547,9 @@ class TelegramBotRunner:
                 else:
                     time.sleep(error_delay)
                     error_delay = min(error_delay * 2, 30)
+            except requests.exceptions.Timeout:
+                # Normal long-polling timeout when idle (no new messages)
+                continue
             except requests.exceptions.RequestException as e:
                 logger.error(f"Network error: {e}")
                 time.sleep(error_delay)

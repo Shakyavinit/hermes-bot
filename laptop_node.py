@@ -1495,20 +1495,22 @@ def charger_watcher_thread() -> None:
 
 
 def heartbeat_thread() -> None:
-    """Continuously pings cloud heartbeat endpoint so laptop is never marked offline during long tasks."""
+    """Continuously pings cloud and local heartbeat endpoints so laptop is never marked offline."""
+    targets = [CLOUD_URL, "http://127.0.0.1:7860"]
     while True:
-        try:
-            requests.get(
-                f"{CLOUD_URL}/api/laptop/heartbeat",
-                params={
-                    "secret": SECRET,
-                    "remote_enabled": "1" if is_remote_access_enabled() else "0",
-                    "auto_approve": "1" if get_auto_approve_state() else "0",
-                },
-                timeout=25,
-            )
-        except Exception:
-            pass
+        for base in targets:
+            try:
+                requests.get(
+                    f"{base}/api/laptop/heartbeat",
+                    params={
+                        "secret": SECRET,
+                        "remote_enabled": "1" if is_remote_access_enabled() else "0",
+                        "auto_approve": "1" if get_auto_approve_state() else "0",
+                    },
+                    timeout=5,
+                )
+            except Exception:
+                pass
         time.sleep(5)
 
 
@@ -1566,55 +1568,51 @@ def start_node() -> None:
 
     last_heartbeat_log = 0.0
 
+    poll_targets = [f"{CLOUD_URL}/api/laptop/poll", "http://127.0.0.1:7860/api/laptop/poll"]
     while True:
-        try:
-            poll_url = f"{CLOUD_URL}/api/laptop/poll"
-            resp = requests.get(
-                poll_url,
-                params={
-                    "secret": SECRET,
-                    "remote_enabled": "1" if is_remote_access_enabled() else "0",
-                    "auto_approve": "1" if get_auto_approve_state() else "0",
-                },
-                timeout=25,
-            )
+        task_processed = False
+        for poll_url in poll_targets:
+            try:
+                resp = requests.get(
+                    poll_url,
+                    params={
+                        "secret": SECRET,
+                        "remote_enabled": "1" if is_remote_access_enabled() else "0",
+                        "auto_approve": "1" if get_auto_approve_state() else "0",
+                    },
+                    timeout=5,
+                )
 
-            if resp.status_code == 200:
-                consecutive_errors = 0
-                data = resp.json()
-                task = data.get("task")
+                if resp.status_code == 200:
+                    consecutive_errors = 0
+                    data = resp.json()
+                    task = data.get("task")
 
-                if task:
-                    task_id = task.get("task_id")
-                    cmd = task.get("command", "").strip()
-                    logger.info(f"⚡ Received task [{task_id}]: {cmd[:80]}")
+                    if task:
+                        task_processed = True
+                        task_id = task.get("task_id")
+                        cmd = task.get("command", "").strip()
+                        logger.info(f"⚡ Received task [{task_id}]: {cmd[:80]}")
 
-                    result_output = execute_action(cmd)
+                        result_output = execute_action(cmd)
 
-                    # Send result back to cloud
-                    res_url = f"{CLOUD_URL}/api/laptop/result"
-                    requests.post(
-                        res_url,
-                        json={"secret": SECRET, "task_id": task_id, "output": result_output},
-                        timeout=15,
-                    )
-                    logger.info(f"✅ Completed task [{task_id}]")
-                else:
-                    if time.time() - last_heartbeat_log > 45:
-                        last_heartbeat_log = time.time()
-                        logger.info("🟢 Heartbeat active: Polling Render cloud successfully.")
-                    time.sleep(1.5)
-            else:
-                consecutive_errors += 1
-                time.sleep(2)
+                        # Send result back
+                        base_url = poll_url.rsplit("/api/", 1)[0]
+                        res_url = f"{base_url}/api/laptop/result"
+                        requests.post(
+                            res_url,
+                            json={"secret": SECRET, "task_id": task_id, "output": result_output},
+                            timeout=10,
+                        )
+                        logger.info(f"✅ Completed task [{task_id}]")
+            except Exception:
+                pass
 
-        except requests.exceptions.RequestException:
-            consecutive_errors += 1
-            delay = min(consecutive_errors * 2, 8)
-            time.sleep(delay)
-        except Exception as e:
-            logger.error(f"Unexpected error: {e}")
-            time.sleep(2)
+        if not task_processed:
+            if time.time() - last_heartbeat_log > 45:
+                last_heartbeat_log = time.time()
+                logger.info("🟢 Heartbeat active: Laptop node connected & polling.")
+            time.sleep(1.5)
 
 
 if __name__ == "__main__":
