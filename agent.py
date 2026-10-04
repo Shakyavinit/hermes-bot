@@ -284,11 +284,13 @@ class AgentEngine:
         user_message: str,
         image_bytes: Optional[bytes] = None,
         image_mime: str = "image/jpeg",
+        audio_bytes: Optional[bytes] = None,
+        audio_mime: str = "audio/ogg",
         progress_callback: Optional[Callable[[str], None]] = None,
     ) -> str:
         """
         Execute an autonomous ReAct loop for the user's prompt.
-        Supports multimodal image input (screenshots, photos, diagrams).
+        Supports multimodal image input (screenshots, photos, diagrams) and voice notes.
         Optional progress_callback(status_text) sends live updates to Telegram.
         """
         # Save user message to memory
@@ -312,7 +314,7 @@ class AgentEngine:
             role = "user" if h["role"] == "user" else "model"
             contents.append({"role": role, "parts": [{"text": h["content"]}]})
 
-        # Append current user prompt + optional image
+        # Append current user prompt + optional image / audio
         user_parts = [{"text": f"{facts_context}{user_message}"}]
         if image_bytes:
             b64_img = base64.b64encode(image_bytes).decode("utf-8")
@@ -320,6 +322,14 @@ class AgentEngine:
                 "inline_data": {
                     "mime_type": image_mime,
                     "data": b64_img
+                }
+            })
+        if audio_bytes:
+            b64_audio = base64.b64encode(audio_bytes).decode("utf-8")
+            user_parts.append({
+                "inline_data": {
+                    "mime_type": audio_mime,
+                    "data": b64_audio
                 }
             })
 

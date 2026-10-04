@@ -2607,7 +2607,9 @@ class TelegramBotRunner:
                 try:
                     result = self.agent.run_task(
                         session_id=session_id,
-                        user_message=f"User ne voice note bheji hai (saved: {dest}). Transcribe karein ya samjhein kya bola.",
+                        user_message=f"User ne voice note bheji hai (saved: {dest}). Malik ne is voice note me kya bola hai dhyan se suniye aur samjhein. Agar unhone laptop par koi action/command karne ko kaha hai (jaise volume, speak/bolo, photo, music, app kholna etc.) to tool call karke execute karein aur Hindi me reply dein.",
+                        audio_bytes=audio_bytes,
+                        audio_mime="audio/ogg",
                     )
                     tg_delete_message(chat_id, status_id)
                     current = _user_menu_state.get(chat_id, "main")
