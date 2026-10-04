@@ -822,9 +822,19 @@ def execute_action(cmd: str) -> str:
 
     # 16. Text-to-Speech (TTS)
     if clean.startswith("__ACTION_SPEAK__"):
-        speak_text = clean[len("__ACTION_SPEAK__"):].strip().replace('"', '\\"')
-        os.system(f'espeak-ng "{speak_text}" 2>/dev/null || spd-say "{speak_text}" 2>/dev/null || espeak "{speak_text}" 2>/dev/null')
-        return f"🗣️ Spoken on laptop: \"{speak_text}\""
+        speak_text = clean[len("__ACTION_SPEAK__"):].strip()
+        safe_text = speak_text.replace('"', '\\"')
+        tts_mp3 = "/tmp/hermes_tts.mp3"
+        # 1. Ultra-Realistic Studio Neural Voice (hi-IN-MadhurNeural / natural human tone)
+        edge_cmd = (
+            f'edge-tts --voice hi-IN-MadhurNeural --text "{safe_text}" --write-media {tts_mp3} >/dev/null 2>&1 && '
+            f'mpv --no-video --volume=100 {tts_mp3} >/dev/null 2>&1'
+        )
+        ret = os.system(edge_cmd)
+        if ret != 0 or not os.path.exists(tts_mp3):
+            # 2. Offline fallback
+            os.system(f'espeak-ng "{safe_text}" 2>/dev/null || spd-say "{safe_text}" 2>/dev/null || espeak "{safe_text}" 2>/dev/null')
+        return f"🗣️ Spoken on laptop (Natural Neural Voice): \"{speak_text}\""
 
     # 17. Popup Notification
     if clean.startswith("__ACTION_POPUP__"):
