@@ -414,12 +414,11 @@ def tg_send_chat_action(chat_id: int, action: str = "typing") -> None:
 
 
 def animate_jarvis_status(chat_id: int, stop_event: threading.Event) -> Optional[int]:
-    """Render a dynamic high-tech animated JARVIS HUD while processing."""
+    """Clean animated loading indicator."""
     frames = [
-        "⚡ ⟨ J.A.R.V.I.S ⟩  *Neural Link Activating...* `[⬡⬡⬡⬡⬡]` (⌐■_■)",
-        "◈ ⟨ J.A.R.V.I.S ⟩  *Interfacing Kali Subsystems...* `[⬢⬢⬡⬡⬡]` ⚙️",
-        "✦ ⟨ J.A.R.V.I.S ⟩  *Synthesizing Telemetry & Intent...* `[⬢⬢⬢⬢⬡]` 🧠",
-        "❖ ⟨ J.A.R.V.I.S ⟩  *Executing Cyber Protocol...* `[⬢⬢⬢⬢⬢]` ⚡ (•̀ᴗ•́)و",
+        "⏳ *Processing...*",
+        "⚡ *Processing...*",
+        "⏳ *Processing...*",
     ]
     msg_id = tg_send_message(chat_id, frames[0])
     if not msg_id:
@@ -427,7 +426,7 @@ def animate_jarvis_status(chat_id: int, stop_event: threading.Event) -> Optional
 
     def _anim():
         i = 1
-        while not stop_event.wait(0.65):
+        while not stop_event.wait(0.8):
             try:
                 tg_edit_message(chat_id, msg_id, frames[i % len(frames)])
                 i += 1
@@ -472,18 +471,17 @@ def schedule_reminder(chat_id: int, delay_seconds: int, reminder_text: str) -> N
 
 def sync_bot_commands() -> None:
     commands = [
-        {"command": "start", "description": "🏠 Open Main Menu"},
-        {"command": "menu", "description": "📱 Show Menu Panel"},
-        {"command": "status", "description": "📊 System Status"},
-        {"command": "screenshot", "description": "📸 Take Screenshot"},
-        {"command": "webcam", "description": "📷 Webcam Photo"},
-        {"command": "battery", "description": "🔋 Battery Level"},
-        {"command": "self", "description": "🔴 Toggle Self-Use Mode"},
-        {"command": "auto", "description": "⚡ Toggle Auto-Approve"},
-        {"command": "remind", "description": "⏰ Set Reminder"},
-        {"command": "reset", "description": "🧹 Clear History"},
-        {"command": "diagnose", "description": "🩺 Self-Diagnostics & API Check"},
-        {"command": "help", "description": "💡 Show Help"},
+        {"command": "start", "description": "Main menu & status"},
+        {"command": "status", "description": "System status"},
+        {"command": "screenshot", "description": "Take screenshot"},
+        {"command": "webcam", "description": "Webcam photo"},
+        {"command": "battery", "description": "Battery percentage"},
+        {"command": "self", "description": "Toggle self-use mode"},
+        {"command": "auto", "description": "Toggle auto-approve"},
+        {"command": "remind", "description": "Set a reminder"},
+        {"command": "diagnose", "description": "Test connectivity"},
+        {"command": "reset", "description": "Clear memory"},
+        {"command": "help", "description": "Help guide"},
     ]
     try:
         requests.post(f"{API_BASE}/setMyCommands", json={"commands": commands}, timeout=10)
@@ -501,42 +499,36 @@ def get_status_text() -> str:
     laptop_status = "ONLINE 🟢" if is_laptop_online() else "OFFLINE 🔴"
     owner = cfg.get("owner_username", "kissbilla2")
     return (
-        "📊 *HERMES SYSTEM TELEMETRY*\n"
-        "━━━━━━━━━━━━━━━━━━━━━\n\n"
-        f"• 👑 *Authorized User:* @{owner}\n"
-        f"• 💻 *Laptop Node:* `{laptop_status}`\n"
-        f"• ☁️ *Cloud Gateway:* `ONLINE 24/7 🟢`\n"
-        f"• 🎮 *Remote Access:* `{'ACTIVE 🟢' if _is_remote_active else 'PAUSED 🔴'}`\n"
-        f"• ⚡ *Auto-Approve:* `{'ENABLED 🟢' if _is_auto_approve_active else 'DISABLED 🔴'}`\n"
-        f"• 🧠 *Memory Store:* `{len(facts)} entries`\n\n"
-        "━━━━━━━━━━━━━━━━━━━━━\n"
-        "🖥️ *HARDWARE STATS*\n"
+        "*Hermes System Status*\n\n"
+        f"• *User:* @{owner}\n"
+        f"• *Laptop:* `{laptop_status}`\n"
+        f"• *Cloud:* `ONLINE 🟢`\n"
+        f"• *Remote:* `{'ON 🟢' if _is_remote_active else 'OFF 🔴'}`\n"
+        f"• *Auto-Approve:* `{'ON 🟢' if _is_auto_approve_active else 'OFF 🔴'}`\n"
+        f"• *Memory:* `{len(facts)} items`\n\n"
         f"```\n{sys_stat}\n```"
     )
 
 
 def get_help_text() -> str:
     return (
-        "⚡ *HERMES COMMAND & CONTROL GUIDE*\n"
-        "━━━━━━━━━━━━━━━━━━━━━\n\n"
-        "🎯 *SYSTEM COMMANDS:*\n"
-        "• `/screenshot` — Capture current screen\n"
-        "• `/webcam` — Snapshot from webcam\n"
-        "• `/battery` — Power & charging telemetry\n"
-        "• `/status` — Full system & node status\n"
-        "• `/remind 10m task` — Set proactive reminder\n"
-        "• `/self` — Toggle Self-Use vs Remote Mode\n"
-        "• `/auto` — Toggle Auto-Approve engine\n"
-        "• `/diagnose` — Run API & latency diagnostics\n"
-        "• `/reset` — Reset session memory\n\n"
-        "━━━━━━━━━━━━━━━━━━━━━\n"
-        "🗣️ *NATURAL LANGUAGE CONTROL:*\n"
-        "Koi button dabane ki zaroorat nahi hai. Seedha chat me type karein:\n"
-        "• _'screenshot le aur dikha'_\n"
-        "• _'chrome me youtube kholo'_\n"
-        "• _'volume 50 percent kar do'_\n"
-        "• _'battery kitni bachi hai?'_\n\n"
-        "🔒 *Security:* Restricted strictly to authorized owner."
+        "*Hermes Bot Guide*\n\n"
+        "*Commands:*\n"
+        "• `/screenshot` — Capture screen photo\n"
+        "• `/webcam` — Take camera photo\n"
+        "• `/battery` — Check battery level\n"
+        "• `/status` — System status\n"
+        "• `/remind 10m [task]` — Set timer\n"
+        "• `/self` — Toggle self-use mode\n"
+        "• `/auto` — Toggle auto-approve\n"
+        "• `/diagnose` — Run diagnostics\n"
+        "• `/reset` — Clear memory\n\n"
+        "*Natural Language:*\n"
+        "Chat me normal bhasha me bolein:\n"
+        "• _'screenshot le'_\n"
+        "• _'chrome kholo'_\n"
+        "• _'volume badhao'_\n\n"
+        "🔒 Private bot locked to @kissbilla2."
     )
 
 
@@ -650,209 +642,144 @@ class TelegramBotRunner:
         _auto = "ON 🟢" if _is_auto_approve_active else "OFF 🔴"
         menu_titles = {
             "main": (
-                "┌── ⚡ J.A.R.V.I.S  ::  H E R M E S  v3.0  ◈\n"
-                "│  (⌐■_■) \"Greetings Sir. All neural subsystems online.\"\n"
-                "┝━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-                "│  ⟨ SYSTEM TELEMETRY ⟩\n"
-                f"│  ⬡ 💻 Laptop Node  :: [ `{_laptop}` ]\n"
-                f"│  ⬡ ☁️ Cloud Core   :: [ `ONLINE 24/7 🟢` ]\n"
-                f"│  ⬡ 🎮 Remote Sync  :: [ `{_remote}` ]\n"
-                f"│  ⬡ ⚡ Auto-Engine  :: [ `{_auto}` ]\n"
-                "│  ⬡ 🛡️ Security     :: [ `LOCKED TO OPERATOR 🔒` ]\n"
-                "┝━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-                "│  ⟨ DIRECT PROTOCOLS ⟩\n"
-                "│  ◈ 📸 screenshot · webcam  ── Optical Recon (◉_◉)\n"
-                "│  ◈ 🔋 battery · wifi       ── Power & Link Telemetry ⚡\n"
-                "│  ◈ 🔊 volume · mute        ── Acoustic Control 🎵\n"
-                "│  ◈ 🌐 open [app/url]       ── Cyber Launcher 🚀\n"
-                "│  ◈ ⏰ /remind 10m [task]   ── Chrono Alert (•̀ᴗ•́)و\n"
-                "└──────────────────────────────\n"
-                "💬 (★ω★) Awaiting your command, Sir..."
+                "🤖 *Hermes AI Assistant*\n\n"
+                f"💻 *Laptop:* `{_laptop}`\n"
+                f"☁️ *Cloud:* `ONLINE 24/7 🟢`\n"
+                f"🎮 *Remote:* `{_remote}`\n"
+                f"⚡ *Auto-Approve:* `{_auto}`\n\n"
+                "*Commands:*\n"
+                "• `screenshot` — Screen capture\n"
+                "• `webcam` — Camera photo\n"
+                "• `battery` — Battery percentage\n"
+                "• `/status` — System details\n"
+                "• `/help` — Complete guide\n\n"
+                "_Kuch bhi bolein ya command type karein..._"
             ),
             "laptop": (
-                "💻 *LAPTOP CONTROL*\n"
-                "━━━━━━━━━━━━━━━━━━━━━\n\n"
-                f"🔌  Status  ›  `{_laptop}`\n\n"
-                "🎯 *Quick commands:*\n"
-                "`screenshot` · `webcam` · `battery`\n"
-                "`lock` · `mute` · `volume up/down`\n"
-                "`wifi` · `sleep` · `location`\n\n"
-                "━━━━━━━━━━━━━━━━━━━━━\n"
-                "📌 _Jo bhi bolein, laptop kar dega_"
+                "💻 *Laptop Control Panel*\n\n"
+                f"• Status: `{_laptop}`\n\n"
+                "*Quick Actions:*\n"
+                "• `screenshot` · `webcam` · `battery`\n"
+                "• `lock` · `mute` · `volume [0-100]`\n"
+                "• `wifi` · `sleep` · `location`\n\n"
+                "_Jo bhi bolein, laptop execute karega._"
             ),
             "cloud": (
-                "☁️ *CLOUD SERVER*  |  Render 24/7\n"
-                "━━━━━━━━━━━━━━━━━━━━━\n\n"
-                "🌐  Status  ›  `ONLINE 🟢`\n"
-                "🔗  Host    ›  `render.com`\n\n"
-                "🎯 *Commands:*\n"
-                "`/status` · `/diagnose` · `/reset`\n\n"
-                "━━━━━━━━━━━━━━━━━━━━━\n"
-                "📌 _24/7 cloud bot active hai_"
+                "☁️ *Cloud Server (Render 24/7)*\n\n"
+                "• Status: `ONLINE 🟢`\n"
+                "• Hosting: `Render Cloud`\n\n"
+                "*Commands:*\n"
+                "• `/status` — System info\n"
+                "• `/diagnose` — API health check\n"
+                "• `/reset` — Clear memory"
             ),
             "extra": (
-                "🌟 *EXTRA TOOLS*\n"
-                "━━━━━━━━━━━━━━━━━━━━━\n\n"
-                "🛠️ *Available:*\n"
-                "• Apps & Browser control\n"
+                "🌟 *Extra Tools*\n\n"
+                "• Apps & Browser launch\n"
                 "• Network & Hotspot\n"
                 "• Clipboard & Notes\n"
                 "• Terminal & Files\n"
-                "• System Info\n\n"
-                "━━━━━━━━━━━━━━━━━━━━━\n"
-                "📌 _Command type karein_"
+                "• System telemetry"
             ),
             "camera": (
-                "📸 *CAMERA & MEDIA*\n"
-                "━━━━━━━━━━━━━━━━━━━━━\n\n"
-                "🎯 *Commands:*\n"
-                "`screenshot` · `/screenshot`\n"
-                "`webcam` · `/webcam`\n\n"
-                "━━━━━━━━━━━━━━━━━━━━━"
+                "📸 *Camera & Media*\n\n"
+                "• `screenshot` — Capture screen\n"
+                "• `webcam` — Front camera snap"
             ),
             "audio": (
-                "🎙️ *AUDIO & VOICE*\n"
-                "━━━━━━━━━━━━━━━━━━━━━\n\n"
-                "🎯 *Commands:*\n"
-                "`/mic` · `record audio`\n"
-                "`speak [text]` — TTS\n\n"
-                "━━━━━━━━━━━━━━━━━━━━━"
+                "🎙️ *Audio & Voice*\n\n"
+                "• `/mic` — Record audio 10s\n"
+                "• `speak [text]` — Text-to-speech"
             ),
             "system": (
-                "🖥️ *SYSTEM INFO*\n"
-                "━━━━━━━━━━━━━━━━━━━━━\n\n"
-                "🎯 *Commands:*\n"
-                "`/status` · `/battery`\n"
-                "`wifi` · `location`\n\n"
-                "━━━━━━━━━━━━━━━━━━━━━"
+                "🖥️ *System Info*\n\n"
+                "• `/status` — Full system status\n"
+                "• `/battery` — Battery & charging\n"
+                "• `wifi` · `location`"
             ),
             "power": (
-                "⚡ *POWER & SCREEN*\n"
-                "━━━━━━━━━━━━━━━━━━━━━\n\n"
-                "🎯 *Commands:*\n"
-                "`sleep` · `reboot` · `shutdown`\n"
-                "`screen off` · `screen on`\n"
-                "`ghost mode`\n\n"
-                "━━━━━━━━━━━━━━━━━━━━━"
+                "⚡ *Power & Screen*\n\n"
+                "• `sleep` · `reboot` · `shutdown`\n"
+                "• `screen off` · `screen on`"
             ),
             "volume": (
-                "🔊 *VOLUME & MEDIA*\n"
-                "━━━━━━━━━━━━━━━━━━━━━\n\n"
-                "🎯 *Commands:*\n"
-                "`volume up` · `volume down` · `mute`\n"
-                "`play` · `pause` · `stop`\n"
-                "`play [song name]`\n\n"
-                "━━━━━━━━━━━━━━━━━━━━━"
+                "🔊 *Volume & Media*\n\n"
+                "• `volume up` · `volume down` · `mute`\n"
+                "• `play` · `pause` · `stop`"
             ),
             "media": (
-                "🔊 *VOLUME & MEDIA*\n"
-                "━━━━━━━━━━━━━━━━━━━━━\n\n"
-                "🎯 *Commands:*\n"
-                "`volume up` · `volume down` · `mute`\n"
-                "`play` · `pause` · `stop`\n\n"
-                "━━━━━━━━━━━━━━━━━━━━━"
+                "🔊 *Volume & Media*\n\n"
+                "• `volume up` · `volume down` · `mute`\n"
+                "• `play` · `pause` · `stop`"
             ),
             "mouse": (
-                "🖱️ *MOUSE & KEYBOARD*\n"
-                "━━━━━━━━━━━━━━━━━━━━━\n\n"
-                "🎯 *Commands:*\n"
-                "`click [element]`\n"
-                "`type [text]`\n"
-                "`scroll up` · `scroll down`\n\n"
-                "━━━━━━━━━━━━━━━━━━━━━"
+                "🖱️ *Mouse & Keyboard*\n\n"
+                "• `click [button/text]`\n"
+                "• `type [text]`\n"
+                "• `scroll up` · `scroll down`"
             ),
             "browser": (
-                "🌐 *BROWSER & APPS*\n"
-                "━━━━━━━━━━━━━━━━━━━━━\n\n"
-                "🎯 *Commands:*\n"
-                "`open [app name]`\n"
-                "`open [URL]`\n"
-                "`chrome` · `firefox` · `vlc`\n\n"
-                "━━━━━━━━━━━━━━━━━━━━━"
+                "🌐 *Browser & Apps*\n\n"
+                "• `open [app name]` (e.g. `open chrome`)\n"
+                "• `open [URL]`"
             ),
             "security": (
-                "🚨 *SECURITY & SPY*\n"
-                "━━━━━━━━━━━━━━━━━━━━━\n\n"
-                "🎯 *Commands:*\n"
-                "`alarm on` · `alarm off`\n"
-                "`lock` · `unlock`\n"
-                "`cctv on` · `cctv off`\n\n"
-                "━━━━━━━━━━━━━━━━━━━━━"
+                "🚨 *Security & Surveillance*\n\n"
+                "• `lock` · `unlock`\n"
+                "• `alarm on` · `alarm off`\n"
+                "• `cctv on` · `cctv off`"
             ),
             "ai": (
-                "🤖 *AI & AUTOMATION*\n"
-                "━━━━━━━━━━━━━━━━━━━━━\n\n"
-                "🎯 *Commands:*\n"
-                "`/auto` — Toggle auto-approve\n"
-                "`/diagnose` — API health check\n"
-                "Antigravity task approve/deny\n\n"
-                "━━━━━━━━━━━━━━━━━━━━━"
+                "🤖 *AI & Automation*\n\n"
+                "• `/auto` — Toggle auto-approve\n"
+                "• `/diagnose` — Test API health\n"
+                "• Antigravity task approval"
             ),
             "clipboard": (
-                "📋 *CLIPBOARD & NOTES*\n"
-                "━━━━━━━━━━━━━━━━━━━━━\n\n"
-                "🎯 *Commands:*\n"
-                "`clipboard read`\n"
-                "`clipboard write [text]`\n"
-                "`save note [text]`\n"
-                "`show notes`\n\n"
-                "━━━━━━━━━━━━━━━━━━━━━"
+                "📋 *Clipboard & Notes*\n\n"
+                "• `clipboard read`\n"
+                "• `clipboard write [text]`\n"
+                "• `save note [text]`"
             ),
             "network": (
-                "📶 *NETWORK & HOTSPOT*\n"
-                "━━━━━━━━━━━━━━━━━━━━━\n\n"
-                "🎯 *Commands:*\n"
-                "`wifi` — WiFi status\n"
-                "`hotspot start` · `hotspot stop`\n"
-                "`offline hub`\n\n"
-                "━━━━━━━━━━━━━━━━━━━━━"
+                "📶 *Network & Hotspot*\n\n"
+                "• `wifi` — WiFi status\n"
+                "• `hotspot start` · `hotspot stop`"
             ),
             "terminal": (
-                "🔧 *TERMINAL & FILES*\n"
-                "━━━━━━━━━━━━━━━━━━━━━\n\n"
-                "🎯 *Commands:*\n"
-                "`run [bash command]`\n"
-                "`list files`\n"
-                "`read file [path]`\n\n"
-                "━━━━━━━━━━━━━━━━━━━━━"
+                "🔧 *Terminal & Files*\n\n"
+                "• `run [bash command]`\n"
+                "• `list files`\n"
+                "• `read file [path]`"
             ),
             "reminders": (
-                "⏰ *REMINDERS & MEMORY*\n"
-                "━━━━━━━━━━━━━━━━━━━━━\n\n"
-                "🎯 *Commands:*\n"
-                "`/remind 10m task` — Set timer\n"
-                "`save note [text]`\n"
-                "`show memory`\n\n"
-                "━━━━━━━━━━━━━━━━━━━━━"
+                "⏰ *Reminders & Timer*\n\n"
+                "• `/remind 10m [task]` — Set timer\n"
+                "• `show memory`"
             ),
             "toggles": (
-                "🎛️ *QUICK TOGGLES*\n"
-                "━━━━━━━━━━━━━━━━━━━━━\n\n"
-                f"🔴  Self-Use   ›  `{'ON' if not _is_remote_active else 'OFF'}`\n"
-                f"⚡  Auto       ›  `{'ON' if _is_auto_approve_active else 'OFF'}`\n"
-                f"🔒  Lock       ›  `{'LOCKED' if _is_locked else 'UNLOCKED'}`\n"
-                f"🔇  Mute       ›  `{'MUTED' if _is_muted else 'UNMUTED'}`\n"
-                f"👁️  CCTV       ›  `{'ON' if _is_cctv_active else 'OFF'}`\n\n"
-                "━━━━━━━━━━━━━━━━━━━━━\n"
-                "📌 _Toggle karne ke liye command bhejein_"
+                "🎛️ *Quick Switches*\n\n"
+                f"• Self-Use Mode: `{'ON' if not _is_remote_active else 'OFF'}`\n"
+                f"• Auto-Approve: `{'ON' if _is_auto_approve_active else 'OFF'}`\n"
+                f"• Screen Lock: `{'LOCKED' if _is_locked else 'UNLOCKED'}`\n"
+                f"• Audio: `{'MUTED' if _is_muted else 'UNMUTED'}`\n"
+                f"• CCTV Mode: `{'ON' if _is_cctv_active else 'OFF'}`"
             ),
             "help": (
-                "❓ *HELP & GUIDE*\n"
-                "━━━━━━━━━━━━━━━━━━━━━\n\n"
-                "📌 `/status` — System status\n"
-                "📌 `/screenshot` — Screen capture\n"
-                "📌 `/webcam` — Camera snap\n"
-                "📌 `/battery` — Battery %\n"
-                "📌 `/remind 10m task` — Timer\n"
-                "📌 `/self` — Self-use toggle\n"
-                "📌 `/auto` — Auto-approve toggle\n"
-                "📌 `/diagnose` — API health\n"
-                "📌 `/reset` — Clear AI memory\n\n"
-                "━━━━━━━━━━━━━━━━━━━━━\n"
-                "🤖 _Ya kuch bhi type karein — AI samjhega!_"
+                "❓ *Help & Commands*\n\n"
+                "• `/screenshot` — Capture screen\n"
+                "• `/webcam` — Camera photo\n"
+                "• `/battery` — Battery percentage\n"
+                "• `/status` — System telemetry\n"
+                "• `/remind 10m [task]` — Set reminder\n"
+                "• `/self` — Toggle self-use mode\n"
+                "• `/auto` — Toggle auto-approve\n"
+                "• `/diagnose` — Test API connectivity\n"
+                "• `/reset` — Clear memory\n\n"
+                "_Chat me kuch bhi normal bhasha me bolein, AI execute karega._"
             ),
         }
-        text = title or menu_titles.get(menu_name, "📱 *Hermes Ready*\n━━━━━━━━━━━━━━━━━━━━━\nCommand bhejein:")
+        text = title or menu_titles.get(menu_name, "📱 *Hermes AI*\n\nCommand bhejein:")
         tg_send_message(chat_id, text, reply_markup=get_kb_for(menu_name))
 
     def handle_button_or_command(self, chat_id: int, user_id: int, text: str) -> bool:
@@ -1738,14 +1665,13 @@ class TelegramBotRunner:
             time.sleep(0.1)
             if status_id:
                 tg_delete_message(chat_id, status_id)
-            formatted_res = f"┌── ⚡ J.A.R.V.I.S  ::  PROTOCOL EXECUTED  (⌐■_■)\n│\n{result}\n│\n└── ◈ ⬡ Telemetry Nominal 🟢 (•̀ᴗ•́)و"
-            tg_send_message(chat_id, formatted_res)
+            tg_send_message(chat_id, result)
         except Exception as e:
             stop_anim.set()
             logger.error(f"Agent error: {e}")
             if status_id:
                 tg_delete_message(chat_id, status_id)
-            tg_send_message(chat_id, f"❌ [ JARVIS ERROR ] (ง︡'-'︠)ง: {e}")
+            tg_send_message(chat_id, f"❌ *Error:* {e}")
 
     def start_polling(self) -> None:
         logger.info("Starting Telegram polling...")
