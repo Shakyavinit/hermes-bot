@@ -322,8 +322,76 @@ MENU_MAP = {
 }
 
 
+def get_home_kb() -> dict:
+    """Root selector: Laptop Mode vs Cloud Mode."""
+    return {
+        "inline_keyboard": [
+            [
+                {"text": "💻 Laptop Mode", "callback_data": "mode_laptop"},
+                {"text": "☁️ Cloud Mode", "callback_data": "mode_cloud"},
+            ],
+            [
+                {"text": "📊 System Status", "callback_data": "btn_status"},
+                {"text": "❓ Help & Guide", "callback_data": "btn_help"},
+            ],
+        ]
+    }
+
+
+def get_home_text() -> str:
+    """Root selector header text."""
+    _laptop = "ONLINE 🟢" if is_laptop_online() else "OFFLINE 🔴"
+    _remote = "ON 🟢 (30m)" if _is_remote_active else "OFF 🔴"
+    return (
+        "🤖 *Hermes Central Hub*\n\n"
+        "Kripya Mode select karein:\n"
+        "• 💻 *Laptop Mode:* Physical Kali Linux hardware, camera, sound & security.\n"
+        "• ☁️ *Cloud Mode:* 24/7 Render cloud container, files, diagnostics & AI memory.\n\n"
+        f"💻 *Laptop:* `{_laptop}`\n"
+        f"☁️ *Cloud:* `ONLINE 24/7 🟢`\n"
+        f"🎮 *Remote Access:* `{_remote}`\n\n"
+        "_Select an option below:_"
+    )
+
+
+def get_cloud_kb() -> dict:
+    """Cloud Mode inline controls."""
+    return {
+        "inline_keyboard": [
+            [
+                {"text": "📊 Cloud Telemetry", "callback_data": "btn_cloud_status"},
+                {"text": "📁 Cloud Files", "callback_data": "btn_cloud_files"},
+            ],
+            [
+                {"text": "⚡ Cloud Quick Test", "callback_data": "btn_cloud_test"},
+                {"text": "🩺 Self-Diagnostics", "callback_data": "btn_diagnose"},
+            ],
+            [
+                {"text": "🧹 Reset AI Memory", "callback_data": "btn_reset_memory"},
+                {"text": "🌐 24/7 Hosting Info", "callback_data": "btn_hosting_info"},
+            ],
+            [
+                {"text": "🏠 Back to Main Hub", "callback_data": "mode_home"},
+            ],
+        ]
+    }
+
+
+def get_cloud_page_text() -> str:
+    """Cloud Mode header text."""
+    return (
+        "☁️ *Hermes Cloud Mode (Render 24/7)*\n"
+        "*Cloud Container Operations & Settings*\n\n"
+        "• Status: `ONLINE 24/7 🟢`\n"
+        "• Hosting: `Render Cloud Server`\n"
+        "• Health Port: `7860 (Active)`\n"
+        "• AI Core: `Gemini / Dual-Engine`\n\n"
+        "_Select a Cloud action below:_"
+    )
+
+
 def get_page_kb(page: int = 1) -> dict:
-    """Multi-page inline keyboard with explicit ON/OFF toggle states for every switch."""
+    """Multi-page inline keyboard for Laptop Mode with explicit ON/OFF toggle states."""
     global _is_auto_approve_active, _is_remote_active, _is_locked, _is_muted
     global _is_cctv_active, _is_ghost_mode, _is_alarm_active, _is_hotspot_active
 
@@ -354,6 +422,7 @@ def get_page_kb(page: int = 1) -> dict:
             [
                 {"text": "📄 1/4", "callback_data": "page_1"},
                 {"text": "Next ➡️", "callback_data": "page_2"},
+                {"text": "🏠 Hub", "callback_data": "mode_home"},
             ]
         ]
     elif page == 2:
@@ -375,6 +444,7 @@ def get_page_kb(page: int = 1) -> dict:
                 {"text": "⬅️ Prev", "callback_data": "page_1"},
                 {"text": "📄 2/4", "callback_data": "page_2"},
                 {"text": "Next ➡️", "callback_data": "page_3"},
+                {"text": "🏠 Hub", "callback_data": "mode_home"},
             ]
         ]
     elif page == 3:
@@ -396,6 +466,7 @@ def get_page_kb(page: int = 1) -> dict:
                 {"text": "⬅️ Prev", "callback_data": "page_2"},
                 {"text": "📄 3/4", "callback_data": "page_3"},
                 {"text": "Next ➡️", "callback_data": "page_4"},
+                {"text": "🏠 Hub", "callback_data": "mode_home"},
             ]
         ]
     else:
@@ -416,7 +487,8 @@ def get_page_kb(page: int = 1) -> dict:
             [
                 {"text": "⬅️ Prev", "callback_data": "page_3"},
                 {"text": "📄 4/4", "callback_data": "page_4"},
-                {"text": "🔄 Page 1", "callback_data": "page_1"},
+                {"text": "🔄 Top", "callback_data": "page_1"},
+                {"text": "🏠 Hub", "callback_data": "mode_home"},
             ]
         ]
 
@@ -428,22 +500,19 @@ def get_page_text(page: int = 1) -> str:
     _laptop = "ONLINE 🟢" if is_laptop_online() else "OFFLINE 🔴"
     _remote = "ON 🟢" if _is_remote_active else "OFF 🔴"
     _auto = "ON 🟢" if _is_auto_approve_active else "OFF 🔴"
-    _lock = "ON 🟢" if _is_locked else "OFF 🔴"
-    _mute = "ON 🟢" if _is_muted else "OFF 🔴"
 
     if page == 1:
         return (
-            "🤖 *Hermes Control Panel* — `Page 1/4`\n"
+            "💻 *Laptop Mode — Control Panel* — `Page 1/4`\n"
             "*Core Hardware & Vision Controls*\n\n"
             f"💻 *Laptop:* `{_laptop}`\n"
-            f"☁️ *Cloud:* `ONLINE 24/7 🟢`\n"
-            f"🎮 *Remote:* `{_remote}` (30m)\n"
+            f"🎮 *Remote Access:* `{_remote}` (30m)\n"
             f"⚡ *Auto-Approve:* `{_auto}`\n\n"
             "_Tap any button below to toggle or execute:_"
         )
     elif page == 2:
         return (
-            "🔊 *Hermes Audio & Media* — `Page 2/4`\n"
+            "🔊 *Laptop Mode — Audio & Media* — `Page 2/4`\n"
             "*Sound, Voice & Playback Controls*\n\n"
             f"🔇 *Mute Audio:* `{'ON 🟢' if _is_muted else 'OFF 🔴'}`\n\n"
             "• Volume control (+/- 10%)\n"
@@ -453,7 +522,7 @@ def get_page_text(page: int = 1) -> str:
         )
     elif page == 3:
         return (
-            "⚡ *Hermes Power & Security* — `Page 3/4`\n"
+            "⚡ *Laptop Mode — Power & Security* — `Page 3/4`\n"
             "*Lock, Screen & Surveillance Toggles*\n\n"
             f"🔒 *Screen Lock:* `{'ON 🟢' if _is_locked else 'OFF 🔴'}`\n"
             f"🕶️ *Ghost Mode:* `{'ON 🟢' if _is_ghost_mode else 'OFF 🔴'}`\n"
@@ -464,7 +533,7 @@ def get_page_text(page: int = 1) -> str:
         )
     else:
         return (
-            "🌐 *Hermes Network & Tools* — `Page 4/4`\n"
+            "🌐 *Laptop Mode — Network & Tools* — `Page 4/4`\n"
             "*WiFi, Files, Clipboard & Diagnostics*\n\n"
             "• WiFi connection & Geolocation\n"
             "• Workspace files & Clipboard reader\n"
@@ -474,16 +543,16 @@ def get_page_text(page: int = 1) -> str:
 
 
 def get_main_inline_kb() -> dict:
-    return get_page_kb(1)
-
-
-def get_tools_inline_kb() -> dict:
-    return get_page_kb(2)
+    return get_home_kb()
 
 
 def get_kb_for(menu: str = None) -> dict:
     """Return inline keyboard for menus."""
-    if menu in ("main", "laptop", "extra", "tools"):
+    if menu in ("main", "home"):
+        return get_home_kb()
+    elif menu == "cloud":
+        return get_cloud_kb()
+    elif menu in ("laptop", "extra", "tools"):
         return get_page_kb(1)
     return {"remove_keyboard": True}
 
@@ -826,7 +895,9 @@ class TelegramBotRunner:
         _remote = "ACTIVE 🟢" if _is_remote_active else "PAUSED 🔴"
         _auto = "ON 🟢" if _is_auto_approve_active else "OFF 🔴"
         menu_titles = {
-            "main": get_page_text(1),
+            "main": get_home_text(),
+            "home": get_home_text(),
+            "cloud": get_cloud_page_text(),
             "laptop": (
                 "💻 *Laptop Control Panel*\n\n"
                 f"• Status: `{_laptop}`\n\n"
@@ -1730,6 +1801,53 @@ class TelegramBotRunner:
             return
 
         global _is_auto_approve_active, _is_remote_active, _is_locked, _is_muted, _is_ghost_mode, _is_cctv_active
+
+        # Mode Switchers (Laptop Mode vs Cloud Mode vs Home)
+        if data == "mode_home":
+            tg_edit_message(chat_id, message_id, get_home_text())
+            tg_edit_reply_markup(chat_id, message_id, get_home_kb())
+            tg_answer_callback(cq_id, "🏠 Main Hub")
+            return
+        elif data == "mode_laptop":
+            tg_edit_message(chat_id, message_id, get_page_text(1))
+            tg_edit_reply_markup(chat_id, message_id, get_page_kb(1))
+            tg_answer_callback(cq_id, "💻 Laptop Mode")
+            return
+        elif data == "mode_cloud":
+            tg_edit_message(chat_id, message_id, get_cloud_page_text())
+            tg_edit_reply_markup(chat_id, message_id, get_cloud_kb())
+            tg_answer_callback(cq_id, "☁️ Cloud Mode")
+            return
+        elif data == "btn_help":
+            tg_answer_callback(cq_id, "💡 Help Guide")
+            tg_send_message(chat_id, get_help_text())
+            return
+        elif data == "btn_cloud_status":
+            res = system_status()
+            self.send_result(chat_id, "☁️ *Cloud Status:*", f"```\n{res}\n```")
+            tg_answer_callback(cq_id, "📊 Cloud status fetched")
+            return
+        elif data == "btn_cloud_files":
+            files = list_directory(".")
+            self.send_result(chat_id, "📁 *Cloud Workspace Files:*", f"```\n{files}\n```")
+            tg_answer_callback(cq_id, "📁 Files listed")
+            return
+        elif data == "btn_cloud_test":
+            out = execute_cloud_bash("uname -r && uptime -p && python3 --version")
+            self.send_result(chat_id, "⚡ *Cloud Diagnostic:*", f"```\n{out}\n```")
+            tg_answer_callback(cq_id, "⚡ Cloud tested")
+            return
+        elif data == "btn_hosting_info":
+            info = (
+                "🌐 *Render 24/7 Hosting Info*\n\n"
+                "• Host: Render Cloud Platform\n"
+                "• Status: 24/7 Always Active\n"
+                "• Laptop band hone par bhi cloud bot online rehta hai.\n"
+                "• Laptop connect karne ke liye: `./start_laptop_node.sh`"
+            )
+            self.send_result(chat_id, info, "")
+            tg_answer_callback(cq_id, "🌐 Hosting info")
+            return
 
         # Handle page navigation
         if data.startswith("page_"):
