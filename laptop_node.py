@@ -56,6 +56,7 @@ from human_gui import (
 CLOUD_URL = os.getenv("HERMES_CLOUD_URL", "https://hermes-bot-kqv8.onrender.com").rstrip("/")
 SECRET = os.getenv("LAPTOP_BRIDGE_SECRET", "hermes_secret_8616271645")
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "8610827739:AAE0D6lnyaKab9T9AsQALyE-f_NZRlWgQ_4")
+IPINFO_TOKEN = os.getenv("IPINFO_TOKEN", "")
 OWNER_CHAT_ID = 8616271645
 WORKSPACE_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -849,7 +850,8 @@ def execute_action(cmd: str) -> str:
     # 22. Find My Laptop (Geo-Location)
     if clean == "__ACTION_LOCATION__":
         try:
-            r = requests.get("https://ipinfo.io/json", timeout=6).json()
+            headers = {"Authorization": f"Bearer {IPINFO_TOKEN}"} if IPINFO_TOKEN else {}
+            r = requests.get("https://ipinfo.io/json", headers=headers, timeout=8).json()
             ip = r.get("ip", "Unknown")
             city = r.get("city", "Unknown")
             region = r.get("region", "Unknown")

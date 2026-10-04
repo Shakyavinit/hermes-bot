@@ -42,7 +42,7 @@ from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 import requests
 
-from config import WORKSPACE_DIR
+from config import WORKSPACE_DIR, IPINFO_TOKEN
 from bridge import (
     dispatch_to_laptop,
     is_laptop_online,
@@ -495,6 +495,30 @@ def query_public_api(service: str, query: str = "") -> str:
             return f"Weather data for {city} currently unavailable."
 
         elif any(k in s for k in ("ip", "geo", "location", "isp")):
+            try:
+                headers = {"Authorization": f"Bearer {IPINFO_TOKEN}"} if IPINFO_TOKEN else {}
+                url = f"https://api.ipinfo.io/lite/{q}" if (q and "." in q) else ("https://ipinfo.io/json" if not q else f"https://ipinfo.io/{q}/json")
+                r = requests.get(url, headers=headers, timeout=10)
+                if r.status_code == 200:
+                    data = r.json()
+                    ip_val = data.get("ip", q)
+                    city = data.get("city", "")
+                    region = data.get("region", "")
+                    country = data.get("country", data.get("country_code", ""))
+                    org = data.get("org", data.get("as_name", ""))
+                    loc = data.get("loc", "")
+                    res_lines = [f"📍 IP Geolocation (via IPInfo VIP):", f"• IP: `{ip_val}`"]
+                    if city or region:
+                        res_lines.append(f"• Location: {city}, {region} ({country})")
+                    elif country:
+                        res_lines.append(f"• Country: {country}")
+                    if org:
+                        res_lines.append(f"• Network/ISP: `{org}`")
+                    if loc:
+                        res_lines.append(f"• Coords: `{loc}`")
+                    return "\n".join(res_lines)
+            except Exception:
+                pass
             url = f"http://ip-api.com/json/{q}" if q else "http://ip-api.com/json/"
             r = requests.get(url, timeout=10)
             data = r.json()

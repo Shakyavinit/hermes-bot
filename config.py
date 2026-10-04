@@ -38,6 +38,10 @@ TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "8610827739:AAE0D6lnyaKab9T
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
 HUGGINGFACE_API_KEY = os.getenv("HUGGINGFACE_API_KEY", "")
+BLUESMINDS_API_KEY = os.getenv("BLUESMINDS_API_KEY", "")
+IPINFO_TOKEN = os.getenv("IPINFO_TOKEN", "")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY", os.getenv("SUPABASE_SECRET_KEY", ""))
+SUPABASE_URL = os.getenv("SUPABASE_URL", "")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 GEMINI_API_KEY_2 = os.getenv("GEMINI_API_KEY_2", "")
 APIKEY_2CAPTCHA = os.getenv("APIKEY_2CAPTCHA", os.getenv("TWO_CAPTCHA_API_KEY", ""))
@@ -77,6 +81,11 @@ HUGGINGFACE_MODELS = [
     "meta-llama/Llama-3.1-8B-Instruct",
 ]
 
+BLUESMINDS_MODELS = [
+    "meta/llama-3.2-11b-vision-instruct",
+    "google/diffusiongemma-26b-a4b-it",
+]
+
 # Ensure data dir exists
 (BASE_DIR / "data").mkdir(exist_ok=True)
 (BASE_DIR / "logs").mkdir(exist_ok=True)
@@ -88,7 +97,7 @@ def get_runtime_config() -> dict:
         default_config = {
             "owner_username": OWNER_USERNAME,
             "owner_user_id": 8616271645,
-            "allowed_user_ids": [8616271645],
+            "allowed_user_ids": [8616271645, 6677767449],
             "bot_name": "Kissbilla2bot",
             "active_model": "gemini",
         }
@@ -99,7 +108,7 @@ def get_runtime_config() -> dict:
         with open(CONFIG_JSON_PATH, "r", encoding="utf-8") as f:
             return json.load(f)
     except Exception:
-        return {"owner_username": OWNER_USERNAME, "owner_user_id": 8616271645, "allowed_user_ids": [8616271645]}
+        return {"owner_username": OWNER_USERNAME, "owner_user_id": 8616271645, "allowed_user_ids": [8616271645, 6677767449]}
 
 
 def save_runtime_config(data: dict) -> None:
