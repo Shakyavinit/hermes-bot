@@ -6,7 +6,7 @@ mkdir -p logs
 
 echo "=================================================="
 echo "🤖 Starting Hermes Autonomous Telegram Agent..."
-echo "Bot: @Dadijiibot"
+echo "Bot: @Kissbilla2bot"
 echo "=================================================="
 
 # Check if already running

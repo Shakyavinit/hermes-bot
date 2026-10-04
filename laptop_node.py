@@ -55,7 +55,7 @@ from human_gui import (
 
 CLOUD_URL = os.getenv("HERMES_CLOUD_URL", "https://hermes-bot-kqv8.onrender.com").rstrip("/")
 SECRET = os.getenv("LAPTOP_BRIDGE_SECRET", "hermes_secret_8616271645")
-TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "8954487031:AAEv9-RzsecVcnJyVfd3pfEOYYfiBGh9Fzg")
+TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "8610827739:AAE0D6lnyaKab9T9AsQALyE-f_NZRlWgQ_4")
 OWNER_CHAT_ID = 8616271645
 WORKSPACE_DIR = os.path.dirname(os.path.abspath(__file__))
 

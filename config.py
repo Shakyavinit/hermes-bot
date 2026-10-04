@@ -34,8 +34,7 @@ def load_env() -> None:
 
 load_env()
 
-# API Keys & Secrets
-TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "8954487031:AAEv9-RzsecVcnJyVfd3pfEOYYfiBGh9Fzg")
+TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "8610827739:AAE0D6lnyaKab9T9AsQALyE-f_NZRlWgQ_4")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
 HUGGINGFACE_API_KEY = os.getenv("HUGGINGFACE_API_KEY", "")
@@ -90,7 +89,7 @@ def get_runtime_config() -> dict:
             "owner_username": OWNER_USERNAME,
             "owner_user_id": 8616271645,
             "allowed_user_ids": [8616271645],
-            "bot_name": "Dadijiibot",
+            "bot_name": "Kissbilla2bot",
             "active_model": "gemini",
         }
         with open(CONFIG_JSON_PATH, "w", encoding="utf-8") as f:
