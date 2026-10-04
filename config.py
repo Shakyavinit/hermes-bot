@@ -58,12 +58,11 @@ GROQ_MODELS = [
 ]
 
 GEMINI_MODELS = [
-    "gemini-2.5-flash",
-    "gemini-2.5-flash-lite",
+    "gemini-flash-lite-latest",
     "gemini-flash-latest",
-    "gemini-2.5-pro",
+    "gemma-4-26b-a4b-it",
 ]
-GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-flash-lite-latest")
 
 OPENROUTER_MODELS = [
     "qwen/qwen3.8-27b:free",

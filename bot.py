@@ -8,7 +8,7 @@ import io
 import json
 import logging
 import os
-import platform
+import random
 import re
 import socketserver
 import sys

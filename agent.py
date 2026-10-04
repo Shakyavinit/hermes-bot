@@ -100,7 +100,7 @@ class AgentEngine:
                         url,
                         json=payload,
                         headers={"Content-Type": "application/json"},
-                        timeout=30,
+                        timeout=12,
                     )
                     if resp.status_code == 200:
                         data = resp.json()
