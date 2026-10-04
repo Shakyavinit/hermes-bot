@@ -725,17 +725,16 @@ def schedule_reminder(chat_id: int, delay_seconds: int, reminder_text: str) -> N
 
 def sync_bot_commands() -> None:
     commands = [
-        {"command": "start", "description": "Main menu & status"},
-        {"command": "status", "description": "System status"},
-        {"command": "screenshot", "description": "Take screenshot"},
-        {"command": "webcam", "description": "Webcam photo"},
-        {"command": "battery", "description": "Battery percentage"},
-        {"command": "self", "description": "Toggle self-use mode"},
-        {"command": "auto", "description": "Toggle auto-approve"},
-        {"command": "remind", "description": "Set a reminder"},
-        {"command": "diagnose", "description": "Test connectivity"},
-        {"command": "reset", "description": "Clear memory"},
-        {"command": "help", "description": "Help guide"},
+        {"command": "start", "description": "🏠 Main Hub (Laptop / Cloud)"},
+        {"command": "laptop", "description": "💻 Laptop Controls & Toggles"},
+        {"command": "cloud", "description": "☁️ Cloud Server Operations"},
+        {"command": "screenshot", "description": "📸 Capture Screen"},
+        {"command": "webcam", "description": "📷 Capture Webcam Photo"},
+        {"command": "battery", "description": "🔋 Battery & Power Level"},
+        {"command": "lock", "description": "🔒 Lock / Unlock Screen"},
+        {"command": "mute", "description": "🔇 Mute / Unmute Audio"},
+        {"command": "status", "description": "📊 Live System Status"},
+        {"command": "help", "description": "❓ Help & Command Guide"},
     ]
     try:
         requests.post(f"{API_BASE}/setMyCommands", json={"commands": commands}, timeout=10)
@@ -1340,7 +1339,7 @@ class TelegramBotRunner:
             self.send_result(chat_id, "🔊 *Volume Up:*", res)
             return True
 
-        if clean in ("🔇 Mute", "🔊 Unmute") or low in ("mute", "unmute"):
+        if clean in ("🔇 Mute", "🔊 Unmute") or cmd in ("/mute", "/unmute") or low in ("mute", "unmute"):
             res = laptop_mute()
             _is_muted = not _is_muted
             self.switch_menu(chat_id, _user_menu_state.get(chat_id, "volume"),
