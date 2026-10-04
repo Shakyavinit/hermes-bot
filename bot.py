@@ -321,8 +321,62 @@ MENU_MAP = {
 }
 
 
+def get_main_inline_kb() -> dict:
+    """Main dashboard inline keyboard (attached directly under message)."""
+    auto_text = "⚡ Auto: ON 🟢" if _is_auto_approve_active else "⚡ Auto: OFF 🔴"
+    remote_text = "🎮 Remote: ON 🟢" if _is_remote_active else "🎮 Remote: OFF 🔴"
+    return {
+        "inline_keyboard": [
+            [
+                {"text": "📸 Screenshot", "callback_data": "btn_screenshot"},
+                {"text": "📷 Webcam", "callback_data": "btn_webcam"},
+            ],
+            [
+                {"text": "🔋 Battery", "callback_data": "btn_battery"},
+                {"text": "📊 Status", "callback_data": "btn_status"},
+            ],
+            [
+                {"text": auto_text, "callback_data": "btn_auto_toggle"},
+                {"text": remote_text, "callback_data": "btn_remote_toggle"},
+            ],
+            [
+                {"text": "🛠️ More Tools & Controls ▾", "callback_data": "btn_more_tools"},
+            ],
+        ]
+    }
+
+
+def get_tools_inline_kb() -> dict:
+    """Expanded tools inline keyboard."""
+    lock_text = "🔓 Unlock Screen" if _is_locked else "🔒 Lock Screen"
+    mute_text = "🔊 Unmute" if _is_muted else "🔇 Mute"
+    return {
+        "inline_keyboard": [
+            [
+                {"text": lock_text, "callback_data": "btn_lock_toggle"},
+                {"text": mute_text, "callback_data": "btn_mute_toggle"},
+            ],
+            [
+                {"text": "⚡ Sleep Laptop", "callback_data": "btn_sleep"},
+                {"text": "📶 WiFi Status", "callback_data": "btn_wifi"},
+            ],
+            [
+                {"text": "📁 List Files", "callback_data": "btn_files"},
+                {"text": "🩺 Health Check", "callback_data": "btn_diagnose"},
+            ],
+            [
+                {"text": "🔙 Back to Main Panel", "callback_data": "btn_back_main"},
+            ],
+        ]
+    }
+
+
 def get_kb_for(menu: str = None) -> dict:
-    """Get keyboard for a menu name (disabled - all buttons removed)."""
+    """Return inline keyboard for menus."""
+    if menu == "main":
+        return get_main_inline_kb()
+    elif menu in ("laptop", "extra", "tools"):
+        return get_tools_inline_kb()
     return {"remove_keyboard": True}
 
 
@@ -404,6 +458,29 @@ def tg_edit_message(chat_id: int, message_id: int, new_text: str) -> bool:
         return resp.status_code == 200
     except Exception:
         return False
+
+
+def tg_edit_reply_markup(chat_id: int, message_id: int, reply_markup: dict) -> bool:
+    try:
+        resp = requests.post(
+            f"{API_BASE}/editMessageReplyMarkup",
+            json={"chat_id": chat_id, "message_id": message_id, "reply_markup": reply_markup},
+            timeout=10,
+        )
+        return resp.status_code == 200
+    except Exception:
+        return False
+
+
+def tg_answer_callback(cq_id: str, text: str = "", show_alert: bool = False) -> None:
+    try:
+        requests.post(
+            f"{API_BASE}/answerCallbackQuery",
+            json={"callback_query_id": cq_id, "text": text, "show_alert": show_alert},
+            timeout=5,
+        )
+    except Exception:
+        pass
 
 
 def tg_send_chat_action(chat_id: int, action: str = "typing") -> None:
@@ -1539,13 +1616,83 @@ class TelegramBotRunner:
         return False
 
     def process_callback_query(self, cq: dict) -> None:
-        """Handle inline button callbacks (kept minimal for legacy)."""
+        """Handle interactive inline button clicks with instant in-place response."""
         cq_id = cq.get("id")
-        try:
-            requests.post(f"{API_BASE}/answerCallbackQuery",
-                json={"callback_query_id": cq_id}, timeout=5)
-        except Exception:
-            pass
+        from_user = cq.get("from", {})
+        user_id = from_user.get("id")
+        username = from_user.get("username", "")
+        message = cq.get("message", {})
+        chat = message.get("chat", {})
+        chat_id = chat.get("id")
+        message_id = message.get("message_id")
+        data = cq.get("data", "")
+
+        if not chat_id or not user_id:
+            return
+
+        if not is_user_allowed(user_id, username=username):
+            tg_answer_callback(cq_id, "⛔ Access Denied", show_alert=True)
+            return
+
+        global _is_auto_approve_active, _is_remote_active, _is_locked, _is_muted
+
+        if data == "btn_screenshot":
+            tg_answer_callback(cq_id, "📸 Capturing screenshot...")
+            res = laptop_screenshot()
+            self.send_result(chat_id, "📸 *Screenshot Captured*", res)
+        elif data == "btn_webcam":
+            tg_answer_callback(cq_id, "📷 Capturing webcam...")
+            res = laptop_webcam()
+            self.send_result(chat_id, "📷 *Webcam Photo Captured*", res)
+        elif data == "btn_battery":
+            batt = laptop_battery()
+            tg_answer_callback(cq_id, f"🔋 Battery: {batt}", show_alert=True)
+        elif data == "btn_status":
+            tg_answer_callback(cq_id, "📊 Status updated")
+            tg_send_message(chat_id, get_status_text())
+        elif data == "btn_auto_toggle":
+            _is_auto_approve_active = not _is_auto_approve_active
+            laptop_auto_toggle()
+            tg_edit_reply_markup(chat_id, message_id, get_main_inline_kb())
+            tg_answer_callback(cq_id, f"⚡ Auto-Approve: {'ON 🟢' if _is_auto_approve_active else 'OFF 🔴'}")
+        elif data == "btn_remote_toggle":
+            _is_remote_active = not _is_remote_active
+            laptop_remote_toggle()
+            tg_edit_reply_markup(chat_id, message_id, get_main_inline_kb())
+            tg_answer_callback(cq_id, f"🎮 Remote: {'ON 🟢' if _is_remote_active else 'PAUSED 🔴'}")
+        elif data == "btn_more_tools":
+            tg_edit_reply_markup(chat_id, message_id, get_tools_inline_kb())
+            tg_answer_callback(cq_id, "🛠️ More Tools")
+        elif data == "btn_back_main":
+            tg_edit_reply_markup(chat_id, message_id, get_main_inline_kb())
+            tg_answer_callback(cq_id, "🔙 Main Panel")
+        elif data == "btn_lock_toggle":
+            laptop_lock_toggle()
+            _is_locked = not _is_locked
+            tg_edit_reply_markup(chat_id, message_id, get_tools_inline_kb())
+            tg_answer_callback(cq_id, f"🔒 Lock: {'LOCKED' if _is_locked else 'UNLOCKED'}")
+        elif data == "btn_mute_toggle":
+            laptop_mute()
+            _is_muted = not _is_muted
+            tg_edit_reply_markup(chat_id, message_id, get_tools_inline_kb())
+            tg_answer_callback(cq_id, f"🔊 Audio: {'MUTED' if _is_muted else 'UNMUTED'}")
+        elif data == "btn_sleep":
+            tg_answer_callback(cq_id, "⚡ Sleeping laptop...", show_alert=True)
+            laptop_power_sleep()
+        elif data == "btn_wifi":
+            wifi = laptop_wifi()
+            self.send_result(chat_id, "📶 *WiFi Status*", wifi)
+            tg_answer_callback(cq_id, "📶 WiFi checked")
+        elif data == "btn_files":
+            files = list_directory(".")
+            self.send_result(chat_id, "📁 *Files*", f"```\n{files}\n```")
+            tg_answer_callback(cq_id, "📁 Files listed")
+        elif data == "btn_diagnose":
+            tg_answer_callback(cq_id, "🩺 Running diagnostics...")
+            diag = run_system_diagnostics()
+            self.send_result(chat_id, diag, "")
+        else:
+            tg_answer_callback(cq_id)
 
     def process_message(self, message: dict) -> None:
         chat = message.get("chat", {})
