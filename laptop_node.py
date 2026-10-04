@@ -480,6 +480,31 @@ def get_antigravity_status() -> str:
         return f"🤖 Error reading Antigravity status: {e}"
 
 
+def play_tts_sound(text: str) -> bool:
+    """Generate and play 100% volume natural human voice via edge-tts with audio boost."""
+    # Force 100% laptop system volume and ensure unmuted
+    os.system("pactl set-sink-mute @DEFAULT_SINK@ 0 2>/dev/null; pactl set-sink-volume @DEFAULT_SINK@ 100% 2>/dev/null")
+    tts_mp3 = "/tmp/hermes_tts.mp3"
+    try:
+        if os.path.exists(tts_mp3):
+            os.remove(tts_mp3)
+        import asyncio
+        import edge_tts
+        async def _synth():
+            comm = edge_tts.Communicate(text, "hi-IN-MadhurNeural", volume="+50%")
+            await comm.save(tts_mp3)
+        asyncio.run(_synth())
+        if os.path.exists(tts_mp3) and os.path.getsize(tts_mp3) > 1000:
+            os.system(f"mpv --no-video --volume=130 '{tts_mp3}' >/dev/null 2>&1")
+            return True
+    except Exception as e:
+        logger.error(f"Neural TTS generation error: {e}")
+    # Offline fallback
+    safe_text = text.replace('"', '\\"')
+    os.system(f'espeak-ng "{safe_text}" 2>/dev/null || spd-say "{safe_text}" 2>/dev/null')
+    return False
+
+
 def execute_action(cmd: str) -> str:
     """Handle special live control actions or general shell commands."""
     global CCTV_ENABLED
@@ -823,18 +848,8 @@ def execute_action(cmd: str) -> str:
     # 16. Text-to-Speech (TTS)
     if clean.startswith("__ACTION_SPEAK__"):
         speak_text = clean[len("__ACTION_SPEAK__"):].strip()
-        safe_text = speak_text.replace('"', '\\"')
-        tts_mp3 = "/tmp/hermes_tts.mp3"
-        # 1. Ultra-Realistic Studio Neural Voice (hi-IN-MadhurNeural / natural human tone)
-        edge_cmd = (
-            f'edge-tts --voice hi-IN-MadhurNeural --text "{safe_text}" --write-media {tts_mp3} >/dev/null 2>&1 && '
-            f'mpv --no-video --volume=100 {tts_mp3} >/dev/null 2>&1'
-        )
-        ret = os.system(edge_cmd)
-        if ret != 0 or not os.path.exists(tts_mp3):
-            # 2. Offline fallback
-            os.system(f'espeak-ng "{safe_text}" 2>/dev/null || spd-say "{safe_text}" 2>/dev/null || espeak "{safe_text}" 2>/dev/null')
-        return f"🗣️ Spoken on laptop (Natural Neural Voice): \"{speak_text}\""
+        play_tts_sound(speak_text)
+        return f"🗣️ Spoken on laptop (100% volume): \"{speak_text}\""
 
     # 17. Popup Notification
     if clean.startswith("__ACTION_POPUP__"):
