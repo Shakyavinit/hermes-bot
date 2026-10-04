@@ -72,6 +72,7 @@ _is_auto_approve_active = False
 _is_cctv_active = False
 _is_hotspot_active = False
 _is_ghost_mode = False
+_is_alarm_active = False
 _user_menu_state: Dict[int, str] = {}  # Track which menu user is on
 _user_pending_input: Dict[int, str] = {}  # Track expected input (e.g., "typing_text", "url", etc.)
 _notes_storage: Dict[int, List[str]] = {}  # Local notes
@@ -322,21 +323,25 @@ MENU_MAP = {
 
 
 def get_page_kb(page: int = 1) -> dict:
-    """Multi-page inline keyboard with all controls and navigation."""
-    global _is_auto_approve_active, _is_remote_active, _is_locked, _is_muted, _is_cctv_active, _is_ghost_mode
+    """Multi-page inline keyboard with explicit ON/OFF toggle states for every switch."""
+    global _is_auto_approve_active, _is_remote_active, _is_locked, _is_muted
+    global _is_cctv_active, _is_ghost_mode, _is_alarm_active, _is_hotspot_active
 
-    auto_text = "⚡ Auto: ON 🟢" if _is_auto_approve_active else "⚡ Auto: OFF 🔴"
-    remote_text = "🎮 Remote: ON 🟢" if _is_remote_active else "🎮 Remote: OFF 🔴"
-    lock_text = "🔓 Unlock" if _is_locked else "🔒 Lock Screen"
-    mute_text = "🔊 Unmute" if _is_muted else "🔇 Mute"
-    ghost_text = "☀️ Screen ON" if _is_ghost_mode else "🕶️ Ghost Mode"
+    auto_text = f"⚡ Auto: {'ON 🟢' if _is_auto_approve_active else 'OFF 🔴'}"
+    remote_text = f"🎮 Remote: {'ON 🟢' if _is_remote_active else 'OFF 🔴'}"
+    mute_text = f"🔇 Mute: {'ON 🟢' if _is_muted else 'OFF 🔴'}"
+    lock_text = f"🔒 Lock: {'ON 🟢' if _is_locked else 'OFF 🔴'}"
+    ghost_text = f"🕶️ Ghost: {'ON 🟢' if _is_ghost_mode else 'OFF 🔴'}"
+    cctv_text = f"👁️ CCTV: {'ON 🟢' if _is_cctv_active else 'OFF 🔴'}"
+    alarm_text = f"🚨 Alarm: {'ON 🚨' if _is_alarm_active else 'OFF 🔴'}"
+    hotspot_text = f"📡 Hotspot: {'ON 🟢' if _is_hotspot_active else 'OFF 🔴'}"
 
     if page == 1:
-        # Page 1: Vision & Core Hardware
+        # Page 1: Core Recon & Modes
         rows = [
             [
                 {"text": "📸 Screenshot", "callback_data": "btn_screenshot"},
-                {"text": "📷 Webcam", "callback_data": "btn_webcam"},
+                {"text": "📷 Webcam Photo", "callback_data": "btn_webcam"},
             ],
             [
                 {"text": "🔋 Battery Level", "callback_data": "btn_battery"},
@@ -352,7 +357,7 @@ def get_page_kb(page: int = 1) -> dict:
             ]
         ]
     elif page == 2:
-        # Page 2: Audio, Media & Voice
+        # Page 2: Audio, Volume & Media
         rows = [
             [
                 {"text": "🔊 Volume +10%", "callback_data": "btn_vol_up"},
@@ -373,7 +378,7 @@ def get_page_kb(page: int = 1) -> dict:
             ]
         ]
     elif page == 3:
-        # Page 3: Power, Security & Screen
+        # Page 3: Security, Power & Screen Controls (All with ON / OFF)
         rows = [
             [
                 {"text": lock_text, "callback_data": "btn_lock_toggle"},
@@ -381,11 +386,11 @@ def get_page_kb(page: int = 1) -> dict:
             ],
             [
                 {"text": ghost_text, "callback_data": "btn_ghost_mode"},
-                {"text": "☀️ Screen ON", "callback_data": "btn_screen_on"},
+                {"text": cctv_text, "callback_data": "btn_cctv_toggle"},
             ],
             [
-                {"text": "🚨 Alarm ON", "callback_data": "btn_alarm_on"},
-                {"text": "🛑 Alarm OFF", "callback_data": "btn_alarm_off"},
+                {"text": alarm_text, "callback_data": "btn_alarm_toggle"},
+                {"text": hotspot_text, "callback_data": "btn_hotspot_toggle"},
             ],
             [
                 {"text": "⬅️ Prev", "callback_data": "page_2"},
@@ -419,10 +424,12 @@ def get_page_kb(page: int = 1) -> dict:
 
 
 def get_page_text(page: int = 1) -> str:
-    """Header text for paginated controls."""
+    """Header text with live summary of all switch states."""
     _laptop = "ONLINE 🟢" if is_laptop_online() else "OFFLINE 🔴"
-    _remote = "ACTIVE 🟢 (30m)" if _is_remote_active else "OFF 🔴"
+    _remote = "ON 🟢" if _is_remote_active else "OFF 🔴"
     _auto = "ON 🟢" if _is_auto_approve_active else "OFF 🔴"
+    _lock = "ON 🟢" if _is_locked else "OFF 🔴"
+    _mute = "ON 🟢" if _is_muted else "OFF 🔴"
 
     if page == 1:
         return (
@@ -430,15 +437,16 @@ def get_page_text(page: int = 1) -> str:
             "*Core Hardware & Vision Controls*\n\n"
             f"💻 *Laptop:* `{_laptop}`\n"
             f"☁️ *Cloud:* `ONLINE 24/7 🟢`\n"
-            f"🎮 *Remote:* `{_remote}`\n"
+            f"🎮 *Remote:* `{_remote}` (30m)\n"
             f"⚡ *Auto-Approve:* `{_auto}`\n\n"
-            "_Tap any button below or use Next ➡️:_"
+            "_Tap any button below to toggle or execute:_"
         )
     elif page == 2:
         return (
             "🔊 *Hermes Audio & Media* — `Page 2/4`\n"
             "*Sound, Voice & Playback Controls*\n\n"
-            "• Volume control & Mute toggle\n"
+            f"🔇 *Mute Audio:* `{'ON 🟢' if _is_muted else 'OFF 🔴'}`\n\n"
+            "• Volume control (+/- 10%)\n"
             "• Microphone recording (10s)\n"
             "• Webcam video clip & Music toggle\n\n"
             "_Tap a control or use navigation buttons below:_"
@@ -446,11 +454,13 @@ def get_page_text(page: int = 1) -> str:
     elif page == 3:
         return (
             "⚡ *Hermes Power & Security* — `Page 3/4`\n"
-            "*Lock, Screen & Surveillance Controls*\n\n"
-            "• Screen lock / unlock\n"
-            "• Sleep & Stealth Ghost Mode\n"
-            "• Security Siren / Alarm\n\n"
-            "_Tap a control or use navigation buttons below:_"
+            "*Lock, Screen & Surveillance Toggles*\n\n"
+            f"🔒 *Screen Lock:* `{'ON 🟢' if _is_locked else 'OFF 🔴'}`\n"
+            f"🕶️ *Ghost Mode:* `{'ON 🟢' if _is_ghost_mode else 'OFF 🔴'}`\n"
+            f"👁️ *CCTV Mode:* `{'ON 🟢' if _is_cctv_active else 'OFF 🔴'}`\n"
+            f"🚨 *Siren Alarm:* `{'ON 🚨' if _is_alarm_active else 'OFF 🔴'}`\n"
+            f"📡 *Hotspot:* `{'ON 🟢' if _is_hotspot_active else 'OFF 🔴'}`\n\n"
+            "_Tap any toggle button to switch ON/OFF:_"
         )
     else:
         return (
@@ -816,20 +826,7 @@ class TelegramBotRunner:
         _remote = "ACTIVE 🟢" if _is_remote_active else "PAUSED 🔴"
         _auto = "ON 🟢" if _is_auto_approve_active else "OFF 🔴"
         menu_titles = {
-            "main": (
-                "🤖 *Hermes AI Assistant*\n\n"
-                f"💻 *Laptop:* `{_laptop}`\n"
-                f"☁️ *Cloud:* `ONLINE 24/7 🟢`\n"
-                f"🎮 *Remote:* `{_remote}`\n"
-                f"⚡ *Auto-Approve:* `{_auto}`\n\n"
-                "*Commands:*\n"
-                "• `screenshot` — Screen capture\n"
-                "• `webcam` — Camera photo\n"
-                "• `battery` — Battery percentage\n"
-                "• `/status` — System details\n"
-                "• `/help` — Complete guide\n\n"
-                "_Kuch bhi bolein ya command type karein..._"
-            ),
+            "main": get_page_text(1),
             "laptop": (
                 "💻 *Laptop Control Panel*\n\n"
                 f"• Status: `{_laptop}`\n\n"
@@ -1762,13 +1759,15 @@ class TelegramBotRunner:
         elif data == "btn_auto_toggle":
             _is_auto_approve_active = not _is_auto_approve_active
             laptop_auto_toggle()
+            tg_edit_message(chat_id, message_id, get_page_text(1))
             tg_edit_reply_markup(chat_id, message_id, get_page_kb(1))
             tg_answer_callback(cq_id, f"⚡ Auto: {'ON 🟢' if _is_auto_approve_active else 'OFF 🔴'}")
         elif data == "btn_remote_toggle":
             _is_remote_active = not _is_remote_active
             laptop_remote_toggle()
+            tg_edit_message(chat_id, message_id, get_page_text(1))
             tg_edit_reply_markup(chat_id, message_id, get_page_kb(1))
-            tg_answer_callback(cq_id, f"🎮 Remote: {'ON 🟢' if _is_remote_active else 'PAUSED 🔴'}")
+            tg_answer_callback(cq_id, f"🎮 Remote: {'ON 🟢' if _is_remote_active else 'OFF 🔴'}")
 
         # Page 2 Callbacks: Media, Volume & Voice
         elif data == "btn_vol_up":
@@ -1780,8 +1779,9 @@ class TelegramBotRunner:
         elif data == "btn_mute_toggle":
             _is_muted = not _is_muted
             laptop_mute()
+            tg_edit_message(chat_id, message_id, get_page_text(2))
             tg_edit_reply_markup(chat_id, message_id, get_page_kb(2))
-            tg_answer_callback(cq_id, f"🔇 Audio: {'MUTED' if _is_muted else 'UNMUTED'}")
+            tg_answer_callback(cq_id, f"🔇 Mute: {'ON 🟢' if _is_muted else 'OFF 🔴'}")
         elif data == "btn_mic10":
             tg_answer_callback(cq_id, "🎙️ Recording 10s audio...")
             res = laptop_mic(10)
@@ -1794,31 +1794,49 @@ class TelegramBotRunner:
             laptop_playpause()
             tg_answer_callback(cq_id, "🎵 Play/Pause toggled")
 
-        # Page 3 Callbacks: Power, Security & Screen
+        # Page 3 Callbacks: Power, Security & Screen (All with instant in-place toggle)
         elif data == "btn_lock_toggle":
             _is_locked = not _is_locked
             laptop_lock_toggle()
+            tg_edit_message(chat_id, message_id, get_page_text(3))
             tg_edit_reply_markup(chat_id, message_id, get_page_kb(3))
-            tg_answer_callback(cq_id, f"🔒 Lock: {'LOCKED' if _is_locked else 'UNLOCKED'}")
+            tg_answer_callback(cq_id, f"🔒 Lock: {'ON 🟢' if _is_locked else 'OFF 🔴'}")
         elif data == "btn_sleep":
             tg_answer_callback(cq_id, "⚡ Sleeping laptop...", show_alert=True)
             laptop_power_sleep()
         elif data == "btn_ghost_mode":
             _is_ghost_mode = not _is_ghost_mode
-            laptop_ghost_mode()
+            if _is_ghost_mode:
+                laptop_ghost_mode()
+            else:
+                laptop_screen_on()
+            tg_edit_message(chat_id, message_id, get_page_text(3))
             tg_edit_reply_markup(chat_id, message_id, get_page_kb(3))
-            tg_answer_callback(cq_id, f"🕶️ Ghost Mode: {'ON' if _is_ghost_mode else 'OFF'}")
-        elif data == "btn_screen_on":
-            _is_ghost_mode = False
-            laptop_screen_on()
+            tg_answer_callback(cq_id, f"🕶️ Ghost: {'ON 🟢' if _is_ghost_mode else 'OFF 🔴'}")
+        elif data == "btn_cctv_toggle":
+            _is_cctv_active = not _is_cctv_active
+            laptop_cctv_toggle()
+            tg_edit_message(chat_id, message_id, get_page_text(3))
             tg_edit_reply_markup(chat_id, message_id, get_page_kb(3))
-            tg_answer_callback(cq_id, "☀️ Screen ON")
-        elif data == "btn_alarm_on":
-            laptop_alarm()
-            tg_answer_callback(cq_id, "🚨 Siren / Alarm ON!", show_alert=True)
-        elif data == "btn_alarm_off":
-            laptop_stop_alarm()
-            tg_answer_callback(cq_id, "🛑 Alarm Stopped")
+            tg_answer_callback(cq_id, f"👁️ CCTV: {'ON 🟢' if _is_cctv_active else 'OFF 🔴'}")
+        elif data == "btn_alarm_toggle":
+            _is_alarm_active = not _is_alarm_active
+            if _is_alarm_active:
+                laptop_alarm()
+            else:
+                laptop_stop_alarm()
+            tg_edit_message(chat_id, message_id, get_page_text(3))
+            tg_edit_reply_markup(chat_id, message_id, get_page_kb(3))
+            tg_answer_callback(cq_id, f"🚨 Alarm: {'ON 🚨' if _is_alarm_active else 'OFF 🔴'}", show_alert=True)
+        elif data == "btn_hotspot_toggle":
+            _is_hotspot_active = not _is_hotspot_active
+            if _is_hotspot_active:
+                laptop_hotspot_start()
+            else:
+                laptop_hotspot_stop()
+            tg_edit_message(chat_id, message_id, get_page_text(3))
+            tg_edit_reply_markup(chat_id, message_id, get_page_kb(3))
+            tg_answer_callback(cq_id, f"📡 Hotspot: {'ON 🟢' if _is_hotspot_active else 'OFF 🔴'}")
 
         # Page 4 Callbacks: Network, Files & Tools
         elif data == "btn_wifi":
