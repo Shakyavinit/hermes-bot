@@ -823,7 +823,7 @@ def execute_action(cmd: str) -> str:
     # 16. Text-to-Speech (TTS)
     if clean.startswith("__ACTION_SPEAK__"):
         speak_text = clean[len("__ACTION_SPEAK__"):].strip().replace('"', '\\"')
-        os.system(f'spd-say "{speak_text}" 2>/dev/null || espeak "{speak_text}" 2>/dev/null')
+        os.system(f'espeak-ng "{speak_text}" 2>/dev/null || spd-say "{speak_text}" 2>/dev/null || espeak "{speak_text}" 2>/dev/null')
         return f"🗣️ Spoken on laptop: \"{speak_text}\""
 
     # 17. Popup Notification
