@@ -576,47 +576,66 @@ def track_bot_msg(chat_id: int, msg_id: Optional[int]) -> None:
         _recent_bot_msgs[chat_id] = _recent_bot_msgs[chat_id][-50:]
 
 
-# Verified stickers & Custom Sticker persistence
-CUSTOM_STICKERS_FILE = WORKSPACE_DIR / "custom_stickers.json"
-_last_received_sticker: Dict[int, str] = {}
-
-BOT_STICKERS = {
-    "ready": "CAACAgQAAxUAAWrCByoU-BDX3Mhd5xo0HRCfS8dKAAIwAAPBkgcEgNzQy0eP4lg9BA",      # Jarvis Ready
-    "camera": "CAACAgQAAxUAAWrCBzGlzFKGwZif9FzYj-9mTR25AAK-AQACgquUESyYRHOb_BvePQQ",    # Cyberpunk Scan
-    "battery": "CAACAgQAAxUAAWrCBzFMBqTjTiV6KRc1b9jUYWzEAAK6AQACgquUEdxK9XfJZvo1PQQ",   # Cyberpunk Energy
-    "music": "CAACAgQAAxUAAWrCBzHcfeJmeW9iU1JuR2UYIWykAAK_AQACgquUEa9d3xpHYTeEPQQ",     # Cyberpunk Fire/Hype
-    "security": "CAACAgQAAxUAAWrCBypTleHz7vCv8fr1CrTyQkYZAAIxAAPBkgcE8brchduYROk9BA",   # Jarvis Alert/Red
-    "done": "CAACAgQAAxUAAWrCBzFaGkBe932nEZ_8jmUSsxWeAAK8AQACgquUEdFJqXvTCfhzPQQ",       # Cyberpunk Respect
-    "celebrate": "CAACAgQAAxUAAWrCBzEOYukGP1LPPBikaLMU_oFOAAK9AQACgquUEWOE_Qy48GVEPQQ",  # Cyberpunk Win
-    "alert": "CAACAgQAAxUAAWrCBypTleHz7vCv8fr1CrTyQkYZAAIxAAPBkgcE8brchduYROk9BA",
-}
+# ==============================================================================
+# EXCLUSIVE USER STICKER PACK (II_SH3R_II_uunv_by_fStikBot)
+# ==============================================================================
+SHER_STICKERS_FILE = WORKSPACE_DIR / "sher_stickers.json"
+SHER_STICKER_PACK_NAME = "II_SH3R_II_uunv_by_fStikBot"
+_sher_stickers_cache: List[str] = []
 
 
-def get_sticker_for(action: str) -> str:
-    """Retrieve custom sticker if configured, else fallback to verified default."""
-    if CUSTOM_STICKERS_FILE.exists():
+def get_sher_stickers() -> List[str]:
+    """Retrieve all sticker file_ids from the exclusive II_SH3R_II_uunv_by_fStikBot pack."""
+    global _sher_stickers_cache
+    if _sher_stickers_cache:
+        return _sher_stickers_cache
+
+    if SHER_STICKERS_FILE.exists():
         try:
-            with open(CUSTOM_STICKERS_FILE, "r") as f:
-                data = json.load(f)
-                if action in data:
-                    return data[action]
+            with open(SHER_STICKERS_FILE, "r") as f:
+                _sher_stickers_cache = json.load(f)
+                if _sher_stickers_cache:
+                    return _sher_stickers_cache
         except Exception:
             pass
-    return BOT_STICKERS.get(action, BOT_STICKERS.get("ready"))
+
+    try:
+        resp = requests.get(f"{API_BASE}/getStickerSet", params={"name": SHER_STICKER_PACK_NAME}, timeout=10)
+        res = resp.json()
+        if res.get("ok"):
+            _sher_stickers_cache = [s["file_id"] for s in res["result"].get("stickers", []) if "file_id" in s]
+            with open(SHER_STICKERS_FILE, "w") as f:
+                json.dump(_sher_stickers_cache, f, indent=2)
+    except Exception as e:
+        logger.error(f"Error loading Sher stickers: {e}")
+
+    return _sher_stickers_cache
 
 
-def save_custom_sticker(action: str, file_id: str) -> None:
-    """Save custom sticker for an action."""
-    data = {}
-    if CUSTOM_STICKERS_FILE.exists():
-        try:
-            with open(CUSTOM_STICKERS_FILE, "r") as f:
-                data = json.load(f)
-        except Exception:
-            data = {}
-    data[action] = file_id
-    with open(CUSTOM_STICKERS_FILE, "w") as f:
-        json.dump(data, f, indent=2)
+def maybe_send_sher_sticker(chat_id: int, force: bool = False, chance: float = 0.20) -> Optional[int]:
+    """Occasionally send a random sticker from the exclusive Sher pack (kabhi kabhi random)."""
+    if not force and random.random() > chance:
+        return None
+
+    stickers = get_sher_stickers()
+    if not stickers:
+        return None
+
+    sticker_id = random.choice(stickers)
+    try:
+        resp = requests.post(
+            f"{API_BASE}/sendSticker",
+            json={"chat_id": chat_id, "sticker": sticker_id},
+            timeout=8,
+        )
+        res = resp.json()
+        if res.get("ok"):
+            msg_id = res.get("result", {}).get("message_id")
+            track_bot_msg(chat_id, msg_id)
+            return msg_id
+    except Exception as e:
+        logger.error(f"Error sending Sher sticker: {e}")
+    return None
 
 
 # Verified Telegram Premium Custom Emojis (Neon & Animated Official Packs)
@@ -1082,9 +1101,10 @@ class TelegramBotRunner:
         start_health_server()
 
     def send_result(self, chat_id: int, title: str, result: str, menu: str = None) -> None:
-        """Send result with bottom shortcuts keyboard and sleek styling."""
+        """Send result with bottom shortcuts keyboard and sleek styling, occasionally attaching Sher sticker."""
         text = format_stylish_response(title, result)
         tg_send_message(chat_id, text, reply_markup=get_bottom_reply_kb())
+        maybe_send_sher_sticker(chat_id, chance=0.20)
 
     def switch_menu(self, chat_id: int, menu_name: str, title: str = None) -> None:
         """Switch to a submenu."""
@@ -1342,6 +1362,10 @@ class TelegramBotRunner:
                     "Available actions: `screenshot`, `webcam`, `battery`, `music`, `lock`, `done`, `ready`",
                 )
                 return True
+
+        if cmd in ("/sher", "/sticker"):
+            maybe_send_sher_sticker(chat_id, force=True)
+            return True
 
         # ==================== CATEGORY SWITCHES ====================
         category_map = {
