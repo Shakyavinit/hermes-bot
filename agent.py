@@ -19,6 +19,8 @@ from config import (
     GROQ_MODELS,
     OPENROUTER_API_KEY,
     OPENROUTER_MODELS,
+    HUGGINGFACE_API_KEY,
+    HUGGINGFACE_MODELS,
     WORKSPACE_DIR,
 )
 from memory import (
@@ -71,6 +73,7 @@ class AgentEngine:
         self.keys = GEMINI_API_KEYS
         self.models = GEMINI_MODELS
         self.groq_models = GROQ_MODELS
+        self.huggingface_models = HUGGINGFACE_MODELS
         self.openrouter_models = OPENROUTER_MODELS
         self.max_steps = 10
 
@@ -185,6 +188,40 @@ class AgentEngine:
                 continue
         return None
 
+    def _call_huggingface_fallback(self, user_message: str) -> Optional[str]:
+        """Tier-3 high-performance fallback via Hugging Face Serverless Router (DeepSeek-V3, Llama 3.3, Qwen)."""
+        if not HUGGINGFACE_API_KEY:
+            return None
+        url = "https://router.huggingface.co/v1/chat/completions"
+        headers = {
+            "Authorization": f"Bearer {HUGGINGFACE_API_KEY}",
+            "Content-Type": "application/json",
+        }
+        for model in self.huggingface_models:
+            payload = {
+                "model": model,
+                "messages": [
+                    {"role": "system", "content": SYSTEM_PROMPT},
+                    {"role": "user", "content": user_message},
+                ],
+                "temperature": 0.3,
+                "max_tokens": 2048,
+            }
+            try:
+                resp = requests.post(url, json=payload, headers=headers, timeout=25)
+                if resp.status_code == 200:
+                    data = resp.json()
+                    choices = data.get("choices", [])
+                    if choices:
+                        return choices[0].get("message", {}).get("content", "").strip()
+                elif resp.status_code in (429, 404, 503):
+                    logger.warning(f"HuggingFace model {model} HTTP {resp.status_code}, trying next...")
+                    continue
+            except Exception as e:
+                logger.warning(f"HuggingFace fallback failed for {model}: {e}")
+                continue
+        return None
+
     def run_task(
         self,
         session_id: str,
@@ -244,7 +281,7 @@ class AgentEngine:
             model_content = self._call_gemini_api(contents, with_tools=True)
 
             if not model_content:
-                # Multi-Tier Fallback: Tier 2 Groq -> Tier 3 OpenRouter
+                # Multi-Tier Fallback: Tier 2 Groq -> Tier 3 Hugging Face -> Tier 4 OpenRouter
                 if progress_callback:
                     progress_callback("⚡ Gemini busy/failing, switching to Groq LPU engine...")
                 groq_reply = self._call_groq_fallback(user_message)
@@ -253,13 +290,20 @@ class AgentEngine:
                     return f"{groq_reply}\n\n_(⚡ Handled via Groq LPU Fallback)_"
 
                 if progress_callback:
-                    progress_callback("🌐 Groq unavailable, switching to OpenRouter Cloud...")
+                    progress_callback("🤗 Groq unavailable, switching to Hugging Face Serverless Router...")
+                hf_reply = self._call_huggingface_fallback(user_message)
+                if hf_reply:
+                    add_message(session_id, "assistant", hf_reply)
+                    return f"{hf_reply}\n\n_(🤗 Handled via Hugging Face Fallback - DeepSeek/Llama 3.3)_"
+
+                if progress_callback:
+                    progress_callback("🌐 Hugging Face unavailable, switching to OpenRouter Cloud...")
                 openrouter_reply = self._call_openrouter_fallback(user_message)
                 if openrouter_reply:
                     add_message(session_id, "assistant", openrouter_reply)
                     return f"{openrouter_reply}\n\n_(🌐 Handled via OpenRouter Fallback)_"
 
-                return "⚠️ Notice: Gemini, Groq aur OpenRouter teeno busy hain. Kripya thodi der baad dobara try karein."
+                return "⚠️ Notice: Gemini, Groq, Hugging Face aur OpenRouter sabhi busy hain. Kripya thodi der baad dobara try karein."
 
             parts = model_content.get("parts", [])
 

@@ -38,6 +38,7 @@ load_env()
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "8954487031:AAEv9-RzsecVcnJyVfd3pfEOYYfiBGh9Fzg")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
+HUGGINGFACE_API_KEY = os.getenv("HUGGINGFACE_API_KEY", "")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 GEMINI_API_KEY_2 = os.getenv("GEMINI_API_KEY_2", "")
 APIKEY_2CAPTCHA = os.getenv("APIKEY_2CAPTCHA", os.getenv("TWO_CAPTCHA_API_KEY", ""))
@@ -68,6 +69,14 @@ OPENROUTER_MODELS = [
     "qwen/qwen3.8-27b:free",
     "nvidia/nemotron-3.5-lightning:free",
     "liquid/lfm-2.5-2.6b:free",
+]
+
+HUGGINGFACE_MODELS = [
+    "deepseek-ai/DeepSeek-V3",
+    "meta-llama/Llama-3.3-70B-Instruct",
+    "deepseek-ai/DeepSeek-R1",
+    "Qwen/Qwen2.5-Coder-32B-Instruct",
+    "meta-llama/Llama-3.1-8B-Instruct",
 ]
 
 # Ensure data dir exists
