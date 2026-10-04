@@ -542,6 +542,19 @@ def get_page_text(page: int = 1) -> str:
         )
 
 
+def get_bottom_reply_kb() -> dict:
+    """Clean, compact bottom reply keyboard with essential everyday shortcuts."""
+    return {
+        "keyboard": [
+            [{"text": "📸 Screenshot"}, {"text": "📷 Webcam"}],
+            [{"text": "🔋 Battery"}, {"text": "📊 Status"}],
+            [{"text": "💻 Laptop Mode"}, {"text": "☁️ Cloud Mode"}],
+        ],
+        "resize_keyboard": True,
+        "is_persistent": True,
+    }
+
+
 def get_main_inline_kb() -> dict:
     return get_home_kb()
 
@@ -601,10 +614,8 @@ def tg_send_message(
     payload = {"chat_id": chat_id, "text": text}
     if parse_mode:
         payload["parse_mode"] = parse_mode
-    if reply_markup and "inline_keyboard" in reply_markup:
+    if reply_markup is not None:
         payload["reply_markup"] = reply_markup
-    else:
-        payload["reply_markup"] = {"remove_keyboard": True}
 
     try:
         resp = requests.post(f"{API_BASE}/sendMessage", json=payload, timeout=20)
@@ -882,10 +893,9 @@ class TelegramBotRunner:
         start_health_server()
 
     def send_result(self, chat_id: int, title: str, result: str, menu: str = None) -> None:
-        """Send result with the appropriate menu keyboard."""
-        current_menu = menu or _user_menu_state.get(chat_id, "main")
+        """Send result with bottom shortcuts keyboard."""
         text = f"{title}\n\n{result}" if result else title
-        tg_send_message(chat_id, text, reply_markup=get_kb_for(current_menu))
+        tg_send_message(chat_id, text, reply_markup=get_bottom_reply_kb())
 
     def switch_menu(self, chat_id: int, menu_name: str, title: str = None) -> None:
         """Switch to a submenu."""
@@ -1107,10 +1117,11 @@ class TelegramBotRunner:
                 return True
 
         # ==================== ROOT COMMANDS ====================
-        if cmd in ("/start", "/menu", "/main") or clean in ("🏠 Main Menu", "🔙 Main Menu", "📱 Menu", "Main Menu"):
+        if cmd in ("/start", "/menu", "/main", "/home") or clean in ("🏠 Main Menu", "🔙 Main Menu", "📱 Menu", "Main Menu"):
             cfg = get_runtime_config()
             if cfg.get("owner_user_id") is None:
                 set_owner(user_id)
+            tg_send_message(chat_id, "⚡ *Hermes Ready*", reply_markup=get_bottom_reply_kb())
             self.switch_menu(chat_id, "main")
             return True
 
@@ -1122,6 +1133,8 @@ class TelegramBotRunner:
             "💻 Laptop": "laptop",
             "/laptop": "laptop",
             "☁️ Cloud Server": "cloud",
+            "☁️ Cloud Mode": "cloud",
+            "☁️ Cloud": "cloud",
             "/cloud": "cloud",
             "/server": "cloud",
             "🌟 Extra Tools ➡️": "extra",
@@ -1188,7 +1201,7 @@ class TelegramBotRunner:
             self.send_result(chat_id, "📸 *Screenshot Sent!*", "Screen photo bhej di gayi hai.")
             return True
 
-        if clean == "📷 Front Camera Photo" or cmd == "/webcam" or low in ("selfie", "webcam", "camera photo"):
+        if clean in ("📷 Front Camera Photo", "📷 Webcam") or cmd == "/webcam" or low in ("selfie", "webcam", "camera photo"):
             temp = tg_send_message(chat_id, "📷 Capturing webcam...")
             res = laptop_webcam()
             tg_delete_message(chat_id, temp)
@@ -1243,7 +1256,7 @@ class TelegramBotRunner:
             return True
 
         # ==================== SYSTEM INFO ====================
-        if clean == "🔋 Battery Status" or cmd == "/battery" or low in ("battery", "charge"):
+        if clean in ("🔋 Battery Status", "🔋 Battery") or cmd == "/battery" or low in ("battery", "charge"):
             res = laptop_battery()
             self.send_result(chat_id, "🔋 *Battery Status:*", res)
             return True
@@ -1290,7 +1303,7 @@ class TelegramBotRunner:
             self.send_result(chat_id, "📍 *Location:*", res)
             return True
 
-        if clean == "📊 Full System Status" or cmd == "/status" or low == "status":
+        if clean in ("📊 Full System Status", "📊 Status", "📊 System Status") or cmd == "/status" or low == "status":
             self.send_result(chat_id, "", get_status_text())
             return True
 
