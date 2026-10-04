@@ -339,13 +339,14 @@ def get_home_kb() -> dict:
 def get_home_text() -> str:
     """Root selector header text."""
     _laptop = "ONLINE 🟢" if is_laptop_online() else "OFFLINE 🔴"
-    _remote = "ON 🟢 (30m)" if _is_remote_active else "OFF 🔴"
+    _remote = "ACTIVE 🟢" if _is_remote_active else "PAUSED (Self-Use) 🔴"
+    _auto = "ON 🟢" if _is_auto_approve_active else "OFF 🔴"
     return (
         "🤖 *Hermes Central Hub*\n\n"
         f"> 💻 *Laptop:* `{_laptop}`\n"
-        f"> ☁️ *Cloud:* `ONLINE 24/7 🟢`\n"
-        f"> 🎮 *Remote Access:* `{_remote}`\n\n"
-        "_Select an option below:_"
+        f"> 🎮 *Remote Access:* `{_remote}`\n"
+        f"> ⚡ *Auto Approve:* `{_auto}`\n\n"
+        "_Niche diye gaye 6 buttons se select karein:_"
     )
 
 
@@ -533,49 +534,79 @@ def get_page_text(page: int = 1) -> str:
 
 
 def get_main_bottom_kb() -> dict:
-    """Main persistent bottom keyboard with quick everyday shortcuts."""
+    """Main persistent bottom keyboard - exactly 6 buttons (3 rows x 2 cols)."""
+    global _is_remote_active
+    remote_btn = "🔴 Self-Use Mode" if _is_remote_active else "🟢 Remote Mode"
     return {
         "keyboard": [
-            [{"text": "📸 Screenshot"}, {"text": "📷 Webcam"}, {"text": "🔋 Battery"}],
-            [{"text": "🎵 Music Player"}, {"text": "📊 Status"}],
-            [{"text": "💻 Laptop Controls"}, {"text": "☁️ Cloud Mode"}],
-            [{"text": "⚡ Auto Approve"}, {"text": "🔒 Lock Screen"}],
+            [{"text": "💻 Laptop Mode"}, {"text": "🎵 Music Player"}],
+            [{"text": remote_btn}, {"text": "⚡ Auto Approve"}],
+            [{"text": "☁️ Cloud Mode"}, {"text": "📊 Status"}],
         ],
         "resize_keyboard": True,
         "is_persistent": True,
+        "input_field_placeholder": "🎮 Select an option below...",
     }
 
 
 def get_music_bottom_kb() -> dict:
-    """Dedicated Music Player persistent bottom keyboard."""
+    """Dedicated Music Player persistent bottom keyboard - exactly 6 buttons."""
     return {
         "keyboard": [
             [{"text": "⏯️ Play / Pause"}, {"text": "⏹️ Stop Music"}],
             [{"text": "🔊 Vol Up (+10%)"}, {"text": "🔉 Vol Down (-10%)"}],
-            [{"text": "🔇 Mute / Unmute"}, {"text": "🔍 Search & Play"}],
-            [{"text": "🔙 Main Menu"}],
+            [{"text": "🔍 Search & Play"}, {"text": "🔙 Main Menu"}],
         ],
         "resize_keyboard": True,
         "is_persistent": True,
+        "input_field_placeholder": "🎵 Music Player Controls...",
     }
 
 
 def get_laptop_bottom_kb() -> dict:
-    """Laptop controls persistent bottom keyboard."""
+    """Laptop controls persistent bottom keyboard - exactly 6 buttons."""
     return {
         "keyboard": [
-            [{"text": "📸 Screenshot"}, {"text": "📷 Webcam"}, {"text": "🎙️ Record Mic"}],
-            [{"text": "⚡ Auto Approve"}, {"text": "🔒 Lock Screen"}, {"text": "🕶️ Ghost Mode"}],
-            [{"text": "🚨 Alarm Siren"}, {"text": "📍 Find Location"}, {"text": "👁️ CCTV Mode"}],
-            [{"text": "🎵 Music Player"}, {"text": "🔙 Main Menu"}],
+            [{"text": "📸 Screenshot"}, {"text": "📷 Webcam"}],
+            [{"text": "🎙️ Record Mic"}, {"text": "🔒 Lock Screen"}],
+            [{"text": "🌟 Extra Tools"}, {"text": "🔙 Main Menu"}],
         ],
         "resize_keyboard": True,
         "is_persistent": True,
+        "input_field_placeholder": "💻 Laptop Controls...",
+    }
+
+
+def get_extra_bottom_kb() -> dict:
+    """Extra tools persistent bottom keyboard - exactly 6 buttons."""
+    return {
+        "keyboard": [
+            [{"text": "🖱️ Mouse Controls"}, {"text": "🚨 Alarm Siren"}],
+            [{"text": "📍 Find Location"}, {"text": "👁️ CCTV Mode"}],
+            [{"text": "🕶️ Ghost Mode"}, {"text": "🔙 Main Menu"}],
+        ],
+        "resize_keyboard": True,
+        "is_persistent": True,
+        "input_field_placeholder": "🌟 Extra Tools...",
+    }
+
+
+def get_mouse_bottom_kb() -> dict:
+    """Mouse & Keyboard persistent bottom keyboard - exactly 6 buttons."""
+    return {
+        "keyboard": [
+            [{"text": "🖱️ Left Click"}, {"text": "🖱️ Right Click"}],
+            [{"text": "⬆️ Scroll Up"}, {"text": "⬇️ Scroll Down"}],
+            [{"text": "↩️ Press Enter"}, {"text": "🔙 Main Menu"}],
+        ],
+        "resize_keyboard": True,
+        "is_persistent": True,
+        "input_field_placeholder": "🖱️ Mouse & Keyboard...",
     }
 
 
 def get_cloud_bottom_kb() -> dict:
-    """Cloud server persistent bottom keyboard."""
+    """Cloud server persistent bottom keyboard - exactly 6 buttons."""
     return {
         "keyboard": [
             [{"text": "📊 Cloud Telemetry"}, {"text": "📁 Cloud Files"}],
@@ -584,6 +615,7 @@ def get_cloud_bottom_kb() -> dict:
         ],
         "resize_keyboard": True,
         "is_persistent": True,
+        "input_field_placeholder": "☁️ Cloud Mode...",
     }
 
 
@@ -594,17 +626,25 @@ def get_bottom_reply_kb(chat_id: Optional[int] = None) -> dict:
         return get_music_bottom_kb()
     elif state == "laptop":
         return get_laptop_bottom_kb()
+    elif state == "extra":
+        return get_extra_bottom_kb()
+    elif state == "mouse":
+        return get_mouse_bottom_kb()
     elif state == "cloud":
         return get_cloud_bottom_kb()
     return get_main_bottom_kb()
 
 
 def get_kb_for(menu: str = None, chat_id: Optional[int] = None) -> dict:
-    """Always return clean bottom reply keyboard for persistent user navigation."""
+    """Always return clean bottom reply keyboard with 6 buttons."""
     if menu in ("music", "volume", "media"):
         return get_music_bottom_kb()
-    elif menu in ("laptop", "extra", "camera", "power", "security", "system", "mouse", "browser"):
+    elif menu in ("laptop", "camera", "power", "security", "system", "browser"):
         return get_laptop_bottom_kb()
+    elif menu == "extra":
+        return get_extra_bottom_kb()
+    elif menu == "mouse":
+        return get_mouse_bottom_kb()
     elif menu == "cloud":
         return get_cloud_bottom_kb()
     return get_bottom_reply_kb(chat_id)
@@ -1129,6 +1169,7 @@ def start_health_server(port: int = 7860) -> None:
 
     port = int(os.getenv("PORT", port))
     try:
+        socketserver.TCPServer.allow_reuse_address = True
         server = socketserver.TCPServer(("0.0.0.0", port), HealthHandler)
         threading.Thread(target=server.serve_forever, daemon=True).start()
         logger.info(f"Health server on port {port}")
@@ -1194,73 +1235,39 @@ class TelegramBotRunner:
             "cloud": get_cloud_page_text(),
             "music": (
                 "🎵 *Hermes Music Player*\n\n"
-                "• Yahan se aap laptop ka music direct control kar sakte hain.\n"
-                "• *Controls:* Play/Pause, Stop Music, Volume Up/Down, Mute/Unmute.\n"
-                "• *Song Search:* '🔍 Search & Play' dabayein aur koi bhi gaana chalayein!\n\n"
-                "_Niche diye gaye buttons se operate karein:_"
+                "• Play/Pause · Stop Music\n"
+                "• Volume Up/Down (+10% / -10%)\n"
+                "• Search & Play Song\n\n"
+                "_Niche diye gaye 6 buttons se operate karein:_"
             ),
             "laptop": (
                 "💻 *Laptop Control Panel*\n\n"
                 f"• Status: `{_laptop}`\n\n"
-                "*Quick Actions:*\n"
-                "• `screenshot` · `webcam` · `battery`\n"
-                "• `lock` · `mute` · `volume [0-100]`\n"
-                "• `wifi` · `sleep` · `location`\n\n"
-                "_Jo bhi bolein, laptop execute karega._"
+                "• Screenshot · Webcam\n"
+                "• Record Mic · Lock Screen\n"
+                "• Extra Tools\n\n"
+                "_Niche diye gaye 6 buttons se operate karein:_"
             ),
             "cloud": (
-                "☁️ *Cloud Server (Render 24/7)*\n\n"
-                "• Status: `ONLINE 🟢`\n"
-                "• Hosting: `Render Cloud`\n\n"
-                "*Commands:*\n"
-                "• `/status` — System info\n"
-                "• `/diagnose` — API health check\n"
-                "• `/reset` — Clear memory"
+                "☁️ *Cloud Server (24/7 Live)*\n\n"
+                "• Status & Telemetry\n"
+                "• Workspace Files & Quick Test\n"
+                "• Self-Diagnostics & Reset Memory\n\n"
+                "_Niche diye gaye 6 buttons se operate karein:_"
             ),
             "extra": (
                 "🌟 *Extra Tools*\n\n"
-                "• Apps & Browser launch\n"
-                "• Network & Hotspot\n"
-                "• Clipboard & Notes\n"
-                "• Terminal & Files\n"
-                "• System telemetry"
-            ),
-            "camera": (
-                "📸 *Camera & Media*\n\n"
-                "• `screenshot` — Capture screen\n"
-                "• `webcam` — Front camera snap"
-            ),
-            "audio": (
-                "🎙️ *Audio & Voice*\n\n"
-                "• `/mic` — Record audio 10s\n"
-                "• `speak [text]` — Text-to-speech"
-            ),
-            "system": (
-                "🖥️ *System Info*\n\n"
-                "• `/status` — Full system status\n"
-                "• `/battery` — Battery & charging\n"
-                "• `wifi` · `location`"
-            ),
-            "power": (
-                "⚡ *Power & Screen*\n\n"
-                "• `sleep` · `reboot` · `shutdown`\n"
-                "• `screen off` · `screen on`"
-            ),
-            "volume": (
-                "🔊 *Volume & Media*\n\n"
-                "• `volume up` · `volume down` · `mute`\n"
-                "• `play` · `pause` · `stop`"
-            ),
-            "media": (
-                "🔊 *Volume & Media*\n\n"
-                "• `volume up` · `volume down` · `mute`\n"
-                "• `play` · `pause` · `stop`"
+                "• Mouse Controls\n"
+                "• Alarm Siren & CCTV Mode\n"
+                "• Find Location & Ghost Mode\n\n"
+                "_Niche diye gaye 6 buttons se operate karein:_"
             ),
             "mouse": (
-                "🖱️ *Mouse & Keyboard*\n\n"
-                "• `click [button/text]`\n"
-                "• `type [text]`\n"
-                "• `scroll up` · `scroll down`"
+                "🖱️ *Mouse & Keyboard Controls*\n\n"
+                "• Left Click · Right Click\n"
+                "• Scroll Up · Scroll Down\n"
+                "• Press Enter\n\n"
+                "_Niche diye gaye 6 buttons se operate karein:_"
             ),
             "browser": (
                 "🌐 *Browser & Apps*\n\n"
@@ -1490,6 +1497,7 @@ class TelegramBotRunner:
             "🎵 Media Control": "volume",
             "/volume": "volume",
             "/sound": "volume",
+            "🖱️ Mouse Controls": "mouse",
             "🖱️ Mouse & Keyboard": "mouse",
             "/mouse": "mouse",
             "🌐 Browser & Apps": "browser",
