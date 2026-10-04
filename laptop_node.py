@@ -482,7 +482,50 @@ def get_antigravity_status() -> str:
 
 def execute_action(cmd: str) -> str:
     """Handle special live control actions or general shell commands."""
+    global CCTV_ENABLED
     clean = cmd.strip()
+
+    # 00. Master Emergency Kill Switch (Universal Stop)
+    if clean == "__ACTION_EMERGENCY_STOP__":
+        # Kill all sirens, loud alarms, media players, text-to-speech, and recordings
+        os.system(
+            "killall mpv aplay paplay speaker-test vlc spotify-launcher spd-say espeak-ng espeak ffmpeg 2>/dev/null; "
+            "playerctl pause 2>/dev/null"
+        )
+        # Disable CCTV motion watcher
+        CCTV_ENABLED = False
+        # Turn off autonomous auto-approve
+        set_auto_approve_state(False)
+        clear_active_prompt()
+        # Send Escape and Ctrl+C to active terminal window to abort running command
+        try:
+            env = get_x11_env()
+            subprocess.run(["xdotool", "key", "--clearmodifiers", "Escape", "ctrl+c"], env=env, timeout=2)
+        except Exception:
+            pass
+        # Wake screen if in ghost mode or blanked
+        try:
+            subprocess.run([
+                "busctl", "--user", "set-property",
+                "org.gnome.Mutter.DisplayConfig",
+                "/org/gnome/Mutter/DisplayConfig",
+                "org.gnome.Mutter.DisplayConfig",
+                "PowerSaveMode", "i", "0"
+            ], capture_output=True, timeout=2)
+            env = get_x11_env()
+            subprocess.run(["xset", "dpms", "force", "on"], env=env, stderr=subprocess.DEVNULL, timeout=2)
+        except Exception:
+            pass
+        return (
+            "🛑 *EMERGENCY STOP EXECUTED!*\n\n"
+            "• Siren / Loud Alarm: **STOPPED**\n"
+            "• Music & Media Playback: **STOPPED**\n"
+            "• CCTV Motion Alerts: **STOPPED**\n"
+            "• Mic & Video Recording: **ABORTED**\n"
+            "• Terminal Background Task: **INTERRUPTED (Ctrl+C)**\n"
+            "• Auto-Approve Mode: **OFF**\n"
+            "• Display: **AWAKENED & ACTIVE**"
+        )
 
     # 0. Remote Access Mode (Master Switch: Remote Mode vs Self-Use Mode)
     if clean in ("__ACTION_REMOTE_TOGGLE__", "__ACTION_SELF_TOGGLE__"):
@@ -749,8 +792,12 @@ def execute_action(cmd: str) -> str:
 
     # 14. Music Playback / Stop
     if clean == "__ACTION_STOP_MUSIC__":
-        os.system("killall mpv 2>/dev/null")
+        os.system("killall mpv vlc spotify-launcher 2>/dev/null; playerctl pause 2>/dev/null")
         return "⏹️ Music playback stopped."
+
+    if clean == "__ACTION_STOP_RECORDING__":
+        os.system("killall ffmpeg 2>/dev/null")
+        return "⏹️ Mic / Video recording cancelled."
 
     if clean.startswith("__ACTION_PLAY_MUSIC__"):
         query = clean[len("__ACTION_PLAY_MUSIC__"):].strip()
@@ -827,10 +874,13 @@ def execute_action(cmd: str) -> str:
 
     # 20. CCTV Motion Mode Toggle
     if clean == "__ACTION_CCTV_TOGGLE__":
-        global CCTV_ENABLED
         CCTV_ENABLED = not CCTV_ENABLED
         state_str = "ACTIVATED 🟢 (Motion monitoring chalu)" if CCTV_ENABLED else "DEACTIVATED 🔴 (CCTV band)"
         return f"👁️ *CCTV Motion Watcher:* {state_str}"
+
+    if clean == "__ACTION_STOP_CCTV__":
+        CCTV_ENABLED = False
+        return "🛑 *CCTV Motion Watcher Stopped:* Camera motion monitoring band kar di gayi hai."
 
     # 21. Loud Alarm Siren
     if clean == "__ACTION_ALARM__":
@@ -844,7 +894,7 @@ def execute_action(cmd: str) -> str:
         return "🚨 *LOUD ALARM ACTIVATED!* 🚨\nLaptop volume 100% karke siren baj raha hai!\nBand karne ke liye `⏹️ Stop Alarm` dabayein."
 
     if clean == "__ACTION_STOP_ALARM__":
-        os.system("killall mpv 2>/dev/null")
+        os.system("killall mpv aplay paplay speaker-test 2>/dev/null")
         return "⏹️ Alarm siren stopped."
 
     # 22. Find My Laptop (Geo-Location)

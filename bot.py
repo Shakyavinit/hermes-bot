@@ -31,7 +31,8 @@ from bridge import (
     laptop_power_poweroff, laptop_power_reboot, laptop_power_sleep,
     laptop_remote_off, laptop_remote_on, laptop_remote_status, laptop_remote_toggle,
     laptop_screen_on, laptop_screenshot, laptop_speak, laptop_stop_alarm,
-    laptop_stop_music, laptop_type, laptop_vol_down, laptop_vol_up, laptop_webcam,
+    laptop_stop_music, laptop_emergency_stop_all, laptop_stop_cctv,
+    laptop_stop_recording, laptop_type, laptop_vol_down, laptop_vol_up, laptop_webcam,
     laptop_webcam_video, laptop_wifi, laptop_human_open_app, laptop_human_click,
     laptop_human_move, laptop_human_type, laptop_human_scroll, laptop_screen_inspect,
     laptop_screen_vision_click, laptop_offline_url, laptop_offline_qr,
@@ -579,11 +580,15 @@ def get_laptop_bottom_kb() -> dict:
 
 def get_extra_bottom_kb() -> dict:
     """Extra tools persistent bottom keyboard - exactly 6 buttons."""
+    global _is_alarm_active, _is_cctv_active, _is_ghost_mode
+    alarm_btn = "⏹️ Stop Alarm" if _is_alarm_active else "🚨 Alarm Siren"
+    cctv_btn = "🛑 Stop CCTV" if _is_cctv_active else "👁️ CCTV Mode"
+    ghost_btn = "☀️ Screen ON" if _is_ghost_mode else "🕶️ Ghost Mode"
     return {
         "keyboard": [
-            [{"text": "🖱️ Mouse Controls"}, {"text": "🚨 Alarm Siren"}],
-            [{"text": "📍 Find Location"}, {"text": "👁️ CCTV Mode"}],
-            [{"text": "🕶️ Ghost Mode"}, {"text": "🔙 Main Menu"}],
+            [{"text": "🖱️ Mouse Controls"}, {"text": alarm_btn}],
+            [{"text": "📍 Find Location"}, {"text": cctv_btn}],
+            [{"text": ghost_btn}, {"text": "🔙 Main Menu"}],
         ],
         "resize_keyboard": True,
         "is_persistent": True,
@@ -1336,7 +1341,7 @@ class TelegramBotRunner:
     def handle_button_or_command(self, chat_id: int, user_id: int, text: str) -> bool:
         """Main button/command router - clean and organized."""
         global _is_remote_active, _is_locked, _is_muted, _is_auto_approve_active
-        global _is_cctv_active, _is_hotspot_active, _is_ghost_mode
+        global _is_cctv_active, _is_hotspot_active, _is_ghost_mode, _is_alarm_active
 
         clean = text.strip()
         cmd = clean.split()[0].lower() if clean else ""
@@ -1344,6 +1349,10 @@ class TelegramBotRunner:
 
         # ==================== HANDLE PENDING INPUT ====================
         if chat_id in _user_pending_input:
+            if low in ("stop", "cancel", "chup", "band", "exit", "back", "ruk", "ruko", "/cancel", "/stop", "🛑"):
+                _user_pending_input.pop(chat_id, None)
+                self.send_result(chat_id, "🚫 *Action Cancelled:*", "Pending input cancel kar diya gaya hai.")
+                return True
             pending = _user_pending_input.pop(chat_id)
             if pending == "type_text":
                 res = laptop_type(clean)
@@ -1414,6 +1423,114 @@ class TelegramBotRunner:
                         return True
                 self.send_result(chat_id, "❌ Invalid Format", "Use: `10m task name`")
                 return True
+
+        # ==================== 0. MASTER UNIVERSAL EMERGENCY STOP ====================
+        UNIVERSAL_STOP_WORDS = {
+            "stop", "stop!", "stop.", "/stop", "🛑",
+            "chup", "chup kar", "chup karo", "chup ho ja", "chup raho", "chup!",
+            "band", "band kar", "band karo", "band kar do", "band ho ja",
+            "shhh", "shh", "quiet", "silence",
+            "halt", "kill", "abort", "ruk", "ruko", "rok", "roko",
+            "emergency stop", "emergency stop!", "/kill",
+            "sab band", "sab band kar", "sab band karo", "sab roko", "sab stop",
+            "stop all", "stop everything", "kill all",
+        }
+        if low in UNIVERSAL_STOP_WORDS:
+            _user_pending_input.pop(chat_id, None)
+            _is_alarm_active = False
+            _is_cctv_active = False
+            _is_auto_approve_active = False
+            _is_ghost_mode = False
+            res = laptop_emergency_stop_all()
+            self.send_result(
+                chat_id,
+                "🛑 *EMERGENCY STOP (SAB BAND):*",
+                f"{res}\n\n_Malik, sabhi loud sirens, music, CCTV motion alerts, background audio aur tasks turant band kar diye gaye hain!_"
+            )
+            return True
+
+        # ==================== 0B. GRANULAR TARGETED STOP COMMANDS ====================
+        # 1. Alarm / Siren Stop
+        ALARM_STOP_WORDS = {
+            "stop alarm", "stop siren", "alarm stop", "siren stop",
+            "alarm band", "alarm band kar", "alarm band karo", "alarm off",
+            "siren band", "siren band kar", "siren band karo", "siren off",
+            "silence alarm", "quiet alarm", "/stopalarm",
+        }
+        if low in ALARM_STOP_WORDS or clean == "⏹️ Stop Alarm":
+            _is_alarm_active = False
+            res = laptop_stop_alarm()
+            self.send_result(chat_id, "⏹️ *Alarm Siren Stopped:*", res)
+            return True
+
+        # 2. Music / Audio Stop
+        MUSIC_STOP_WORDS = {
+            "stop music", "stop song", "music stop", "song stop",
+            "stop gana", "stop gaana", "gana band", "gaana band",
+            "gana band kar", "gaana band kar", "gana band karo", "gaana band karo",
+            "music band", "music band kar", "music band karo", "music off",
+            "pause music", "stop audio", "/stopmusic",
+        }
+        if low in MUSIC_STOP_WORDS or clean in ("⏹️ Stop Music", "⏹️ Stop"):
+            res = laptop_stop_music()
+            self.send_result(chat_id, "⏹️ *Music Stopped:*", res)
+            return True
+
+        # 3. CCTV Motion Watcher Stop
+        CCTV_STOP_WORDS = {
+            "stop cctv", "cctv stop", "cctv band", "cctv band kar", "cctv band karo",
+            "cctv off", "stop motion", "motion stop", "motion off",
+            "camera band", "camera band kar", "/stopcctv",
+        }
+        if low in CCTV_STOP_WORDS or clean in ("🛑 Stop CCTV",):
+            _is_cctv_active = False
+            res = laptop_stop_cctv()
+            self.send_result(chat_id, "🛑 *CCTV Motion Watcher Stopped:*", res)
+            return True
+
+        # 4. Recording Stop (Mic / Webcam Video)
+        RECORD_STOP_WORDS = {
+            "stop recording", "stop record", "recording stop", "stop mic",
+            "mic stop", "stop video", "video stop", "recording band",
+            "recording band kar", "mic band kar", "video band kar",
+        }
+        if low in RECORD_STOP_WORDS:
+            res = laptop_stop_recording()
+            self.send_result(chat_id, "⏹️ *Recording Aborted:*", res)
+            return True
+
+        # 5. Auto-Approve / Task Runner Stop
+        AUTO_STOP_WORDS = {
+            "stop auto", "auto stop", "auto off", "cancel auto", "abort auto",
+            "stop approve", "stop approval", "cancel task", "abort task", "task band kar",
+        }
+        if low in AUTO_STOP_WORDS or clean == "⚡ Auto Mode: OFF":
+            _is_auto_approve_active = False
+            res = laptop_auto_off()
+            laptop_key_ctrlc()
+            self.send_result(chat_id, "⚡ *Auto Mode Stopped:*", "Autonomous approvals band kar diye gaye aur task cancel kiya gaya.")
+            return True
+
+        # 6. Ghost Mode / Screen Wake
+        GHOST_STOP_WORDS = {
+            "stop ghost", "ghost off", "ghost stop", "screen on", "display on",
+            "screen chalu", "screen chalu kar", "light on", "wake up", "wake screen",
+            "☀️ display on", "☀️ screen on",
+        }
+        if low in GHOST_STOP_WORDS or clean in ("☀️ Display ON", "☀️ Screen ON"):
+            _is_ghost_mode = False
+            res = laptop_screen_on()
+            self.send_result(chat_id, "☀️ *Display Awakened:*", res)
+            return True
+
+        # 7. Speech / TTS Stop
+        TTS_STOP_WORDS = {
+            "stop speaking", "stop speak", "stop tts", "tts stop", "chup bolna", "speaking off",
+        }
+        if low in TTS_STOP_WORDS:
+            execute_on_laptop("killall spd-say espeak-ng espeak 2>/dev/null")
+            self.send_result(chat_id, "🤐 *Speech Muted:*", "Laptop speech/TTS mute kar diya gaya hai.")
+            return True
 
         # ==================== ROOT COMMANDS ====================
         if cmd in ("/start", "/menu", "/main", "/home") or clean in ("🏠 Main Menu", "🔙 Main Menu", "📱 Menu", "Main Menu"):
@@ -1843,11 +1960,13 @@ class TelegramBotRunner:
 
         # ==================== SECURITY & SPY ====================
         if clean in ("🚨 Siren Alarm", "🚨 Alarm Siren") or low in ("alarm", "siren"):
+            _is_alarm_active = True
             res = laptop_alarm()
             self.send_result(chat_id, "🚨 *Alarm ON:*", res)
             return True
 
         if clean == "⏹️ Stop Alarm" or low in ("stop alarm", "stop siren"):
+            _is_alarm_active = False
             res = laptop_stop_alarm()
             self.send_result(chat_id, "⏹️ *Alarm Stopped:*", res)
             return True

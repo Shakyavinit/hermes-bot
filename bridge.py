@@ -248,6 +248,18 @@ def laptop_stop_alarm() -> str:
     return dispatch_to_laptop("__ACTION_STOP_ALARM__")
 
 
+def laptop_stop_cctv() -> str:
+    return dispatch_to_laptop("__ACTION_STOP_CCTV__")
+
+
+def laptop_stop_recording() -> str:
+    return dispatch_to_laptop("__ACTION_STOP_RECORDING__")
+
+
+def laptop_emergency_stop_all() -> str:
+    return dispatch_to_laptop("__ACTION_EMERGENCY_STOP__")
+
+
 def laptop_location() -> str:
     return dispatch_to_laptop("__ACTION_LOCATION__")
 

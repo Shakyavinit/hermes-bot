@@ -48,6 +48,7 @@ from bridge import (
     is_laptop_online,
     laptop_ai_status,
     laptop_alarm,
+    laptop_emergency_stop_all,
     laptop_apps,
     laptop_battery,
     laptop_cctv_toggle,
@@ -198,6 +199,11 @@ def trigger_laptop_alarm() -> str:
 def stop_laptop_alarm() -> str:
     """Stop the siren alarm on the laptop."""
     return laptop_stop_alarm()
+
+
+def emergency_stop_all() -> str:
+    """Universal kill switch: immediately silence and stop all sirens, loud alarms, music, CCTV motion monitoring, voice/video recordings, and running background terminal commands on the laptop."""
+    return laptop_emergency_stop_all()
 
 
 def find_laptop_location() -> str:
@@ -675,6 +681,7 @@ TOOLS_MAP: Dict[str, Callable] = {
     "toggle_laptop_cctv": toggle_laptop_cctv,
     "trigger_laptop_alarm": trigger_laptop_alarm,
     "stop_laptop_alarm": stop_laptop_alarm,
+    "emergency_stop_all": emergency_stop_all,
     "find_laptop_location": find_laptop_location,
     "ghost_mode_screen_off": ghost_mode_screen_off,
     "screen_on": screen_on,
@@ -833,6 +840,11 @@ GEMINI_FUNCTION_DECLARATIONS = [
     {
         "name": "stop_laptop_alarm",
         "description": "Stop the siren alarm on the laptop.",
+        "parameters": {"type": "object", "properties": {}},
+    },
+    {
+        "name": "emergency_stop_all",
+        "description": "Universal kill switch: immediately silence and stop all sirens, loud alarms, music, CCTV motion monitoring, voice/video recordings, and running background terminal commands on the laptop.",
         "parameters": {"type": "object", "properties": {}},
     },
     {
