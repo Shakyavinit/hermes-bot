@@ -95,7 +95,7 @@ class AgentEngine:
         self.bluesminds_models = BLUESMINDS_MODELS
         self.huggingface_models = HUGGINGFACE_MODELS
         self.openrouter_models = OPENROUTER_MODELS
-        self.max_steps = 10
+        self.max_steps = None  # None = Unlimited steps: runs continuously until task is fully completed
 
     def _call_gemini_api(self, contents: List[Dict], with_tools: bool = True) -> Optional[Dict]:
         """Execute generateContent with dual-key and multi-model automatic failover."""
@@ -328,11 +328,17 @@ class AgentEngine:
         step_count = 0
         executed_tools_history = []
 
-        while step_count < self.max_steps:
+        # Unlimited loop: runs continuously until task is fully completed
+        while self.max_steps is None or step_count < self.max_steps:
             step_count += 1
 
+            if self.max_steps is None and step_count > 200:
+                logger.warning("Safety circuit-breaker triggered after 200 continuous steps.")
+                break
+
             if progress_callback and step_count > 1:
-                progress_callback(f"Thinking... (Step {step_count}/{self.max_steps})")
+                step_str = f"Step {step_count}" if self.max_steps is None else f"Step {step_count}/{self.max_steps}"
+                progress_callback(f"Thinking... ({step_str})")
 
             model_content = self._call_gemini_api(contents, with_tools=True)
 
@@ -453,7 +459,7 @@ class AgentEngine:
                     }
                 )
 
-        # Loop limit reached
-        limit_msg = "⚠️ Reached maximum autonomous execution steps (10 steps). Task paused."
+        # Loop limit reached (only reached if safety ceiling or explicit max_steps is hit)
+        limit_msg = f"⚠️ Task paused after {step_count} continuous autonomous steps. Malik, agle instructions bhejein."
         add_message(session_id, "assistant", limit_msg)
         return limit_msg
