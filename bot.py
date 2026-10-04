@@ -1007,26 +1007,8 @@ class TelegramBotRunner:
         sync_bot_commands()
         start_health_server()
 
-    def send_result(self, chat_id: int, title: str, result: str, menu: str = None, sticker: str = None) -> None:
-        """Send result with bottom shortcuts keyboard, sleek styling, and contextual sticker."""
-        if not sticker:
-            t = (title or "").lower()
-            if any(k in t for k in ("screenshot", "webcam", "camera", "photo", "video", "snapped")):
-                sticker = "camera"
-            elif any(k in t for k in ("battery", "charging", "power")):
-                sticker = "battery"
-            elif any(k in t for k in ("sound", "volume", "music", "song", "audio", "mic", "speaking")):
-                sticker = "music"
-            elif any(k in t for k in ("lock", "alarm", "cctv", "security", "ghost", "siren")):
-                sticker = "security"
-            elif any(k in t for k in ("status", "telemetry", "system")):
-                sticker = "ready"
-            elif any(k in t for k in ("diagnostics", "cleaned", "reset", "reminder", "saved")):
-                sticker = "done"
-
-        if sticker:
-            tg_send_sticker(chat_id, sticker)
-
+    def send_result(self, chat_id: int, title: str, result: str, menu: str = None) -> None:
+        """Send result with bottom shortcuts keyboard and sleek styling."""
         text = format_stylish_response(title, result)
         tg_send_message(chat_id, text, reply_markup=get_bottom_reply_kb())
 
@@ -1254,7 +1236,6 @@ class TelegramBotRunner:
             cfg = get_runtime_config()
             if cfg.get("owner_user_id") is None:
                 set_owner(user_id)
-            tg_send_sticker(chat_id, "ready")
             tg_send_message(chat_id, "⚡ *Hermes Ready*", reply_markup=get_bottom_reply_kb())
             self.switch_menu(chat_id, "main")
             return True
