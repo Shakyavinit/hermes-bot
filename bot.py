@@ -321,62 +321,160 @@ MENU_MAP = {
 }
 
 
-def get_main_inline_kb() -> dict:
-    """Main dashboard inline keyboard (attached directly under message)."""
+def get_page_kb(page: int = 1) -> dict:
+    """Multi-page inline keyboard with all controls and navigation."""
+    global _is_auto_approve_active, _is_remote_active, _is_locked, _is_muted, _is_cctv_active, _is_ghost_mode
+
     auto_text = "⚡ Auto: ON 🟢" if _is_auto_approve_active else "⚡ Auto: OFF 🔴"
     remote_text = "🎮 Remote: ON 🟢" if _is_remote_active else "🎮 Remote: OFF 🔴"
-    return {
-        "inline_keyboard": [
+    lock_text = "🔓 Unlock" if _is_locked else "🔒 Lock Screen"
+    mute_text = "🔊 Unmute" if _is_muted else "🔇 Mute"
+    ghost_text = "☀️ Screen ON" if _is_ghost_mode else "🕶️ Ghost Mode"
+
+    if page == 1:
+        # Page 1: Vision & Core Hardware
+        rows = [
             [
                 {"text": "📸 Screenshot", "callback_data": "btn_screenshot"},
                 {"text": "📷 Webcam", "callback_data": "btn_webcam"},
             ],
             [
-                {"text": "🔋 Battery", "callback_data": "btn_battery"},
-                {"text": "📊 Status", "callback_data": "btn_status"},
+                {"text": "🔋 Battery Level", "callback_data": "btn_battery"},
+                {"text": "📊 System Status", "callback_data": "btn_status"},
             ],
             [
                 {"text": auto_text, "callback_data": "btn_auto_toggle"},
                 {"text": remote_text, "callback_data": "btn_remote_toggle"},
             ],
             [
-                {"text": "🛠️ More Tools & Controls ▾", "callback_data": "btn_more_tools"},
-            ],
+                {"text": "📄 1/4", "callback_data": "page_1"},
+                {"text": "Next ➡️", "callback_data": "page_2"},
+            ]
         ]
-    }
-
-
-def get_tools_inline_kb() -> dict:
-    """Expanded tools inline keyboard."""
-    lock_text = "🔓 Unlock Screen" if _is_locked else "🔒 Lock Screen"
-    mute_text = "🔊 Unmute" if _is_muted else "🔇 Mute"
-    return {
-        "inline_keyboard": [
+    elif page == 2:
+        # Page 2: Audio, Media & Voice
+        rows = [
+            [
+                {"text": "🔊 Volume +10%", "callback_data": "btn_vol_up"},
+                {"text": "🔉 Volume -10%", "callback_data": "btn_vol_down"},
+            ],
+            [
+                {"text": mute_text, "callback_data": "btn_mute_toggle"},
+                {"text": "🎙️ Record Mic 10s", "callback_data": "btn_mic10"},
+            ],
+            [
+                {"text": "🎥 5s Video Clip", "callback_data": "btn_video5"},
+                {"text": "🎵 Play/Pause", "callback_data": "btn_playpause"},
+            ],
+            [
+                {"text": "⬅️ Prev", "callback_data": "page_1"},
+                {"text": "📄 2/4", "callback_data": "page_2"},
+                {"text": "Next ➡️", "callback_data": "page_3"},
+            ]
+        ]
+    elif page == 3:
+        # Page 3: Power, Security & Screen
+        rows = [
             [
                 {"text": lock_text, "callback_data": "btn_lock_toggle"},
-                {"text": mute_text, "callback_data": "btn_mute_toggle"},
+                {"text": "⚡ Sleep Laptop", "callback_data": "btn_sleep"},
             ],
             [
-                {"text": "⚡ Sleep Laptop", "callback_data": "btn_sleep"},
+                {"text": ghost_text, "callback_data": "btn_ghost_mode"},
+                {"text": "☀️ Screen ON", "callback_data": "btn_screen_on"},
+            ],
+            [
+                {"text": "🚨 Alarm ON", "callback_data": "btn_alarm_on"},
+                {"text": "🛑 Alarm OFF", "callback_data": "btn_alarm_off"},
+            ],
+            [
+                {"text": "⬅️ Prev", "callback_data": "page_2"},
+                {"text": "📄 3/4", "callback_data": "page_3"},
+                {"text": "Next ➡️", "callback_data": "page_4"},
+            ]
+        ]
+    else:
+        # Page 4: Network, Files & Tools
+        rows = [
+            [
                 {"text": "📶 WiFi Status", "callback_data": "btn_wifi"},
+                {"text": "📍 Location", "callback_data": "btn_location"},
             ],
             [
                 {"text": "📁 List Files", "callback_data": "btn_files"},
-                {"text": "🩺 Health Check", "callback_data": "btn_diagnose"},
+                {"text": "📋 Clipboard", "callback_data": "btn_clip_read"},
             ],
             [
-                {"text": "🔙 Back to Main Panel", "callback_data": "btn_back_main"},
+                {"text": "🩺 Diagnostics", "callback_data": "btn_diagnose"},
+                {"text": "🧹 Reset Memory", "callback_data": "btn_reset_memory"},
             ],
+            [
+                {"text": "⬅️ Prev", "callback_data": "page_3"},
+                {"text": "📄 4/4", "callback_data": "page_4"},
+                {"text": "🔄 Page 1", "callback_data": "page_1"},
+            ]
         ]
-    }
+
+    return {"inline_keyboard": rows}
+
+
+def get_page_text(page: int = 1) -> str:
+    """Header text for paginated controls."""
+    _laptop = "ONLINE 🟢" if is_laptop_online() else "OFFLINE 🔴"
+    _remote = "ACTIVE 🟢 (30m)" if _is_remote_active else "OFF 🔴"
+    _auto = "ON 🟢" if _is_auto_approve_active else "OFF 🔴"
+
+    if page == 1:
+        return (
+            "🤖 *Hermes Control Panel* — `Page 1/4`\n"
+            "*Core Hardware & Vision Controls*\n\n"
+            f"💻 *Laptop:* `{_laptop}`\n"
+            f"☁️ *Cloud:* `ONLINE 24/7 🟢`\n"
+            f"🎮 *Remote:* `{_remote}`\n"
+            f"⚡ *Auto-Approve:* `{_auto}`\n\n"
+            "_Tap any button below or use Next ➡️:_"
+        )
+    elif page == 2:
+        return (
+            "🔊 *Hermes Audio & Media* — `Page 2/4`\n"
+            "*Sound, Voice & Playback Controls*\n\n"
+            "• Volume control & Mute toggle\n"
+            "• Microphone recording (10s)\n"
+            "• Webcam video clip & Music toggle\n\n"
+            "_Tap a control or use navigation buttons below:_"
+        )
+    elif page == 3:
+        return (
+            "⚡ *Hermes Power & Security* — `Page 3/4`\n"
+            "*Lock, Screen & Surveillance Controls*\n\n"
+            "• Screen lock / unlock\n"
+            "• Sleep & Stealth Ghost Mode\n"
+            "• Security Siren / Alarm\n\n"
+            "_Tap a control or use navigation buttons below:_"
+        )
+    else:
+        return (
+            "🌐 *Hermes Network & Tools* — `Page 4/4`\n"
+            "*WiFi, Files, Clipboard & Diagnostics*\n\n"
+            "• WiFi connection & Geolocation\n"
+            "• Workspace files & Clipboard reader\n"
+            "• Diagnostics & AI Memory reset\n\n"
+            "_Tap a control or use navigation buttons below:_"
+        )
+
+
+def get_main_inline_kb() -> dict:
+    return get_page_kb(1)
+
+
+def get_tools_inline_kb() -> dict:
+    return get_page_kb(2)
 
 
 def get_kb_for(menu: str = None) -> dict:
     """Return inline keyboard for menus."""
-    if menu == "main":
-        return get_main_inline_kb()
-    elif menu in ("laptop", "extra", "tools"):
-        return get_tools_inline_kb()
+    if menu in ("main", "laptop", "extra", "tools"):
+        return get_page_kb(1)
     return {"remove_keyboard": True}
 
 
@@ -1616,7 +1714,7 @@ class TelegramBotRunner:
         return False
 
     def process_callback_query(self, cq: dict) -> None:
-        """Handle interactive inline button clicks with instant in-place response."""
+        """Handle interactive inline button clicks with multi-page navigation."""
         cq_id = cq.get("id")
         from_user = cq.get("from", {})
         user_id = from_user.get("id")
@@ -1634,8 +1732,19 @@ class TelegramBotRunner:
             tg_answer_callback(cq_id, "⛔ Access Denied", show_alert=True)
             return
 
-        global _is_auto_approve_active, _is_remote_active, _is_locked, _is_muted
+        global _is_auto_approve_active, _is_remote_active, _is_locked, _is_muted, _is_ghost_mode, _is_cctv_active
 
+        # Handle page navigation
+        if data.startswith("page_"):
+            page_num = int(data.split("_")[1])
+            new_text = get_page_text(page_num)
+            new_kb = get_page_kb(page_num)
+            tg_edit_message(chat_id, message_id, new_text)
+            tg_edit_reply_markup(chat_id, message_id, new_kb)
+            tg_answer_callback(cq_id, f"📄 Page {page_num}/4")
+            return
+
+        # Page 1 Callbacks: Core Controls
         if data == "btn_screenshot":
             tg_answer_callback(cq_id, "📸 Capturing screenshot...")
             res = laptop_screenshot()
@@ -1648,49 +1757,93 @@ class TelegramBotRunner:
             batt = laptop_battery()
             tg_answer_callback(cq_id, f"🔋 Battery: {batt}", show_alert=True)
         elif data == "btn_status":
-            tg_answer_callback(cq_id, "📊 Status updated")
+            tg_answer_callback(cq_id, "📊 Status fetched")
             tg_send_message(chat_id, get_status_text())
         elif data == "btn_auto_toggle":
             _is_auto_approve_active = not _is_auto_approve_active
             laptop_auto_toggle()
-            tg_edit_reply_markup(chat_id, message_id, get_main_inline_kb())
-            tg_answer_callback(cq_id, f"⚡ Auto-Approve: {'ON 🟢' if _is_auto_approve_active else 'OFF 🔴'}")
+            tg_edit_reply_markup(chat_id, message_id, get_page_kb(1))
+            tg_answer_callback(cq_id, f"⚡ Auto: {'ON 🟢' if _is_auto_approve_active else 'OFF 🔴'}")
         elif data == "btn_remote_toggle":
             _is_remote_active = not _is_remote_active
             laptop_remote_toggle()
-            tg_edit_reply_markup(chat_id, message_id, get_main_inline_kb())
+            tg_edit_reply_markup(chat_id, message_id, get_page_kb(1))
             tg_answer_callback(cq_id, f"🎮 Remote: {'ON 🟢' if _is_remote_active else 'PAUSED 🔴'}")
-        elif data == "btn_more_tools":
-            tg_edit_reply_markup(chat_id, message_id, get_tools_inline_kb())
-            tg_answer_callback(cq_id, "🛠️ More Tools")
-        elif data == "btn_back_main":
-            tg_edit_reply_markup(chat_id, message_id, get_main_inline_kb())
-            tg_answer_callback(cq_id, "🔙 Main Panel")
-        elif data == "btn_lock_toggle":
-            laptop_lock_toggle()
-            _is_locked = not _is_locked
-            tg_edit_reply_markup(chat_id, message_id, get_tools_inline_kb())
-            tg_answer_callback(cq_id, f"🔒 Lock: {'LOCKED' if _is_locked else 'UNLOCKED'}")
+
+        # Page 2 Callbacks: Media, Volume & Voice
+        elif data == "btn_vol_up":
+            execute_on_laptop("pactl set-sink-volume @DEFAULT_SINK@ +10%")
+            tg_answer_callback(cq_id, "🔊 Volume: +10%")
+        elif data == "btn_vol_down":
+            execute_on_laptop("pactl set-sink-volume @DEFAULT_SINK@ -10%")
+            tg_answer_callback(cq_id, "🔉 Volume: -10%")
         elif data == "btn_mute_toggle":
-            laptop_mute()
             _is_muted = not _is_muted
-            tg_edit_reply_markup(chat_id, message_id, get_tools_inline_kb())
-            tg_answer_callback(cq_id, f"🔊 Audio: {'MUTED' if _is_muted else 'UNMUTED'}")
+            laptop_mute()
+            tg_edit_reply_markup(chat_id, message_id, get_page_kb(2))
+            tg_answer_callback(cq_id, f"🔇 Audio: {'MUTED' if _is_muted else 'UNMUTED'}")
+        elif data == "btn_mic10":
+            tg_answer_callback(cq_id, "🎙️ Recording 10s audio...")
+            res = laptop_mic(10)
+            self.send_result(chat_id, "🎙️ *Audio Recorded*", res)
+        elif data == "btn_video5":
+            tg_answer_callback(cq_id, "🎥 Recording 5s video...")
+            res = laptop_webcam_video()
+            self.send_result(chat_id, "🎥 *5s Video Captured*", res)
+        elif data == "btn_playpause":
+            laptop_playpause()
+            tg_answer_callback(cq_id, "🎵 Play/Pause toggled")
+
+        # Page 3 Callbacks: Power, Security & Screen
+        elif data == "btn_lock_toggle":
+            _is_locked = not _is_locked
+            laptop_lock_toggle()
+            tg_edit_reply_markup(chat_id, message_id, get_page_kb(3))
+            tg_answer_callback(cq_id, f"🔒 Lock: {'LOCKED' if _is_locked else 'UNLOCKED'}")
         elif data == "btn_sleep":
             tg_answer_callback(cq_id, "⚡ Sleeping laptop...", show_alert=True)
             laptop_power_sleep()
+        elif data == "btn_ghost_mode":
+            _is_ghost_mode = not _is_ghost_mode
+            laptop_ghost_mode()
+            tg_edit_reply_markup(chat_id, message_id, get_page_kb(3))
+            tg_answer_callback(cq_id, f"🕶️ Ghost Mode: {'ON' if _is_ghost_mode else 'OFF'}")
+        elif data == "btn_screen_on":
+            _is_ghost_mode = False
+            laptop_screen_on()
+            tg_edit_reply_markup(chat_id, message_id, get_page_kb(3))
+            tg_answer_callback(cq_id, "☀️ Screen ON")
+        elif data == "btn_alarm_on":
+            laptop_alarm()
+            tg_answer_callback(cq_id, "🚨 Siren / Alarm ON!", show_alert=True)
+        elif data == "btn_alarm_off":
+            laptop_stop_alarm()
+            tg_answer_callback(cq_id, "🛑 Alarm Stopped")
+
+        # Page 4 Callbacks: Network, Files & Tools
         elif data == "btn_wifi":
             wifi = laptop_wifi()
             self.send_result(chat_id, "📶 *WiFi Status*", wifi)
             tg_answer_callback(cq_id, "📶 WiFi checked")
+        elif data == "btn_location":
+            loc = laptop_location()
+            self.send_result(chat_id, "📍 *Laptop Location*", loc)
+            tg_answer_callback(cq_id, "📍 Location checked")
         elif data == "btn_files":
             files = list_directory(".")
-            self.send_result(chat_id, "📁 *Files*", f"```\n{files}\n```")
+            self.send_result(chat_id, "📁 *Workspace Files*", f"```\n{files}\n```")
             tg_answer_callback(cq_id, "📁 Files listed")
+        elif data == "btn_clip_read":
+            clip = laptop_clipboard()
+            self.send_result(chat_id, "📋 *Clipboard Content*", f"_{clip}_")
+            tg_answer_callback(cq_id, "📋 Clipboard read")
         elif data == "btn_diagnose":
             tg_answer_callback(cq_id, "🩺 Running diagnostics...")
             diag = run_system_diagnostics()
             self.send_result(chat_id, diag, "")
+        elif data == "btn_reset_memory":
+            clear_history(f"tg_{chat_id}")
+            tg_answer_callback(cq_id, "🧹 Memory cleared!", show_alert=True)
         else:
             tg_answer_callback(cq_id)
 
