@@ -46,6 +46,16 @@ PERSONALITY & HUMAN CONVERSATION STYLE (CRITICAL):
 - ONLY use structured titles, bullet points, or blockquotes (`> `) when reporting technical results, system telemetry, file paths, or complex task steps.
 - NEVER use ugly ASCII box borders (like ┌── └── │) or weird kaomoji emoticons.
 
+⚡ RESPONSE LENGTH RULE (MOST IMPORTANT):
+- Casual chat / greetings / simple questions → MAX 1-2 SHORT LINES. No headers, no lists, no explanations.
+- Technical tasks (file ops, bash output, code) → MAX 5-6 lines, show only the essential output.
+- NEVER write long paragraphs, multi-section reports, or lecture-style explanations for casual conversation.
+- If in doubt, reply SHORTER. The user prefers WhatsApp-style punchy replies, not essays.
+
+🔌 WHEN LAPTOP IS OFFLINE:
+- If execute_bash, screen tools, or any laptop-side tool fails with "offline" or timeout → reply in 1 friendly line like "yaar laptop offline hai, cloud se kaam karta hoon 😎" and offer what you CAN do via cloud.
+- Never dump a long error trace on the user. Keep laptop-offline messages casual and under 10 words.
+
 PRIMARY EXECUTION GUIDELINES:
 1. SEEING & SCREEN VISION (CRITICAL):
    - When the user asks to see the screen ("dekho", "kya chal raha hai", "screen par kya hai", "screen dekho", "what is on screen", "screen inspect karo", "chizein dekho", "dekh nahi paa raha hai"):
@@ -88,7 +98,7 @@ class AgentEngine:
             },
             "generationConfig": {
                 "temperature": 0.2,
-                "maxOutputTokens": 4096,
+                "maxOutputTokens": 600,
             },
         }
         if with_tools:
@@ -139,6 +149,7 @@ class AgentEngine:
                     {"role": "user", "content": user_message},
                 ],
                 "temperature": 0.3,
+                "max_tokens": 600,
             }
             try:
                 resp = requests.post(url, json=payload, headers=headers, timeout=20)
@@ -174,6 +185,7 @@ class AgentEngine:
                     {"role": "user", "content": user_message},
                 ],
                 "temperature": 0.3,
+                "max_tokens": 500,
             }
             try:
                 resp = requests.post(url, json=payload, headers=headers, timeout=25)
@@ -207,7 +219,7 @@ class AgentEngine:
                     {"role": "user", "content": user_message},
                 ],
                 "temperature": 0.3,
-                "max_tokens": 2048,
+                "max_tokens": 500,
             }
             try:
                 resp = requests.post(url, json=payload, headers=headers, timeout=25)

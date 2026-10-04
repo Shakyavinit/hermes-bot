@@ -152,6 +152,10 @@ def smart_execute(command: str, prefer_laptop: bool = True) -> str:
     """Execute command: runs on physical laptop if connected, otherwise automatically executes on cloud server."""
     if prefer_laptop and is_laptop_online():
         res = dispatch_to_laptop(command)
+        # If laptop timed out or returned offline during execution, switch to cloud automatically!
+        if res.startswith("⚠️") or "OFFLINE" in res or "Timeout" in res:
+            cloud_res = _execute_cloud_bash(command)
+            return f"ℹ️ *(Laptop respond nahi kar raha tha, ☁️ Cloud Server par switch kiya)*\n\n{cloud_res}"
         return f"💻 *Physical Laptop:*\n{res}"
     else:
         res = _execute_cloud_bash(command)

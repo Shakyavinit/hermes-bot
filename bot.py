@@ -1088,6 +1088,33 @@ def start_health_server(port: int = 7860) -> None:
         logger.warning(f"Server bind failed: {e}")
 
 
+def start_cloud_keep_alive() -> None:
+    """
+    Render Free Tier Web Service sleeps after 15 minutes of inactivity.
+    This background thread pings the public health endpoint every 7 minutes,
+    keeping Render awake 24/7 even when the physical laptop is powered off!
+    """
+    cloud_url = os.getenv("RENDER_EXTERNAL_URL") or os.getenv("HERMES_CLOUD_URL", "https://hermes-bot-kqv8.onrender.com")
+    cloud_url = cloud_url.rstrip("/")
+    target = f"{cloud_url}/health"
+
+    def _keep_alive_loop():
+        time.sleep(20)
+        logger.info(f"🔄 Render Keep-Alive active: Pinging {target} every 7 mins.")
+        while True:
+            try:
+                r = requests.get(target, timeout=35)
+                if r.status_code == 200:
+                    logger.debug("Render keep-alive ping OK (200)")
+                else:
+                    logger.warning(f"Render keep-alive status: {r.status_code}")
+            except Exception as e:
+                logger.warning(f"Render keep-alive error: {e}")
+            time.sleep(420)  # Every 7 minutes
+
+    threading.Thread(target=_keep_alive_loop, daemon=True).start()
+
+
 # ==============================================================================
 # MAIN BOT RUNNER
 # ==============================================================================
@@ -1099,6 +1126,7 @@ class TelegramBotRunner:
         self.offset = 0
         sync_bot_commands()
         start_health_server()
+        start_cloud_keep_alive()
 
     def send_result(self, chat_id: int, title: str, result: str, menu: str = None) -> None:
         """Send result with bottom shortcuts keyboard and sleek styling, occasionally attaching Sher sticker."""

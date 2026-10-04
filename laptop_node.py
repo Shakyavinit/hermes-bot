@@ -1503,7 +1503,7 @@ def heartbeat_thread() -> None:
                     "remote_enabled": "1" if is_remote_access_enabled() else "0",
                     "auto_approve": "1" if get_auto_approve_state() else "0",
                 },
-                timeout=6,
+                timeout=25,
             )
         except Exception:
             pass

@@ -17,8 +17,8 @@ _last_heartbeat = [0.0]
 
 
 def is_laptop_online() -> bool:
-    """Return True if laptop sent a ping in the last 60 seconds."""
-    return (time.time() - _last_heartbeat[0]) < 60.0
+    """Return True if laptop sent a ping in the last 120 seconds."""
+    return (time.time() - _last_heartbeat[0]) < 120.0
 
 
 def record_heartbeat() -> None:
