@@ -344,12 +344,9 @@ def get_home_text() -> str:
     _remote = "ON 🟢 (30m)" if _is_remote_active else "OFF 🔴"
     return (
         "🤖 *Hermes Central Hub*\n\n"
-        "Kripya Mode select karein:\n"
-        "• 💻 *Laptop Mode:* Physical Kali Linux hardware, camera, sound & security.\n"
-        "• ☁️ *Cloud Mode:* 24/7 Render cloud container, files, diagnostics & AI memory.\n\n"
-        f"💻 *Laptop:* `{_laptop}`\n"
-        f"☁️ *Cloud:* `ONLINE 24/7 🟢`\n"
-        f"🎮 *Remote Access:* `{_remote}`\n\n"
+        f"> 💻 *Laptop:* `{_laptop}`\n"
+        f"> ☁️ *Cloud:* `ONLINE 24/7 🟢`\n"
+        f"> 🎮 *Remote Access:* `{_remote}`\n\n"
         "_Select an option below:_"
     )
 
@@ -380,12 +377,11 @@ def get_cloud_kb() -> dict:
 def get_cloud_page_text() -> str:
     """Cloud Mode header text."""
     return (
-        "☁️ *Hermes Cloud Mode (Render 24/7)*\n"
-        "*Cloud Container Operations & Settings*\n\n"
-        "• Status: `ONLINE 24/7 🟢`\n"
-        "• Hosting: `Render Cloud Server`\n"
-        "• Health Port: `7860 (Active)`\n"
-        "• AI Core: `Gemini / Dual-Engine`\n\n"
+        "☁️ *Hermes Cloud Mode (Render 24/7)*\n\n"
+        "> 🌐 *Status:* `ONLINE 24/7 🟢`\n"
+        "> 🚀 *Hosting:* `Render Cloud Server`\n"
+        "> 🩺 *Health Port:* `7860 (Active)`\n"
+        "> 🧠 *AI Core:* `Gemini / Dual-Engine`\n\n"
         "_Select a Cloud action below:_"
     )
 
@@ -503,41 +499,37 @@ def get_page_text(page: int = 1) -> str:
 
     if page == 1:
         return (
-            "💻 *Laptop Mode — Control Panel* — `Page 1/4`\n"
-            "*Core Hardware & Vision Controls*\n\n"
-            f"💻 *Laptop:* `{_laptop}`\n"
-            f"🎮 *Remote Access:* `{_remote}` (30m)\n"
-            f"⚡ *Auto-Approve:* `{_auto}`\n\n"
+            "💻 *Laptop Mode — Control Panel* — `Page 1/4`\n\n"
+            f"> 💻 *Laptop:* `{_laptop}`\n"
+            f"> 🎮 *Remote Access:* `{_remote}` (30m)\n"
+            f"> ⚡ *Auto-Approve:* `{_auto}`\n\n"
             "_Tap any button below to toggle or execute:_"
         )
     elif page == 2:
         return (
-            "🔊 *Laptop Mode — Audio & Media* — `Page 2/4`\n"
-            "*Sound, Voice & Playback Controls*\n\n"
-            f"🔇 *Mute Audio:* `{'ON 🟢' if _is_muted else 'OFF 🔴'}`\n\n"
-            "• Volume control (+/- 10%)\n"
-            "• Microphone recording (10s)\n"
-            "• Webcam video clip & Music toggle\n\n"
+            "🔊 *Laptop Mode — Audio & Media* — `Page 2/4`\n\n"
+            f"> 🔇 *Mute Audio:* `{'ON 🟢' if _is_muted else 'OFF 🔴'}`\n"
+            "> • Volume control (+/- 10%)\n"
+            "> • Microphone recording (10s)\n"
+            "> • Webcam video clip & Music toggle\n\n"
             "_Tap a control or use navigation buttons below:_"
         )
     elif page == 3:
         return (
-            "⚡ *Laptop Mode — Power & Security* — `Page 3/4`\n"
-            "*Lock, Screen & Surveillance Toggles*\n\n"
-            f"🔒 *Screen Lock:* `{'ON 🟢' if _is_locked else 'OFF 🔴'}`\n"
-            f"🕶️ *Ghost Mode:* `{'ON 🟢' if _is_ghost_mode else 'OFF 🔴'}`\n"
-            f"👁️ *CCTV Mode:* `{'ON 🟢' if _is_cctv_active else 'OFF 🔴'}`\n"
-            f"🚨 *Siren Alarm:* `{'ON 🚨' if _is_alarm_active else 'OFF 🔴'}`\n"
-            f"📡 *Hotspot:* `{'ON 🟢' if _is_hotspot_active else 'OFF 🔴'}`\n\n"
+            "⚡ *Laptop Mode — Power & Security* — `Page 3/4`\n\n"
+            f"> 🔒 *Screen Lock:* `{'ON 🟢' if _is_locked else 'OFF 🔴'}`\n"
+            f"> 🕶️ *Ghost Mode:* `{'ON 🟢' if _is_ghost_mode else 'OFF 🔴'}`\n"
+            f"> 👁️ *CCTV Mode:* `{'ON 🟢' if _is_cctv_active else 'OFF 🔴'}`\n"
+            f"> 🚨 *Siren Alarm:* `{'ON 🚨' if _is_alarm_active else 'OFF 🔴'}`\n"
+            f"> 📡 *Hotspot:* `{'ON 🟢' if _is_hotspot_active else 'OFF 🔴'}`\n\n"
             "_Tap any toggle button to switch ON/OFF:_"
         )
     else:
         return (
-            "🌐 *Laptop Mode — Network & Tools* — `Page 4/4`\n"
-            "*WiFi, Files, Clipboard & Diagnostics*\n\n"
-            "• WiFi connection & Geolocation\n"
-            "• Workspace files & Clipboard reader\n"
-            "• Diagnostics & AI Memory reset\n\n"
+            "🌐 *Laptop Mode — Network & Tools* — `Page 4/4`\n\n"
+            "> • WiFi connection & Geolocation\n"
+            "> • Workspace files & Clipboard reader\n"
+            "> • Diagnostics & AI Memory reset\n\n"
             "_Tap a control or use navigation buttons below:_"
         )
 
@@ -582,6 +574,70 @@ def track_bot_msg(chat_id: int, msg_id: Optional[int]) -> None:
     _recent_bot_msgs.setdefault(chat_id, []).append(msg_id)
     if len(_recent_bot_msgs[chat_id]) > 50:
         _recent_bot_msgs[chat_id] = _recent_bot_msgs[chat_id][-50:]
+
+
+# Verified stickers for responses & milestones
+BOT_STICKERS = {
+    "ready": "CAACAgQAAxUAAWrCByoU-BDX3Mhd5xo0HRCfS8dKAAIwAAPBkgcEgNzQy0eP4lg9BA",      # Jarvis Ready
+    "alert": "CAACAgQAAxUAAWrCBypTleHz7vCv8fr1CrTyQkYZAAIxAAPBkgcE8brchduYROk9BA",      # Jarvis Alert
+    "thumbsup": "CAACAgQAAxUAAWrCBzFaGkBe932nEZ_8jmUSsxWeAAK8AQACgquUEdFJqXvTCfhzPQQ",   # Cyberpunk OK
+    "celebrate": "CAACAgQAAxUAAWrCBzEOYukGP1LPPBikaLMU_oFOAAK9AQACgquUEWOE_Qy48GVEPQQ",  # Cyberpunk Win
+}
+
+
+def tg_set_reaction(chat_id: int, message_id: Optional[int], emoji: str = "⚡") -> bool:
+    """Set an instant emoji reaction on a message for sleek responsive feedback."""
+    if not chat_id or not message_id:
+        return False
+    try:
+        resp = requests.post(
+            f"{API_BASE}/setMessageReaction",
+            json={
+                "chat_id": chat_id,
+                "message_id": message_id,
+                "reaction": [{"type": "emoji", "emoji": emoji}],
+            },
+            timeout=5,
+        )
+        return resp.json().get("ok", False)
+    except Exception:
+        return False
+
+
+def tg_send_sticker(chat_id: int, sticker_type_or_id: str = "ready") -> Optional[int]:
+    """Send a sticker by predefined key or raw Telegram file_id."""
+    sticker_id = BOT_STICKERS.get(sticker_type_or_id, sticker_type_or_id)
+    try:
+        resp = requests.post(
+            f"{API_BASE}/sendSticker",
+            json={"chat_id": chat_id, "sticker": sticker_id},
+            timeout=10,
+        )
+        res = resp.json()
+        if res.get("ok"):
+            msg_id = res.get("result", {}).get("message_id")
+            track_bot_msg(chat_id, msg_id)
+            return msg_id
+    except Exception as e:
+        logger.error(f"Error sending sticker: {e}")
+    return None
+
+
+def format_stylish_response(title: str, content: str = "") -> str:
+    """Format bot responses with sleek native Telegram blockquotes and badges."""
+    parts = []
+    if title and title.strip():
+        parts.append(title.strip())
+    if content and content.strip():
+        clean = content.strip()
+        # If content contains code blocks or is already blockquoted, preserve as is
+        if "```" in clean or clean.startswith(">"):
+            parts.append(clean)
+        else:
+            lines = clean.splitlines()
+            quoted = [f"> {line}" if line.strip() else ">" for line in lines]
+            parts.append("\n".join(quoted))
+    return "\n\n".join(parts) if parts else ""
 
 
 def tg_delete_message(chat_id: int, message_id: Optional[int]) -> bool:
@@ -763,36 +819,31 @@ def get_status_text() -> str:
     laptop_status = "ONLINE 🟢" if is_laptop_online() else "OFFLINE 🔴"
     owner = cfg.get("owner_username", "kissbilla2")
     return (
-        "*Hermes System Status*\n\n"
-        f"• *User:* @{owner}\n"
-        f"• *Laptop:* `{laptop_status}`\n"
-        f"• *Cloud:* `ONLINE 🟢`\n"
-        f"• *Remote:* `{'ON 🟢' if _is_remote_active else 'OFF 🔴'}`\n"
-        f"• *Auto-Approve:* `{'ON 🟢' if _is_auto_approve_active else 'OFF 🔴'}`\n"
-        f"• *Memory:* `{len(facts)} items`\n\n"
+        "⚡ *Hermes System Status*\n\n"
+        f"> 👤 *User:* `@{owner}`\n"
+        f"> 💻 *Laptop:* `{laptop_status}`\n"
+        f"> ☁️ *Cloud Server:* `ONLINE 🟢`\n"
+        f"> 🎮 *Remote Access:* `{'ON 🟢' if _is_remote_active else 'OFF 🔴'}`\n"
+        f"> ⚡ *Auto-Approve:* `{'ON 🟢' if _is_auto_approve_active else 'OFF 🔴'}`\n"
+        f"> 🧠 *Active Facts:* `{len(facts)} items`\n\n"
         f"```\n{sys_stat}\n```"
     )
 
 
 def get_help_text() -> str:
     return (
-        "*Hermes Bot Guide*\n\n"
-        "*Commands:*\n"
-        "• `/screenshot` — Capture screen photo\n"
-        "• `/webcam` — Take camera photo\n"
-        "• `/battery` — Check battery level\n"
-        "• `/status` — System status\n"
-        "• `/remind 10m [task]` — Set timer\n"
-        "• `/self` — Toggle self-use mode\n"
-        "• `/auto` — Toggle auto-approve\n"
-        "• `/diagnose` — Run diagnostics\n"
-        "• `/reset` — Clear memory\n\n"
-        "*Natural Language:*\n"
-        "Chat me normal bhasha me bolein:\n"
-        "• _'screenshot le'_\n"
-        "• _'chrome kholo'_\n"
-        "• _'volume badhao'_\n\n"
-        "🔒 Private bot locked to @kissbilla2."
+        "📖 *Hermes Quick Guide*\n\n"
+        "> ⚡ *Quick Shortcuts:*\n"
+        "> • `/screenshot` — Capture screen photo\n"
+        "> • `/webcam` — Take camera photo\n"
+        "> • `/battery` — Check battery level\n"
+        "> • `/status` — System dashboard\n"
+        "> • `/remind 10m [task]` — Set timer\n"
+        "> • `/self` — Toggle self-use mode\n"
+        "> • `/auto` — Toggle auto-approve\n\n"
+        "> 🗣️ *Natural Language:*\n"
+        "> Just type naturally: _'screenshot le'_, _'chrome kholo'_, _'volume 50'_\n\n"
+        "🔒 *Private & Encrypted* — Locked to `@kissbilla2`"
     )
 
 
@@ -893,8 +944,8 @@ class TelegramBotRunner:
         start_health_server()
 
     def send_result(self, chat_id: int, title: str, result: str, menu: str = None) -> None:
-        """Send result with bottom shortcuts keyboard."""
-        text = f"{title}\n\n{result}" if result else title
+        """Send result with bottom shortcuts keyboard and sleek styling."""
+        text = format_stylish_response(title, result)
         tg_send_message(chat_id, text, reply_markup=get_bottom_reply_kb())
 
     def switch_menu(self, chat_id: int, menu_name: str, title: str = None) -> None:
@@ -1121,6 +1172,7 @@ class TelegramBotRunner:
             cfg = get_runtime_config()
             if cfg.get("owner_user_id") is None:
                 set_owner(user_id)
+            tg_send_sticker(chat_id, "ready")
             tg_send_message(chat_id, "⚡ *Hermes Ready*", reply_markup=get_bottom_reply_kb())
             self.switch_menu(chat_id, "main")
             return True
@@ -2002,6 +2054,7 @@ class TelegramBotRunner:
         user_id = from_user.get("id")
         username = from_user.get("username", "")
         text = message.get("text", "").strip()
+        msg_id = message.get("message_id")
 
         if not chat_id or not user_id:
             return
@@ -2011,10 +2064,16 @@ class TelegramBotRunner:
             tg_send_message(chat_id, "⛔ Access Denied - Locked to @kissbilla2")
             return
 
+        # Instant visual reaction feedback
+        if msg_id:
+            tg_set_reaction(chat_id, msg_id, "⚡")
+
         session_id = f"tg_{chat_id}"
 
         # PHOTO handling
         if "photo" in message:
+            if msg_id:
+                tg_set_reaction(chat_id, msg_id, "👀")
             photo_list = message["photo"]
             file_id = photo_list[-1]["file_id"]
             caption = message.get("caption", "Is image ko analyze karein.")
@@ -2113,13 +2172,13 @@ class TelegramBotRunner:
             time.sleep(0.1)
             if status_id:
                 tg_delete_message(chat_id, status_id)
-            tg_send_message(chat_id, result)
+            tg_send_message(chat_id, result, reply_markup=get_bottom_reply_kb())
         except Exception as e:
             stop_anim.set()
             logger.error(f"Agent error: {e}")
             if status_id:
                 tg_delete_message(chat_id, status_id)
-            tg_send_message(chat_id, f"❌ *Error:* {e}")
+            tg_send_message(chat_id, f"❌ *Error:* {e}", reply_markup=get_bottom_reply_kb())
 
     def start_polling(self) -> None:
         logger.info("Starting Telegram polling...")
