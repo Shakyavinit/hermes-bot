@@ -2345,6 +2345,7 @@ class TelegramBotRunner:
                 tg_delete_message(chat_id, status_id)
                 current = _user_menu_state.get(chat_id, "main")
                 tg_send_message(chat_id, result, reply_markup=get_kb_for(current))
+                maybe_send_sher_sticker(chat_id, chance=0.45)
             except Exception as e:
                 tg_delete_message(chat_id, status_id)
                 tg_send_message(chat_id, f"❌ Error: {e}")
@@ -2369,6 +2370,7 @@ class TelegramBotRunner:
                     tg_delete_message(chat_id, status_id)
                     current = _user_menu_state.get(chat_id, "main")
                     tg_send_message(chat_id, result, reply_markup=get_kb_for(current))
+                    maybe_send_sher_sticker(chat_id, chance=0.45)
                 except Exception as e:
                     tg_delete_message(chat_id, status_id)
                     tg_send_message(chat_id, f"❌ Error: {e}")
@@ -2402,6 +2404,7 @@ class TelegramBotRunner:
                 tg_delete_message(chat_id, status_id)
                 current = _user_menu_state.get(chat_id, "main")
                 tg_send_message(chat_id, result, reply_markup=get_kb_for(current))
+                maybe_send_sher_sticker(chat_id, chance=0.45)
             except Exception as e:
                 tg_delete_message(chat_id, status_id)
                 tg_send_message(chat_id, f"❌ Error: {e}")
@@ -2425,6 +2428,7 @@ class TelegramBotRunner:
             if status_id:
                 tg_delete_message(chat_id, status_id)
             tg_send_message(chat_id, result, reply_markup=get_bottom_reply_kb())
+            maybe_send_sher_sticker(chat_id, chance=0.50)
         except Exception as e:
             stop_anim.set()
             logger.error(f"Agent error: {e}")
