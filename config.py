@@ -128,20 +128,20 @@ def set_owner(user_id: int) -> None:
 def is_user_allowed(user_id: int, username: Optional[str] = None) -> bool:
     """
     STRICT AUTHORIZATION:
-    ONLY @kissbilla2 (and user_id 8616271645) is permitted full access.
-    All other users are completely blocked.
+    Permits the owner accounts: @kissbilla2, @Billahackerking, and any IDs in allowed_user_ids.
     """
     # 1. Match by Telegram @username
-    if username and username.lower().lstrip("@") == OWNER_USERNAME.lower():
-        cfg = get_runtime_config()
-        if cfg.get("owner_user_id") != user_id:
-            cfg["owner_user_id"] = user_id
-            cfg["allowed_user_ids"] = [user_id]
-            save_runtime_config(cfg)
+    allowed_usernames = {"kissbilla2", "billahackerking"}
+    if username and username.lower().lstrip("@") in allowed_usernames:
         return True
 
     # 2. Match by verified numeric ID
     cfg = get_runtime_config()
+    allowed_ids = set(cfg.get("allowed_user_ids", []))
+    allowed_ids.update({8616271645, 6677767449})
+    if user_id in allowed_ids:
+        return True
+
     owner_id = cfg.get("owner_user_id")
     if owner_id and user_id == owner_id:
         return True
