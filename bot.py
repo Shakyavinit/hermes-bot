@@ -576,13 +576,47 @@ def track_bot_msg(chat_id: int, msg_id: Optional[int]) -> None:
         _recent_bot_msgs[chat_id] = _recent_bot_msgs[chat_id][-50:]
 
 
-# Verified stickers for responses & milestones
+# Verified stickers & Custom Sticker persistence
+CUSTOM_STICKERS_FILE = WORKSPACE_DIR / "custom_stickers.json"
+_last_received_sticker: Dict[int, str] = {}
+
 BOT_STICKERS = {
     "ready": "CAACAgQAAxUAAWrCByoU-BDX3Mhd5xo0HRCfS8dKAAIwAAPBkgcEgNzQy0eP4lg9BA",      # Jarvis Ready
-    "alert": "CAACAgQAAxUAAWrCBypTleHz7vCv8fr1CrTyQkYZAAIxAAPBkgcE8brchduYROk9BA",      # Jarvis Alert
-    "thumbsup": "CAACAgQAAxUAAWrCBzFaGkBe932nEZ_8jmUSsxWeAAK8AQACgquUEdFJqXvTCfhzPQQ",   # Cyberpunk OK
+    "camera": "CAACAgQAAxUAAWrCBzGlzFKGwZif9FzYj-9mTR25AAK-AQACgquUESyYRHOb_BvePQQ",    # Cyberpunk Scan
+    "battery": "CAACAgQAAxUAAWrCBzFMBqTjTiV6KRc1b9jUYWzEAAK6AQACgquUEdxK9XfJZvo1PQQ",   # Cyberpunk Energy
+    "music": "CAACAgQAAxUAAWrCBzHcfeJmeW9iU1JuR2UYIWykAAK_AQACgquUEa9d3xpHYTeEPQQ",     # Cyberpunk Fire/Hype
+    "security": "CAACAgQAAxUAAWrCBypTleHz7vCv8fr1CrTyQkYZAAIxAAPBkgcE8brchduYROk9BA",   # Jarvis Alert/Red
+    "done": "CAACAgQAAxUAAWrCBzFaGkBe932nEZ_8jmUSsxWeAAK8AQACgquUEdFJqXvTCfhzPQQ",       # Cyberpunk Respect
     "celebrate": "CAACAgQAAxUAAWrCBzEOYukGP1LPPBikaLMU_oFOAAK9AQACgquUEWOE_Qy48GVEPQQ",  # Cyberpunk Win
+    "alert": "CAACAgQAAxUAAWrCBypTleHz7vCv8fr1CrTyQkYZAAIxAAPBkgcE8brchduYROk9BA",
 }
+
+
+def get_sticker_for(action: str) -> str:
+    """Retrieve custom sticker if configured, else fallback to verified default."""
+    if CUSTOM_STICKERS_FILE.exists():
+        try:
+            with open(CUSTOM_STICKERS_FILE, "r") as f:
+                data = json.load(f)
+                if action in data:
+                    return data[action]
+        except Exception:
+            pass
+    return BOT_STICKERS.get(action, BOT_STICKERS.get("ready"))
+
+
+def save_custom_sticker(action: str, file_id: str) -> None:
+    """Save custom sticker for an action."""
+    data = {}
+    if CUSTOM_STICKERS_FILE.exists():
+        try:
+            with open(CUSTOM_STICKERS_FILE, "r") as f:
+                data = json.load(f)
+        except Exception:
+            data = {}
+    data[action] = file_id
+    with open(CUSTOM_STICKERS_FILE, "w") as f:
+        json.dump(data, f, indent=2)
 
 
 def tg_set_reaction(chat_id: int, message_id: Optional[int], emoji: str = "⚡") -> bool:
@@ -604,9 +638,39 @@ def tg_set_reaction(chat_id: int, message_id: Optional[int], emoji: str = "⚡")
         return False
 
 
+def tg_react_smart(chat_id: int, message_id: Optional[int], text: str = "") -> bool:
+    """Dynamically pick the most relevant Telegram emoji reaction based on message context."""
+    if not chat_id or not message_id:
+        return False
+    t = text.lower()
+
+    if any(k in t for k in ("lock", "unlock", "alarm", "ghost", "security", "spy", "protect", "siren")):
+        emoji = "🫡"
+    elif any(k in t for k in ("screenshot", "webcam", "camera", "photo", "pic", "snap", "cctv", "dekho")):
+        emoji = "👀"
+    elif any(k in t for k in ("run", "bash", "exec", "terminal", "code", "cmd", "fast", "speed", "test")):
+        emoji = "🚀"
+    elif any(k in t for k in ("song", "music", "play", "sound", "volume", "mic", "speak", "audio")):
+        emoji = "🔥"
+    elif any(k in t for k in ("battery", "charging", "wifi", "ip", "location", "disk", "cpu", "temp")):
+        emoji = "⚡"
+    elif any(k in t for k in ("screen", "desktop", "display")):
+        emoji = "👀"
+    elif any(k in t for k in ("ok", "done", "theek", "shukriya", "thanks", "good", "sahi", "badhiya")):
+        emoji = "💯"
+    elif any(k in t for k in ("status", "help", "guide", "info", "diagnose")):
+        emoji = "👨‍💻"
+    elif any(k in t for k in ("kya", "kaise", "kyun", "who", "what", "how", "why", "?")):
+        emoji = "🤔"
+    else:
+        emoji = "⚡"
+
+    return tg_set_reaction(chat_id, message_id, emoji)
+
+
 def tg_send_sticker(chat_id: int, sticker_type_or_id: str = "ready") -> Optional[int]:
     """Send a sticker by predefined key or raw Telegram file_id."""
-    sticker_id = BOT_STICKERS.get(sticker_type_or_id, sticker_type_or_id)
+    sticker_id = get_sticker_for(sticker_type_or_id) if sticker_type_or_id in BOT_STICKERS else sticker_type_or_id
     try:
         resp = requests.post(
             f"{API_BASE}/sendSticker",
@@ -943,8 +1007,26 @@ class TelegramBotRunner:
         sync_bot_commands()
         start_health_server()
 
-    def send_result(self, chat_id: int, title: str, result: str, menu: str = None) -> None:
-        """Send result with bottom shortcuts keyboard and sleek styling."""
+    def send_result(self, chat_id: int, title: str, result: str, menu: str = None, sticker: str = None) -> None:
+        """Send result with bottom shortcuts keyboard, sleek styling, and contextual sticker."""
+        if not sticker:
+            t = (title or "").lower()
+            if any(k in t for k in ("screenshot", "webcam", "camera", "photo", "video", "snapped")):
+                sticker = "camera"
+            elif any(k in t for k in ("battery", "charging", "power")):
+                sticker = "battery"
+            elif any(k in t for k in ("sound", "volume", "music", "song", "audio", "mic", "speaking")):
+                sticker = "music"
+            elif any(k in t for k in ("lock", "alarm", "cctv", "security", "ghost", "siren")):
+                sticker = "security"
+            elif any(k in t for k in ("status", "telemetry", "system")):
+                sticker = "ready"
+            elif any(k in t for k in ("diagnostics", "cleaned", "reset", "reminder", "saved")):
+                sticker = "done"
+
+        if sticker:
+            tg_send_sticker(chat_id, sticker)
+
         text = format_stylish_response(title, result)
         tg_send_message(chat_id, text, reply_markup=get_bottom_reply_kb())
 
@@ -1176,6 +1258,35 @@ class TelegramBotRunner:
             tg_send_message(chat_id, "⚡ *Hermes Ready*", reply_markup=get_bottom_reply_kb())
             self.switch_menu(chat_id, "main")
             return True
+
+        if cmd == "/setsticker":
+            parts = clean.split()
+            if len(parts) >= 2:
+                action = parts[1].lower()
+                last_id = _last_received_sticker.get(chat_id)
+                if last_id:
+                    save_custom_sticker(action, last_id)
+                    tg_send_sticker(chat_id, last_id)
+                    self.send_result(
+                        chat_id,
+                        f"✅ *Custom Sticker Set for '{action}'!*",
+                        f"Abse jab bhi `{action}` execute hoga, ye sticker bhejunga!",
+                    )
+                    return True
+                else:
+                    self.send_result(
+                        chat_id,
+                        "⚠️ *Pehle koi sticker bhejein!*",
+                        "Telegram pe koi bhi sticker bhejein, fir type karein: `/setsticker <action>`\n\nAvailable actions: `screenshot`, `webcam`, `battery`, `music`, `lock`, `done`, `ready`",
+                    )
+                    return True
+            else:
+                self.send_result(
+                    chat_id,
+                    "💡 *Usage:* `/setsticker [action]`",
+                    "Available actions: `screenshot`, `webcam`, `battery`, `music`, `lock`, `done`, `ready`",
+                )
+                return True
 
         # ==================== CATEGORY SWITCHES ====================
         category_map = {
@@ -2064,11 +2175,37 @@ class TelegramBotRunner:
             tg_send_message(chat_id, "⛔ Access Denied - Locked to @kissbilla2")
             return
 
-        # Instant visual reaction feedback
+        # Instant smart contextual reaction feedback
         if msg_id:
-            tg_set_reaction(chat_id, msg_id, "⚡")
+            tg_react_smart(chat_id, msg_id, text)
 
         session_id = f"tg_{chat_id}"
+
+        # STICKER message handling (allows user to send any custom sticker)
+        if "sticker" in message:
+            sticker = message["sticker"]
+            file_id = sticker["file_id"]
+            set_name = sticker.get("set_name", "Custom")
+            emoji = sticker.get("emoji", "🎨")
+            _last_received_sticker[chat_id] = file_id
+            if msg_id:
+                tg_set_reaction(chat_id, msg_id, "🔥")
+            tg_send_message(
+                chat_id,
+                f"🎨 *Sticker Received!* ({emoji})\n\n"
+                f"> Pack: `{set_name}`\n"
+                f"> File ID: `{file_id}`\n\n"
+                "Is sticker ko bot me save karne ke liye kisi bhi action pe assign karein:\n"
+                "• `/setsticker screenshot`\n"
+                "• `/setsticker webcam`\n"
+                "• `/setsticker battery`\n"
+                "• `/setsticker music`\n"
+                "• `/setsticker lock`\n"
+                "• `/setsticker done`\n"
+                "• `/setsticker ready`",
+                reply_markup=get_bottom_reply_kb(),
+            )
+            return
 
         # PHOTO handling
         if "photo" in message:
