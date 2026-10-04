@@ -77,6 +77,7 @@ _is_alarm_active = False
 _user_menu_state: Dict[int, str] = {}  # Track which menu user is on
 _user_pending_input: Dict[int, str] = {}  # Track expected input (e.g., "typing_text", "url", etc.)
 _notes_storage: Dict[int, List[str]] = {}  # Local notes
+_last_received_sticker: Dict[int, str] = {}  # Track last received sticker per chat
 
 # ==============================================================================
 # NESTED KEYBOARD SYSTEM - Well Organized & Categorized
@@ -1528,9 +1529,38 @@ class TelegramBotRunner:
             "stop speaking", "stop speak", "stop tts", "tts stop", "chup bolna", "speaking off",
         }
         if low in TTS_STOP_WORDS:
-            execute_on_laptop("killall spd-say espeak-ng espeak 2>/dev/null")
+            execute_on_laptop("pkill -f hermes_tts.mp3 2>/dev/null; killall spd-say espeak-ng espeak 2>/dev/null")
             self.send_result(chat_id, "🤐 *Speech Muted:*", "Laptop speech/TTS mute kar diya gaya hai.")
             return True
+
+        # 8. Direct Speak / TTS Commands (Instant - 100% Volume Neural Voice)
+        SPEAK_TRIGGERS = (
+            "laptop par bolo ", "laptop pe bolo ", "laptop me bolo ",
+            "bolo ", "bol ", "speak ", "say ",
+        )
+        if cmd in ("/speak", "/say", "/bolo") or low.startswith(SPEAK_TRIGGERS) or low in ("bolo", "bol", "speak", "say"):
+            speak_text = ""
+            if cmd in ("/speak", "/say", "/bolo"):
+                parts = clean.split(maxsplit=1)
+                if len(parts) >= 2:
+                    speak_text = parts[1].strip()
+                else:
+                    _user_pending_input[chat_id] = "tts"
+                    self.send_result(chat_id, "🗣️ *TTS Mode (100% Volume):*", "Ab wo text likhein jo laptop bolega:")
+                    return True
+            elif low in ("bolo", "bol", "speak", "say"):
+                _user_pending_input[chat_id] = "tts"
+                self.send_result(chat_id, "🗣️ *TTS Mode (100% Volume):*", "Ab wo text likhein jo laptop bolega:")
+                return True
+            else:
+                for prefix in SPEAK_TRIGGERS:
+                    if low.startswith(prefix):
+                        speak_text = clean[len(prefix):].strip()
+                        break
+            if speak_text:
+                res = laptop_speak(speak_text)
+                self.send_result(chat_id, "🗣️ *Laptop Par Bola:*", f"_{speak_text}_\n\n{res}")
+                return True
 
         # ==================== ROOT COMMANDS ====================
         if cmd in ("/start", "/menu", "/main", "/home") or clean in ("🏠 Main Menu", "🔙 Main Menu", "📱 Menu", "Main Menu"):

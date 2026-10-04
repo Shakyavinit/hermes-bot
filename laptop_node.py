@@ -488,6 +488,10 @@ def play_tts_sound(text: str) -> bool:
     try:
         if os.path.exists(tts_mp3):
             os.remove(tts_mp3)
+        import sys
+        for p in ("/home/mrx/.local/lib/python3.14/site-packages", "/home/mrx/.local/lib/python3.13/site-packages", "/home/mrx/.local/lib/python3.12/site-packages"):
+            if p not in sys.path and os.path.exists(p):
+                sys.path.insert(0, p)
         import asyncio
         import edge_tts
         async def _synth():
