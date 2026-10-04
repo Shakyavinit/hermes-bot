@@ -82,19 +82,17 @@ _notes_storage: Dict[int, List[str]] = {}  # Local notes
 # ==============================================================================
 
 def kb(rows: List[List[str]], resize: bool = True, persistent: bool = True) -> dict:
-    """Helper to build reply keyboard (disabled - all buttons removed)."""
-    return {"remove_keyboard": True}
+    """Helper to build persistent reply keyboard."""
+    return {
+        "keyboard": [[{"text": btn} for btn in row] for row in rows],
+        "resize_keyboard": resize,
+        "is_persistent": persistent,
+    }
 
 
 def get_main_menu_kb() -> dict:
-    """🏠 MAIN MENU - Clean, compact & sleek (only 3 rows)."""
-    global _is_remote_active
-    self_btn = "🔴 Self-Use Mode" if _is_remote_active else "🟢 Remote Mode"
-    return kb([
-        ["💻 Laptop Mode", "☁️ Cloud Server"],
-        [self_btn, "🖱️ Mouse & Keyboard"],
-        ["🎛️ Quick Toggles", "❓ Help & Status"],
-    ])
+    """Main persistent bottom keyboard."""
+    return get_main_bottom_kb()
 
 
 def get_laptop_dashboard_kb() -> dict:
@@ -534,32 +532,82 @@ def get_page_text(page: int = 1) -> str:
         )
 
 
-def get_bottom_reply_kb() -> dict:
-    """Clean, compact bottom reply keyboard with essential everyday shortcuts."""
+def get_main_bottom_kb() -> dict:
+    """Main persistent bottom keyboard with quick everyday shortcuts."""
     return {
         "keyboard": [
-            [{"text": "📸 Screenshot"}, {"text": "📷 Webcam"}],
-            [{"text": "🔋 Battery"}, {"text": "📊 Status"}],
-            [{"text": "💻 Laptop Mode"}, {"text": "☁️ Cloud Mode"}],
+            [{"text": "📸 Screenshot"}, {"text": "📷 Webcam"}, {"text": "🔋 Battery"}],
+            [{"text": "🎵 Music Player"}, {"text": "📊 Status"}],
+            [{"text": "💻 Laptop Controls"}, {"text": "☁️ Cloud Mode"}],
+            [{"text": "⚡ Auto Approve"}, {"text": "🔒 Lock Screen"}],
         ],
         "resize_keyboard": True,
         "is_persistent": True,
     }
 
 
-def get_main_inline_kb() -> dict:
-    return get_home_kb()
+def get_music_bottom_kb() -> dict:
+    """Dedicated Music Player persistent bottom keyboard."""
+    return {
+        "keyboard": [
+            [{"text": "⏯️ Play / Pause"}, {"text": "⏹️ Stop Music"}],
+            [{"text": "🔊 Vol Up (+10%)"}, {"text": "🔉 Vol Down (-10%)"}],
+            [{"text": "🔇 Mute / Unmute"}, {"text": "🔍 Search & Play"}],
+            [{"text": "🔙 Main Menu"}],
+        ],
+        "resize_keyboard": True,
+        "is_persistent": True,
+    }
 
 
-def get_kb_for(menu: str = None) -> dict:
-    """Return inline keyboard for menus."""
-    if menu in ("main", "home"):
-        return get_home_kb()
+def get_laptop_bottom_kb() -> dict:
+    """Laptop controls persistent bottom keyboard."""
+    return {
+        "keyboard": [
+            [{"text": "📸 Screenshot"}, {"text": "📷 Webcam"}, {"text": "🎙️ Record Mic"}],
+            [{"text": "⚡ Auto Approve"}, {"text": "🔒 Lock Screen"}, {"text": "🕶️ Ghost Mode"}],
+            [{"text": "🚨 Alarm Siren"}, {"text": "📍 Find Location"}, {"text": "👁️ CCTV Mode"}],
+            [{"text": "🎵 Music Player"}, {"text": "🔙 Main Menu"}],
+        ],
+        "resize_keyboard": True,
+        "is_persistent": True,
+    }
+
+
+def get_cloud_bottom_kb() -> dict:
+    """Cloud server persistent bottom keyboard."""
+    return {
+        "keyboard": [
+            [{"text": "📊 Cloud Telemetry"}, {"text": "📁 Cloud Files"}],
+            [{"text": "⚡ Cloud Quick Test"}, {"text": "🩺 Self-Diagnostics"}],
+            [{"text": "🧹 Reset AI Memory"}, {"text": "🔙 Main Menu"}],
+        ],
+        "resize_keyboard": True,
+        "is_persistent": True,
+    }
+
+
+def get_bottom_reply_kb(chat_id: Optional[int] = None) -> dict:
+    """Return active persistent bottom keyboard based on user's active section."""
+    state = _user_menu_state.get(chat_id, "main") if chat_id else "main"
+    if state == "music":
+        return get_music_bottom_kb()
+    elif state == "laptop":
+        return get_laptop_bottom_kb()
+    elif state == "cloud":
+        return get_cloud_bottom_kb()
+    return get_main_bottom_kb()
+
+
+def get_kb_for(menu: str = None, chat_id: Optional[int] = None) -> dict:
+    """Always return clean bottom reply keyboard for persistent user navigation."""
+    if menu in ("music", "volume", "media"):
+        return get_music_bottom_kb()
+    elif menu in ("laptop", "extra", "camera", "power", "security", "system", "mouse", "browser"):
+        return get_laptop_bottom_kb()
     elif menu == "cloud":
-        return get_cloud_kb()
-    elif menu in ("laptop", "extra", "tools"):
-        return get_page_kb(1)
-    return {"remove_keyboard": True}
+        return get_cloud_bottom_kb()
+    return get_bottom_reply_kb(chat_id)
 
 
 # ==============================================================================
@@ -1131,7 +1179,7 @@ class TelegramBotRunner:
     def send_result(self, chat_id: int, title: str, result: str, menu: str = None) -> None:
         """Send result with bottom shortcuts keyboard and sleek styling, occasionally attaching Sher sticker."""
         text = format_stylish_response(title, result)
-        tg_send_message(chat_id, text, reply_markup=get_bottom_reply_kb())
+        tg_send_message(chat_id, text, reply_markup=get_bottom_reply_kb(chat_id))
         maybe_send_sher_sticker(chat_id, chance=0.20)
 
     def switch_menu(self, chat_id: int, menu_name: str, title: str = None) -> None:
@@ -1144,6 +1192,13 @@ class TelegramBotRunner:
             "main": get_home_text(),
             "home": get_home_text(),
             "cloud": get_cloud_page_text(),
+            "music": (
+                "🎵 *Hermes Music Player*\n\n"
+                "• Yahan se aap laptop ka music direct control kar sakte hain.\n"
+                "• *Controls:* Play/Pause, Stop Music, Volume Up/Down, Mute/Unmute.\n"
+                "• *Song Search:* '🔍 Search & Play' dabayein aur koi bhi gaana chalayein!\n\n"
+                "_Niche diye gaye buttons se operate karein:_"
+            ),
             "laptop": (
                 "💻 *Laptop Control Panel*\n\n"
                 f"• Status: `{_laptop}`\n\n"
@@ -1269,7 +1324,7 @@ class TelegramBotRunner:
             ),
         }
         text = title or menu_titles.get(menu_name, "📱 *Hermes AI*\n\nCommand bhejein:")
-        tg_send_message(chat_id, text, reply_markup=get_kb_for(menu_name))
+        tg_send_message(chat_id, text, reply_markup=get_kb_for(menu_name, chat_id))
 
     def handle_button_or_command(self, chat_id: int, user_id: int, text: str) -> bool:
         """Main button/command router - clean and organized."""
@@ -1358,7 +1413,6 @@ class TelegramBotRunner:
             cfg = get_runtime_config()
             if cfg.get("owner_user_id") is None:
                 set_owner(user_id)
-            tg_send_message(chat_id, "⚡ *Hermes Ready*", reply_markup=get_bottom_reply_kb())
             self.switch_menu(chat_id, "main")
             return True
 
@@ -1397,9 +1451,17 @@ class TelegramBotRunner:
 
         # ==================== CATEGORY SWITCHES ====================
         category_map = {
+            # Dedicated Music Player Section
+            "🎵 Music Player": "music",
+            "🎵 Music": "music",
+            "/music": "music",
+            "Music Player": "music",
+            "🎵 Music Dashboard": "music",
+
             # Top-Level Dashboards & Navigation
             "💻 Laptop Mode": "laptop",
             "💻 Laptop Control Panel": "laptop",
+            "💻 Laptop Controls": "laptop",
             "💻 Laptop": "laptop",
             "/laptop": "laptop",
             "☁️ Cloud Server": "cloud",
@@ -1502,7 +1564,7 @@ class TelegramBotRunner:
             return True
 
         # ==================== AUDIO & VOICE ====================
-        if clean == "🎙️ Record Mic 10s" or cmd == "/mic" or low in ("mic", "record audio"):
+        if clean in ("🎙️ Record Mic 10s", "🎙️ Record Mic") or cmd == "/mic" or low in ("mic", "record audio"):
             temp = tg_send_message(chat_id, "🎙️ Recording 10s audio...")
             res = laptop_mic(10)
             tg_delete_message(chat_id, temp)
@@ -1566,7 +1628,7 @@ class TelegramBotRunner:
             self.send_result(chat_id, "🏠 *Local IP:*", f"`{res.strip()}`")
             return True
 
-        if clean == "📍 Laptop Location" or cmd == "/locate" or low in ("location", "find laptop"):
+        if clean in ("📍 Laptop Location", "📍 Find Location") or cmd == "/locate" or low in ("location", "find laptop"):
             temp = tg_send_message(chat_id, "📍 Fetching location...")
             res = laptop_location()
             tg_delete_message(chat_id, temp)
@@ -1581,19 +1643,17 @@ class TelegramBotRunner:
         if clean in ("🔒 Lock Screen", "🔓 Unlock Screen") or cmd in ("/lock", "/unlock") or low in ("lock", "unlock"):
             res = laptop_lock_toggle()
             _is_locked = not _is_locked if "LOCKED" not in res.upper() and "UNLOCKED" not in res.upper() else ("LOCKED" in res.upper() and "UNLOCKED" not in res.upper())
-            self.switch_menu(chat_id, _user_menu_state.get(chat_id, "power"),
-                f"🔒 *Lock Toggled:*\n\n{res}")
+            self.send_result(chat_id, "🔒 *Screen Lock Toggled:*", res)
             return True
 
-        if clean in ("🕶️ Display OFF (Ghost)", "☀️ Display ON") or low in ("ghost", "display off", "screen off"):
+        if clean in ("🕶️ Display OFF (Ghost)", "☀️ Display ON", "🕶️ Ghost Mode") or low in ("ghost", "display off", "screen off", "ghost mode"):
             if _is_ghost_mode:
                 res = laptop_screen_on()
                 _is_ghost_mode = False
             else:
                 res = laptop_ghost_mode()
                 _is_ghost_mode = True
-            self.switch_menu(chat_id, _user_menu_state.get(chat_id, "power"),
-                f"🕶️ *Display Toggled:*\n\n{res}")
+            self.send_result(chat_id, "🕶️ *Ghost Mode Toggled:*", res)
             return True
 
         if clean == "💤 Sleep Laptop" or low in ("sleep", "suspend"):
@@ -1612,21 +1672,20 @@ class TelegramBotRunner:
             return True
 
         # ==================== VOLUME & SOUND ====================
-        if clean in ("🔉 Vol -", "🔉 Volume Down") or low in ("vol down", "volume down", "vol -", "voldown"):
+        if clean in ("🔉 Vol -", "🔉 Volume Down", "🔉 Vol Down (-10%)") or low in ("vol down", "volume down", "vol -", "voldown", "-10%"):
             res = laptop_vol_down()
             self.send_result(chat_id, "🔉 *Volume Down:*", res)
             return True
 
-        if clean in ("🔊 Vol +", "🔊 Volume Up") or low in ("vol up", "volume up", "vol +", "volup"):
+        if clean in ("🔊 Vol +", "🔊 Volume Up", "🔊 Vol Up (+10%)") or low in ("vol up", "volume up", "vol +", "volup", "+10%"):
             res = laptop_vol_up()
             self.send_result(chat_id, "🔊 *Volume Up:*", res)
             return True
 
-        if clean in ("🔇 Mute", "🔊 Unmute") or cmd in ("/mute", "/unmute") or low in ("mute", "unmute"):
+        if clean in ("🔇 Mute", "🔊 Unmute", "🔇 Mute / Unmute") or cmd in ("/mute", "/unmute") or low in ("mute", "unmute", "mute / unmute"):
             res = laptop_mute()
             _is_muted = not _is_muted
-            self.switch_menu(chat_id, _user_menu_state.get(chat_id, "volume"),
-                f"🔇 *Mute Toggled:*\n\n{res}")
+            self.send_result(chat_id, "🔇 *Audio Mute/Unmute:*", res)
             return True
 
         if clean == "🎚️ Set Volume %":
@@ -1635,12 +1694,12 @@ class TelegramBotRunner:
             return True
 
         # ==================== MEDIA CONTROL ====================
-        if clean == "⏯️ Play/Pause" or low in ("play/pause", "pause"):
+        if clean in ("⏯️ Play/Pause", "⏯️ Play / Pause") or low in ("play/pause", "play / pause", "pause"):
             res = laptop_playpause()
             self.send_result(chat_id, "⏯️ *Media:*", res)
             return True
 
-        if clean == "⏹️ Stop Music" or low in ("stop music", "stop"):
+        if clean in ("⏹️ Stop Music", "⏹️ Stop") or low in ("stop music", "stop"):
             res = laptop_stop_music()
             self.send_result(chat_id, "⏹️ *Music Stopped:*", res)
             return True
@@ -1655,9 +1714,9 @@ class TelegramBotRunner:
             self.send_result(chat_id, "⏮️ *Previous Track:*", res)
             return True
 
-        if clean in ("🎵 Play Song", "🎵 Play Song (Search)"):
+        if clean in ("🎵 Play Song", "🎵 Play Song (Search)", "🔍 Search & Play") or low in ("search & play", "play song"):
             _user_pending_input[chat_id] = "play_song"
-            self.send_result(chat_id, "🎵 *Play Song:*", "Song name bhejein:")
+            self.send_result(chat_id, "🔍 *Search & Play:*", "YouTube ya gaane ka naam bhejein, laptop pe play ho jayega:")
             return True
 
         # ==================== MOUSE & KEYBOARD ====================
@@ -1775,7 +1834,7 @@ class TelegramBotRunner:
             return True
 
         # ==================== SECURITY & SPY ====================
-        if clean == "🚨 Siren Alarm" or low in ("alarm", "siren"):
+        if clean in ("🚨 Siren Alarm", "🚨 Alarm Siren") or low in ("alarm", "siren"):
             res = laptop_alarm()
             self.send_result(chat_id, "🚨 *Alarm ON:*", res)
             return True
@@ -1785,10 +1844,10 @@ class TelegramBotRunner:
             self.send_result(chat_id, "⏹️ *Alarm Stopped:*", res)
             return True
 
-        if clean in ("👁️ Start CCTV Motion", "🛑 Stop CCTV") or low == "cctv":
+        if clean in ("👁️ Start CCTV Motion", "🛑 Stop CCTV", "👁️ CCTV Mode") or low == "cctv":
             res = laptop_cctv_toggle()
             _is_cctv_active = not _is_cctv_active
-            self.switch_menu(chat_id, "security", f"👁️ *CCTV Toggled:*\n\n{res}")
+            self.send_result(chat_id, "👁️ *CCTV Mode Toggled:*", res)
             return True
 
         if clean == "📷 Silent Snap":
@@ -1809,15 +1868,13 @@ class TelegramBotRunner:
         if clean in ("🔴 Self-Use Mode", "🟢 Remote Mode", "🟢 Enable Remote", "🔴 Self-Use Pause") or cmd == "/self":
             res = laptop_remote_toggle()
             _is_remote_active = not _is_remote_active
-            current = _user_menu_state.get(chat_id, "ai")
-            self.switch_menu(chat_id, current, f"🎮 *Mode Toggled:*\n\n{res}")
+            self.send_result(chat_id, "🎮 *Remote Mode Toggled:*", res)
             return True
 
-        if clean in ("⚡ Auto-Approve: ON 🟢", "⚡ Auto-Approve: OFF 🔴", "⚡ Auto: ON 🟢", "⚡ Auto: OFF 🔴") or cmd == "/auto":
+        if clean in ("⚡ Auto-Approve: ON 🟢", "⚡ Auto-Approve: OFF 🔴", "⚡ Auto: ON 🟢", "⚡ Auto: OFF 🔴", "⚡ Auto Approve") or cmd == "/auto":
             res = laptop_auto_toggle()
             _is_auto_approve_active = not _is_auto_approve_active
-            current = _user_menu_state.get(chat_id, "ai")
-            self.switch_menu(chat_id, current, f"⚡ *Auto Toggled:*\n\n{res}")
+            self.send_result(chat_id, "⚡ *Auto-Approve Toggled:*", res)
             return True
 
         if clean == "♾️ Auto Always ON":
@@ -2031,7 +2088,7 @@ class TelegramBotRunner:
             self.send_result(chat_id, status, "", menu="laptop")
             return True
 
-        if clean in ("☁️ Cloud Status", "📊 Cloud Status"):
+        if clean in ("☁️ Cloud Status", "📊 Cloud Status", "📊 Cloud Telemetry"):
             res = system_status()
             self.send_result(chat_id, "☁️ *Cloud Server:*", f"```\n{res}\n```\n✅ 24/7 Live on Render")
             return True
@@ -2313,7 +2370,7 @@ class TelegramBotRunner:
                                         f"> 🏷️ *Set ID:* `{set_name}`\n"
                                         f"> ✨ *Total Emojis:* `{pack_info['count']}`\n\n"
                                         "Aapke is pack ke saare emojis bot ke sath link ho gaye hain!",
-                                        reply_markup=get_bottom_reply_kb(),
+                                        reply_markup=get_bottom_reply_kb(chat_id),
                                     )
                                     return
                     except Exception as e:
@@ -2340,13 +2397,13 @@ class TelegramBotRunner:
                     f"> 🏷️ *Set:* `{set_name}`\n"
                     f"> 🎨 *Total Stickers:* `{pack_info['count']}`\n\n"
                     "Ab is pack ke saare stickers bot me link ho chuke hain!",
-                    reply_markup=get_bottom_reply_kb(),
+                    reply_markup=get_bottom_reply_kb(chat_id),
                 )
             else:
                 tg_send_message(
                     chat_id,
                     f"🎨 *Sticker Received!* ({emoji})\n> File ID: `{file_id}`",
-                    reply_markup=get_bottom_reply_kb(),
+                    reply_markup=get_bottom_reply_kb(chat_id),
                 )
             return
 
@@ -2372,7 +2429,7 @@ class TelegramBotRunner:
                 )
                 tg_delete_message(chat_id, status_id)
                 current = _user_menu_state.get(chat_id, "main")
-                tg_send_message(chat_id, result, reply_markup=get_kb_for(current))
+                tg_send_message(chat_id, result, reply_markup=get_kb_for(current, chat_id))
                 maybe_send_sher_sticker(chat_id, chance=0.45)
             except Exception as e:
                 tg_delete_message(chat_id, status_id)
@@ -2397,7 +2454,7 @@ class TelegramBotRunner:
                     )
                     tg_delete_message(chat_id, status_id)
                     current = _user_menu_state.get(chat_id, "main")
-                    tg_send_message(chat_id, result, reply_markup=get_kb_for(current))
+                    tg_send_message(chat_id, result, reply_markup=get_kb_for(current, chat_id))
                     maybe_send_sher_sticker(chat_id, chance=0.45)
                 except Exception as e:
                     tg_delete_message(chat_id, status_id)
@@ -2431,7 +2488,7 @@ class TelegramBotRunner:
                 result = self.agent.run_task(session_id=session_id, user_message=prompt)
                 tg_delete_message(chat_id, status_id)
                 current = _user_menu_state.get(chat_id, "main")
-                tg_send_message(chat_id, result, reply_markup=get_kb_for(current))
+                tg_send_message(chat_id, result, reply_markup=get_kb_for(current, chat_id))
                 maybe_send_sher_sticker(chat_id, chance=0.45)
             except Exception as e:
                 tg_delete_message(chat_id, status_id)
@@ -2455,14 +2512,14 @@ class TelegramBotRunner:
             time.sleep(0.1)
             if status_id:
                 tg_delete_message(chat_id, status_id)
-            tg_send_message(chat_id, result, reply_markup=get_bottom_reply_kb())
+            tg_send_message(chat_id, result, reply_markup=get_bottom_reply_kb(chat_id))
             maybe_send_sher_sticker(chat_id, chance=0.50)
         except Exception as e:
             stop_anim.set()
             logger.error(f"Agent error: {e}")
             if status_id:
                 tg_delete_message(chat_id, status_id)
-            tg_send_message(chat_id, f"❌ *Error:* {e}", reply_markup=get_bottom_reply_kb())
+            tg_send_message(chat_id, f"❌ *Error:* {e}", reply_markup=get_bottom_reply_kb(chat_id))
 
     def start_polling(self) -> None:
         logger.info("Starting Telegram polling...")
