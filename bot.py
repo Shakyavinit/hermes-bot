@@ -649,6 +649,50 @@ def to_premium_emoji(char: str) -> str:
     return char
 
 
+def import_full_pack(set_name: str) -> Optional[dict]:
+    """Fetch all stickers or custom emojis from an entire pack and save them."""
+    if not set_name:
+        return None
+    try:
+        resp = requests.get(f"{API_BASE}/getStickerSet", params={"name": set_name}, timeout=15)
+        res = resp.json()
+        if res.get("ok"):
+            result = res["result"]
+            stickers = result.get("stickers", [])
+            title = result.get("title", set_name)
+            stype = result.get("sticker_type", "regular")
+
+            pack_file = WORKSPACE_DIR / "imported_pack.json"
+            pack_data = {
+                "set_name": set_name,
+                "title": title,
+                "type": stype,
+                "count": len(stickers),
+                "items": [],
+            }
+
+            for s in stickers:
+                item = {
+                    "file_id": s.get("file_id"),
+                    "emoji": s.get("emoji", ""),
+                    "custom_emoji_id": s.get("custom_emoji_id"),
+                }
+                pack_data["items"].append(item)
+                if s.get("custom_emoji_id") and s.get("emoji"):
+                    PREMIUM_CUSTOM_EMOJIS[s["emoji"]] = s["custom_emoji_id"]
+                if s.get("emoji") and s.get("file_id"):
+                    BOT_STICKERS[s["emoji"]] = s.get("file_id")
+
+            with open(pack_file, "w") as f:
+                json.dump(pack_data, f, indent=2)
+
+            logger.info(f"Imported pack: {title} ({len(stickers)} items)")
+            return pack_data
+    except Exception as e:
+        logger.error(f"Error importing pack: {e}")
+    return None
+
+
 def tg_set_reaction(chat_id: int, message_id: Optional[int], emoji: str = "⚡") -> bool:
     """Set an instant emoji reaction on a message for sleek responsive feedback."""
     if not chat_id or not message_id:
@@ -2190,7 +2234,7 @@ class TelegramBotRunner:
         if msg_id:
             tg_react_smart(chat_id, msg_id, text)
 
-        # Capture user custom/paid emojis from message entities
+        # 1. Custom / Paid Emoji Pack Import (detects full pack from a single emoji!)
         for entity in message.get("entities", []):
             if entity.get("type") == "custom_emoji":
                 cid = entity.get("custom_emoji_id")
@@ -2199,33 +2243,59 @@ class TelegramBotRunner:
                 char = text[offset:offset+length] if text and len(text) >= offset+length else "✨"
                 if cid:
                     PREMIUM_CUSTOM_EMOJIS[char] = cid
+                    try:
+                        em_resp = requests.get(
+                            f"{API_BASE}/getCustomEmojiStickers",
+                            json={"custom_emoji_ids": [cid]},
+                            timeout=10,
+                        ).json()
+                        if em_resp.get("ok") and em_resp.get("result"):
+                            set_name = em_resp["result"][0].get("set_name")
+                            if set_name:
+                                pack_info = import_full_pack(set_name)
+                                if pack_info:
+                                    tg_send_message(
+                                        chat_id,
+                                        f"🎉 *Pura Paid Emoji Pack Copy Ho Gaya!*\n\n"
+                                        f"> 📦 *Pack Name:* `{pack_info['title']}`\n"
+                                        f"> 🏷️ *Set ID:* `{set_name}`\n"
+                                        f"> ✨ *Total Emojis:* `{pack_info['count']}`\n\n"
+                                        "Aapke is pack ke saare emojis bot ke sath link ho gaye hain!",
+                                        reply_markup=get_bottom_reply_kb(),
+                                    )
+                                    return
+                    except Exception as e:
+                        logger.error(f"Error importing custom emoji pack: {e}")
 
         session_id = f"tg_{chat_id}"
 
-        # STICKER message handling (allows user to send any custom sticker)
+        # 2. Sticker Pack Import (detects full pack from a single sticker!)
         if "sticker" in message:
             sticker = message["sticker"]
             file_id = sticker["file_id"]
-            set_name = sticker.get("set_name", "Custom")
+            set_name = sticker.get("set_name")
             emoji = sticker.get("emoji", "🎨")
             _last_received_sticker[chat_id] = file_id
             if msg_id:
                 tg_set_reaction(chat_id, msg_id, "🔥")
-            tg_send_message(
-                chat_id,
-                f"🎨 *Sticker Received!* ({emoji})\n\n"
-                f"> Pack: `{set_name}`\n"
-                f"> File ID: `{file_id}`\n\n"
-                "Is sticker ko bot me save karne ke liye kisi bhi action pe assign karein:\n"
-                "• `/setsticker screenshot`\n"
-                "• `/setsticker webcam`\n"
-                "• `/setsticker battery`\n"
-                "• `/setsticker music`\n"
-                "• `/setsticker lock`\n"
-                "• `/setsticker done`\n"
-                "• `/setsticker ready`",
-                reply_markup=get_bottom_reply_kb(),
-            )
+
+            pack_info = import_full_pack(set_name) if set_name else None
+            if pack_info:
+                tg_send_message(
+                    chat_id,
+                    f"🎉 *Pura Sticker Pack Copy Ho Gaya!*\n\n"
+                    f"> 📦 *Pack:* `{pack_info['title']}`\n"
+                    f"> 🏷️ *Set:* `{set_name}`\n"
+                    f"> 🎨 *Total Stickers:* `{pack_info['count']}`\n\n"
+                    "Ab is pack ke saare stickers bot me link ho chuke hain!",
+                    reply_markup=get_bottom_reply_kb(),
+                )
+            else:
+                tg_send_message(
+                    chat_id,
+                    f"🎨 *Sticker Received!* ({emoji})\n> File ID: `{file_id}`",
+                    reply_markup=get_bottom_reply_kb(),
+                )
             return
 
         # PHOTO handling
