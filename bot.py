@@ -619,6 +619,36 @@ def save_custom_sticker(action: str, file_id: str) -> None:
         json.dump(data, f, indent=2)
 
 
+# Verified Telegram Premium Custom Emojis (Neon & Animated Official Packs)
+PREMIUM_CUSTOM_EMOJIS: Dict[str, str] = {
+    "⚡": "5373066076558996568",  # Neon glowing lightning
+    "🔋": "5449587434402623682",  # Neon glowing battery
+    "💻": "5431376038628171216",  # Animated Cyber laptop
+    "☁️": "5287571024500498635",  # Animated Cloud
+    "🚀": "5445284980978621387",  # Animated Rocket
+    "🔥": "5420315771991497307",  # Animated Flame
+    "🤖": "5372981976804366741",  # Animated Robot
+    "💯": "5188208446461188962",  # Animated 100
+    "👑": "5467406098367521267",  # Animated Crown
+    "✨": "5472164874886846699",  # Animated Sparkles
+    "👀": "5424885441100782420",  # Animated Eyes
+    "👍": "5469770542288478598",  # Animated Thumbs up
+    "💡": "5472146462362048818",  # Animated Idea lightbulb
+    "🎵": "5188621441926438751",  # Animated Music note
+    "✅": "5427009714745517609",  # Animated Checkmark
+    "❌": "5465665476971471368",  # Animated Cross
+    "⏰": "5413704112220949842",  # Animated Clock
+}
+
+
+def to_premium_emoji(char: str) -> str:
+    """Wrap emoji in Telegram paid custom_emoji tag if available."""
+    cid = PREMIUM_CUSTOM_EMOJIS.get(char)
+    if cid:
+        return f'<tg-emoji emoji-id="{cid}">{char}</tg-emoji>'
+    return char
+
+
 def tg_set_reaction(chat_id: int, message_id: Optional[int], emoji: str = "⚡") -> bool:
     """Set an instant emoji reaction on a message for sleek responsive feedback."""
     if not chat_id or not message_id:
@@ -2159,6 +2189,16 @@ class TelegramBotRunner:
         # Instant smart contextual reaction feedback
         if msg_id:
             tg_react_smart(chat_id, msg_id, text)
+
+        # Capture user custom/paid emojis from message entities
+        for entity in message.get("entities", []):
+            if entity.get("type") == "custom_emoji":
+                cid = entity.get("custom_emoji_id")
+                offset = entity.get("offset", 0)
+                length = entity.get("length", 1)
+                char = text[offset:offset+length] if text and len(text) >= offset+length else "✨"
+                if cid:
+                    PREMIUM_CUSTOM_EMOJIS[char] = cid
 
         session_id = f"tg_{chat_id}"
 
