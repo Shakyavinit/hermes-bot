@@ -480,29 +480,26 @@ def get_antigravity_status() -> str:
         return f"🤖 Error reading Antigravity status: {e}"
 
 
-def play_tts_sound(text: str) -> bool:
-    """Generate and play 100% volume natural human voice via edge-tts with audio boost."""
+def play_tts_sound(text: str, voice_id: str = None) -> bool:
+    """Generate and play natural human voice via multi-provider TTS engine with audio boost."""
+    # Interrupt any currently running speech playback (barge-in support)
+    os.system("pkill -f hermes_tts.mp3 2>/dev/null; killall spd-say espeak-ng espeak 2>/dev/null")
     # Force 100% laptop system volume and ensure unmuted
     os.system("pactl set-sink-mute @DEFAULT_SINK@ 0 2>/dev/null; pactl set-sink-volume @DEFAULT_SINK@ 100% 2>/dev/null")
     tts_mp3 = "/tmp/hermes_tts.mp3"
     try:
-        if os.path.exists(tts_mp3):
-            os.remove(tts_mp3)
-        import sys
-        for p in ("/home/mrx/.local/lib/python3.14/site-packages", "/home/mrx/.local/lib/python3.13/site-packages", "/home/mrx/.local/lib/python3.12/site-packages"):
-            if p not in sys.path and os.path.exists(p):
-                sys.path.insert(0, p)
-        import asyncio
-        import edge_tts
-        async def _synth():
-            comm = edge_tts.Communicate(text, "hi-IN-MadhurNeural", volume="+50%")
-            await comm.save(tts_mp3)
-        asyncio.run(_synth())
-        if os.path.exists(tts_mp3) and os.path.getsize(tts_mp3) > 1000:
+        from normalizer import extract_speech_text
+        spoken = extract_speech_text(text)
+        if not spoken:
+            spoken = text
+        from tts_engine import synthesize_speech, get_current_voice_id
+        vid = voice_id or get_current_voice_id()
+        success = synthesize_speech(spoken, tts_mp3, voice_id=vid)
+        if success and os.path.exists(tts_mp3) and os.path.getsize(tts_mp3) > 1000:
             os.system(f"mpv --no-video --volume=130 '{tts_mp3}' >/dev/null 2>&1")
             return True
     except Exception as e:
-        logger.error(f"Neural TTS generation error: {e}")
+        logger.error(f"TTS engine generation error: {e}")
     # Offline fallback
     safe_text = text.replace('"', '\\"')
     os.system(f'espeak-ng "{safe_text}" 2>/dev/null || spd-say "{safe_text}" 2>/dev/null')
@@ -854,6 +851,35 @@ def execute_action(cmd: str) -> str:
         speak_text = clean[len("__ACTION_SPEAK__"):].strip()
         play_tts_sound(speak_text)
         return f"🗣️ Spoken on laptop (100% volume): \"{speak_text}\""
+
+    if clean.startswith("__ACTION_SET_VOICE__"):
+        vid = clean[len("__ACTION_SET_VOICE__"):].strip()
+        try:
+            from tts_engine import set_current_voice_id, get_voice_profile
+            prof = get_voice_profile(vid)
+            if prof:
+                set_current_voice_id(vid)
+                return f"✅ Voice switched to: *{prof['name']}*\n_{prof['description']}_"
+            return f"⚠️ Voice ID `{vid}` nahi mila."
+        except Exception as e:
+            return f"❌ Failed to set voice: {e}"
+
+    if clean == "__ACTION_GET_VOICES__":
+        try:
+            from tts_engine import get_available_voices, get_current_voice_id
+            active = get_current_voice_id()
+            voices = get_available_voices()
+            lines = ["🎙️ *Hermes Voice Engine Settings:*\n"]
+            for v_id, meta in voices.items():
+                mark = "✅ " if v_id == active else "▫️ "
+                lines.append(f"{mark}*{meta['name']}* (`{v_id}`)\n   _{meta['description']}_\n")
+            return "\n".join(lines)
+        except Exception as e:
+            return f"❌ Failed to get voices: {e}"
+
+    if clean in ("__ACTION_STOP_SPEAK__", "__ACTION_MUTE_TTS__"):
+        os.system("pkill -f hermes_tts.mp3 2>/dev/null; killall spd-say espeak-ng espeak 2>/dev/null")
+        return "🤐 Laptop speech muted."
 
     # 17. Popup Notification
     if clean.startswith("__ACTION_POPUP__"):

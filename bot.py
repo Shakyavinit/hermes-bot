@@ -37,8 +37,10 @@ from bridge import (
     laptop_human_move, laptop_human_type, laptop_human_scroll, laptop_screen_inspect,
     laptop_screen_vision_click, laptop_offline_url, laptop_offline_qr,
     laptop_hotspot_start, laptop_hotspot_stop, laptop_hotspot_status,
+    laptop_set_voice, laptop_get_voices, laptop_stop_speak,
     record_heartbeat, store_task_result,
 )
+from normalizer import extract_speech_text
 from config import (
     BASE_DIR, TELEGRAM_BOT_TOKEN, WORKSPACE_DIR, get_runtime_config,
     is_user_allowed, set_owner,
@@ -331,11 +333,47 @@ def get_home_kb() -> dict:
                 {"text": "☁️ Cloud Mode", "callback_data": "mode_cloud"},
             ],
             [
+                {"text": "🎙️ Voice Settings", "callback_data": "menu_voice"},
                 {"text": "📊 System Status", "callback_data": "btn_status"},
+            ],
+            [
                 {"text": "❓ Help & Guide", "callback_data": "btn_help"},
             ],
         ]
     }
+
+
+def get_voice_menu_text() -> str:
+    try:
+        from tts_engine import get_current_voice_id, VOICE_PROFILES
+        active = get_current_voice_id()
+        active_prof = VOICE_PROFILES.get(active, {})
+        lines = [
+            "🎙️ *Hermes Voice Engine Settings*",
+            f"Active Voice: *{active_prof.get('name', active)}*",
+            f"Description: _{active_prof.get('description', '')}_\n",
+            "Apni pasand ki natural ya deep voice select karein:",
+        ]
+        return "\n".join(lines)
+    except Exception as e:
+        return f"🎙️ *Voice Engine:* {e}"
+
+
+def get_voice_inline_kb() -> dict:
+    try:
+        from tts_engine import get_current_voice_id, VOICE_PROFILES
+        active = get_current_voice_id()
+        keyboard = []
+        for vid, prof in VOICE_PROFILES.items():
+            mark = "✅ " if vid == active else "▫️ "
+            keyboard.append([{"text": f"{mark}{prof['name']}", "callback_data": f"set_voice:{vid}"}])
+        keyboard.append([
+            {"text": "🔊 Test Current Voice", "callback_data": "test_current_voice"},
+            {"text": "🔙 Back to Hub", "callback_data": "mode_home"},
+        ])
+        return {"inline_keyboard": keyboard}
+    except Exception:
+        return {"inline_keyboard": [[{"text": "🔙 Back", "callback_data": "mode_home"}]]}
 
 
 def get_home_text() -> str:
@@ -1524,11 +1562,14 @@ class TelegramBotRunner:
             self.send_result(chat_id, "☀️ *Display Awakened:*", res)
             return True
 
-        # 7. Speech / TTS Stop
+        # 7. Speech / TTS Stop (Instant Barge-in)
         TTS_STOP_WORDS = {
             "stop speaking", "stop speak", "stop tts", "tts stop", "chup bolna", "speaking off",
+            "chup", "chup ho ja", "chup raho", "bolna band", "bolna band kar", "stop voice",
+            "shant", "shant ho ja",
         }
         if low in TTS_STOP_WORDS:
+            laptop_stop_speak()
             execute_on_laptop("pkill -f hermes_tts.mp3 2>/dev/null; killall spd-say espeak-ng espeak 2>/dev/null")
             self.send_result(chat_id, "🤐 *Speech Muted:*", "Laptop speech/TTS mute kar diya gaya hai.")
             return True
@@ -1558,8 +1599,31 @@ class TelegramBotRunner:
                         speak_text = clean[len(prefix):].strip()
                         break
             if speak_text:
-                res = laptop_speak(speak_text)
-                self.send_result(chat_id, "🗣️ *Laptop Par Bola:*", f"_{speak_text}_\n\n{res}")
+                spoken = extract_speech_text(speak_text) or speak_text
+                res = laptop_speak(spoken)
+                self.send_result(chat_id, "🗣️ *Laptop Par Bola:*", f"_{spoken}_\n\n{res}")
+                return True
+
+        # 9. Voice Settings & Selection
+        if cmd in ("/voice", "/voices", "/awaz", "/awaj") or low in ("awaz", "voices", "voice", "change voice", "awaz badlo", "awaj", "awaj badlo"):
+            parts = clean.split(maxsplit=1)
+            if len(parts) > 1 and parts[1].strip():
+                vid = parts[1].strip().lower()
+                from tts_engine import set_current_voice_id, VOICE_PROFILES
+                if vid in VOICE_PROFILES:
+                    set_current_voice_id(vid)
+                    laptop_set_voice(vid)
+                    prof = VOICE_PROFILES[vid]
+                    self.send_result(chat_id, "🎙️ *Voice Changed:*", f"Abse awaz: *{prof['name']}*\n_{prof['description']}_")
+                    return True
+                else:
+                    valid_ids = ", ".join(f"`{k}`" for k in VOICE_PROFILES.keys())
+                    self.send_result(chat_id, "⚠️ Invalid Voice ID", f"Valid options: {valid_ids}")
+                    return True
+            else:
+                msg_text = get_voice_menu_text()
+                kb = get_voice_inline_kb()
+                tg_send_message(chat_id, msg_text, reply_markup=kb)
                 return True
 
         # ==================== ROOT COMMANDS ====================
@@ -2314,6 +2378,37 @@ class TelegramBotRunner:
             tg_edit_reply_markup(chat_id, message_id, get_cloud_kb())
             tg_answer_callback(cq_id, "☁️ Cloud Mode")
             return
+        elif data == "menu_voice":
+            tg_edit_message(chat_id, message_id, get_voice_menu_text())
+            tg_edit_reply_markup(chat_id, message_id, get_voice_inline_kb())
+            tg_answer_callback(cq_id, "🎙️ Voice Settings")
+            return
+        elif data.startswith("set_voice:"):
+            vid = data.split(":", 1)[1]
+            try:
+                from tts_engine import set_current_voice_id, VOICE_PROFILES
+                set_current_voice_id(vid)
+                laptop_set_voice(vid)
+                prof = VOICE_PROFILES.get(vid, {})
+                vname = prof.get("name", vid)
+                tg_answer_callback(cq_id, f"✅ Voice: {vname}")
+                tg_edit_message(chat_id, message_id, get_voice_menu_text())
+                tg_edit_reply_markup(chat_id, message_id, get_voice_inline_kb())
+            except Exception as e:
+                tg_answer_callback(cq_id, f"❌ Error: {e}", show_alert=True)
+            return
+        elif data == "test_current_voice":
+            try:
+                from tts_engine import get_current_voice_id, VOICE_PROFILES
+                vid = get_current_voice_id()
+                prof = VOICE_PROFILES.get(vid, {})
+                vname = prof.get("name", vid)
+                test_phrase = "हाँ मालिक, आवाज़ बिल्कुल साफ़ और नेचुरल आ रही है।"
+                laptop_speak(test_phrase)
+                tg_answer_callback(cq_id, f"🗣️ Testing: {vname}")
+            except Exception as e:
+                tg_answer_callback(cq_id, f"❌ Test error: {e}", show_alert=True)
+            return
         elif data == "btn_help":
             tg_answer_callback(cq_id, "💡 Help Guide")
             tg_send_message(chat_id, get_help_text())
@@ -2595,6 +2690,8 @@ class TelegramBotRunner:
 
         # VOICE handling
         if "voice" in message:
+            # Instant barge-in: stop any existing laptop speech playback immediately
+            laptop_stop_speak()
             voice = message["voice"]
             file_id = voice["file_id"]
             tg_send_chat_action(chat_id, "typing")
@@ -2615,6 +2712,14 @@ class TelegramBotRunner:
                     current = _user_menu_state.get(chat_id, "main")
                     tg_send_message(chat_id, result, reply_markup=get_kb_for(current, chat_id))
                     maybe_send_sher_sticker(chat_id, chance=0.45)
+                    # Automatically speak the concise natural answer on laptop speakers
+                    if is_laptop_online():
+                        try:
+                            spoken = extract_speech_text(result)
+                            if spoken:
+                                laptop_speak(spoken)
+                        except Exception as e_speak:
+                            logger.warning(f"Voice note reply TTS failed: {e_speak}")
                 except Exception as e:
                     tg_delete_message(chat_id, status_id)
                     tg_send_message(chat_id, f"❌ Error: {e}")

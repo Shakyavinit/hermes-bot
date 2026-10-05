@@ -215,6 +215,18 @@ def laptop_speak(text: str) -> str:
     return dispatch_to_laptop(f"__ACTION_SPEAK__{text}")
 
 
+def laptop_set_voice(voice_id: str) -> str:
+    return dispatch_to_laptop(f"__ACTION_SET_VOICE__{voice_id}")
+
+
+def laptop_get_voices() -> str:
+    return dispatch_to_laptop("__ACTION_GET_VOICES__")
+
+
+def laptop_stop_speak() -> str:
+    return dispatch_to_laptop("__ACTION_STOP_SPEAK__")
+
+
 def laptop_popup(title: str, msg: str) -> str:
     return dispatch_to_laptop(f"__ACTION_POPUP__{title}|||{msg}")
 
