@@ -2704,7 +2704,11 @@ class TelegramBotRunner:
                 try:
                     result = self.agent.run_task(
                         session_id=session_id,
-                        user_message=f"User ne voice note bheji hai (saved: {dest}). Malik ne is voice note me kya bola hai dhyan se suniye aur samjhein. Agar unhone laptop par koi action/command karne ko kaha hai (jaise volume, speak/bolo, photo, music, app kholna etc.) to tool call karke execute karein aur Hindi me reply dein.",
+                        user_message=(
+                            f"User ne voice note bheji hai (saved: {dest}). Malik ne is voice note me kya bola hai dhyan se suniye aur samjhein. "
+                            f"Agar unhone laptop par koi action/command karne ko kaha hai (jaise volume, speak/bolo, photo, music, app kholna etc.) to tool call karke execute karein. "
+                            f"DHYAN RAKHEIN: Malik ko lambe bhashan bilkul pasand nahi hain. Jawab hamesha ULTRA-SHORT (sirf 1 line me direct kaam ki baat) dein."
+                        ),
                         audio_bytes=audio_bytes,
                         audio_mime="audio/ogg",
                     )

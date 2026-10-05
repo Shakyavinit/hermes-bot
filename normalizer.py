@@ -195,11 +195,11 @@ def strip_emojis(text: str) -> str:
     return emoji_pattern.sub("", text)
 
 
-def extract_speech_text(display_text: str, max_sentences: int = 3) -> str:
+def extract_speech_text(display_text: str, max_sentences: int = 1, max_words: int = 20) -> str:
     """
-    Extract clean, concise speech dialogue from formatted display text.
+    Extract clean, ultra-concise speech dialogue from formatted display text.
     Strips markdown, code blocks, tables, URLs, file paths, and emojis.
-    Keeps at most max_sentences for comfortable spoken listening.
+    Keeps at most max_sentences (default 1) and max_words (default 20) for crisp, short spoken delivery.
     """
     if not display_text:
         return ""
@@ -207,7 +207,7 @@ def extract_speech_text(display_text: str, max_sentences: int = 3) -> str:
     text = display_text
 
     # 1. Handle Code Blocks: Replace with spoken summary
-    text = re.sub(r"```[\s\S]*?```", " कोड स्क्रीन पर शेयर कर दिया है। ", text)
+    text = re.sub(r"```[\s\S]*?```", " कोड स्क्रीन पर है। ", text)
 
     # 2. Handle Inline code `...`
     text = re.sub(r"`([^`]+)`", r"\1", text)
@@ -241,6 +241,11 @@ def extract_speech_text(display_text: str, max_sentences: int = 3) -> str:
         spoken = " ".join(filtered[:max_sentences])
     else:
         spoken = text
+
+    # 10. Cap maximum words to prevent any long speeches
+    words = spoken.split()
+    if len(words) > max_words:
+        spoken = " ".join(words[:max_words])
 
     return spoken.strip()
 
