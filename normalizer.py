@@ -195,11 +195,11 @@ def strip_emojis(text: str) -> str:
     return emoji_pattern.sub("", text)
 
 
-def extract_speech_text(display_text: str, max_sentences: int = 1, max_words: int = 20) -> str:
+def extract_speech_text(display_text: str, max_sentences: int = 1, max_words: int = 12) -> str:
     """
     Extract clean, ultra-concise speech dialogue from formatted display text.
-    Strips markdown, code blocks, tables, URLs, file paths, and emojis.
-    Keeps at most max_sentences (default 1) and max_words (default 20) for crisp, short spoken delivery.
+    Strips markdown, code blocks, tables, URLs, file paths, emojis, and lists/options.
+    Keeps strictly at most max_sentences (default 1) and max_words (default 12).
     """
     if not display_text:
         return ""
@@ -218,34 +218,44 @@ def extract_speech_text(display_text: str, max_sentences: int = 1, max_words: in
     # 4. Handle Linux file paths -> replace with just basename
     text = re.sub(r"(/[a-zA-Z0-9_\-\.]+)+/([a-zA-Z0-9_\-\.]+)", r"\2", text)
 
-    # 5. Remove Markdown headers, bold, italics, blockquotes, bullets
+    # 5. Remove numbered lists, options, bullets, and menus completely from voice!
+    text = re.sub(r"^\s*[0-9]+[\.\)]\s*.*$", "", text, flags=re.MULTILINE)
+    text = re.sub(r"^\s*[\-\*\+•▫️▪️]\s*.*$", "", text, flags=re.MULTILINE)
+
+    # 6. Remove Markdown headers, bold, italics, blockquotes
     text = re.sub(r"^#+\s*", "", text, flags=re.MULTILINE)
     text = re.sub(r"[*_~]", "", text)
     text = re.sub(r"^[>\-\*\+]\s*", "", text, flags=re.MULTILINE)
 
-    # 6. Remove Markdown tables
+    # 7. Remove Markdown tables
     text = re.sub(r"\|[^\n]+\|", "", text)
     text = re.sub(r":\-\-+:?", "", text)
 
-    # 7. Strip Emojis
+    # 8. Strip Emojis
     text = strip_emojis(text)
 
-    # 8. Clean excess whitespace & newlines
+    # 9. Clean excess whitespace & newlines
     text = re.sub(r"\n+", ". ", text)
     text = re.sub(r"\s+", " ", text).strip()
 
-    # 9. Limit to max_sentences for spoken replies
+    # 10. Limit to max_sentences for spoken replies
     sentences = re.split(r"(?<=[.!?।])\s+", text)
     filtered = [s.strip() for s in sentences if s.strip()]
     if filtered:
-        spoken = " ".join(filtered[:max_sentences])
+        spoken = filtered[0]
     else:
         spoken = text
 
-    # 10. Cap maximum words to prevent any long speeches
+    # 11. Cap maximum words to prevent any long dragging speeches (max 12 words)
     words = spoken.split()
     if len(words) > max_words:
         spoken = " ".join(words[:max_words])
+
+    spoken = re.sub(r"\.+", ".", spoken).strip()
+    spoken = re.sub(r"\s+", " ", spoken).strip()
+
+    if not spoken or spoken == ".":
+        spoken = "Details screen par hain Malik."
 
     return spoken.strip()
 

@@ -2403,7 +2403,7 @@ class TelegramBotRunner:
                 vid = get_current_voice_id()
                 prof = VOICE_PROFILES.get(vid, {})
                 vname = prof.get("name", vid)
-                test_phrase = "हाँ मालिक, आवाज़ बिल्कुल साफ़ और नेचुरल आ रही है।"
+                test_phrase = "हाँ मालिक।"
                 laptop_speak(test_phrase)
                 tg_answer_callback(cq_id, f"🗣️ Testing: {vname}")
             except Exception as e:
