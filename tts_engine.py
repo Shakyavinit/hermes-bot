@@ -22,6 +22,24 @@ CONFIG_FILE = DATA_DIR / "voice_config.json"
 
 # Voice Profiles Registry
 VOICE_PROFILES: Dict[str, dict] = {
+    "andrew_copilot": {
+        "name": "Andrew Copilot (Realistic Male)",
+        "voice": "en-US-AndrewMultilingualNeural",
+        "provider": "edge_tts",
+        "is_ssml": False,
+        "volume": "+40%",
+        "lang": "en-US",
+        "description": "Warm, natural realistic male voice (100% Free Default)",
+    },
+    "brian_copilot": {
+        "name": "Brian Copilot (Casual Male)",
+        "voice": "en-US-BrianMultilingualNeural",
+        "provider": "edge_tts",
+        "is_ssml": False,
+        "volume": "+40%",
+        "lang": "en-US",
+        "description": "Friendly, approachable male voice (100% Free)",
+    },
     "madhur_deep": {
         "name": "JARVIS Deep Bass (Madhur)",
         "voice": "hi-IN-MadhurNeural",
@@ -31,10 +49,10 @@ VOICE_PROFILES: Dict[str, dict] = {
         "rate": "+5%",
         "volume": "+40%",
         "lang": "hi-IN",
-        "description": "Natural crisp Indian male voice with slight bass",
+        "description": "Crisp Indian male voice with slight bass",
     },
     "madhur_default": {
-        "name": "Madhur Natural",
+        "name": "Madhur Indian Male",
         "voice": "hi-IN-MadhurNeural",
         "provider": "edge_tts",
         "is_ssml": True,
@@ -42,42 +60,29 @@ VOICE_PROFILES: Dict[str, dict] = {
         "rate": "+5%",
         "volume": "+40%",
         "lang": "hi-IN",
-        "description": "Crisp natural Indian male voice",
+        "description": "Fast natural Indian male voice",
     },
-    "prabhat_deep": {
-        "name": "Prabhat Heavy",
-        "voice": "en-IN-PrabhatNeural",
+    "ava_copilot": {
+        "name": "Ava Copilot (Realistic Female)",
+        "voice": "en-US-AvaMultilingualNeural",
         "provider": "edge_tts",
-        "is_ssml": True,
-        "pitch": "-8%",
-        "rate": "-3%",
-        "volume": "+50%",
-        "lang": "en-IN",
-        "description": "Solid mature Indian English/Hindi tone",
+        "is_ssml": False,
+        "volume": "+40%",
+        "lang": "en-US",
+        "description": "Expressive, sweet natural female voice (100% Free)",
     },
     "swara_natural": {
-        "name": "Swara Natural Female",
+        "name": "Swara Indian Female",
         "voice": "hi-IN-SwaraNeural",
         "provider": "edge_tts",
         "is_ssml": False,
-        "volume": "+50%",
+        "volume": "+40%",
         "lang": "hi-IN",
-        "description": "Soft, clear and sweet Indian female voice",
-    },
-    "jarvis_cinema": {
-        "name": "Christopher Hollywood JARVIS",
-        "voice": "en-US-ChristopherNeural",
-        "provider": "edge_tts",
-        "is_ssml": True,
-        "pitch": "-10%",
-        "rate": "-4%",
-        "volume": "+50%",
-        "lang": "en-US",
-        "description": "Cinematic deep baritone voice (English/Hinglish)",
+        "description": "Soft clear Indian female voice",
     },
 }
 
-DEFAULT_VOICE = "madhur_deep"
+DEFAULT_VOICE = "andrew_copilot"
 
 
 def get_current_voice_id() -> str:
